@@ -1,0 +1,6 @@
+﻿.env
+.venv/
+__pycache__/
+ocr_gold/runs/
+data/raw/
+*.pdf
