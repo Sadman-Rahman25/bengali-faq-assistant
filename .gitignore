@@ -1,6 +1,17 @@
-﻿.env
+.env
 .venv/
 __pycache__/
 ocr_gold/runs/
+
+# source documents -- kept outside version control
 data/raw/
 *.pdf
+*.docx
+
+# generated artefacts: all regenerable from data/raw + the scripts, and they
+# change on every pipeline run. ~15MB if tracked.
+data/processed/
+check_*.html
+headings_*.md
+audit_*.csv
+bucket_*.json
