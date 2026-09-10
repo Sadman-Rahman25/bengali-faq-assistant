@@ -1,4 +1,4 @@
-"""Registry of every product and insurance entity named in either manual.
+﻿"""Registry of every product and insurance entity named in either manual.
 
 entity_type separates things that are NOT the same kind of thing:
 
@@ -47,7 +47,7 @@ import sys
 import unicodedata
 from pathlib import Path
 
-from bnnorm import canon
+from bnnorm import canon, canon_pattern
 # retag.PROD is the authority on programme-name matching. A naive
 # re.escape("দাবি") matches inside বিমাদাবি and made §5.2.6 (insurance claim
 # procedure) look like the defining section for the দাবি programme -- the same
@@ -272,83 +272,101 @@ def defining_chunk(rx, cands, require_heading=False, debug=False):
             best, best_score = c, score
     return best
 
-nrm = lambda s: re.sub(r"\s+", " ", canon(unicodedata.normalize("NFC", s or "")))
+# canon() now includes NFC, so this is NFC + digit fold + separator strip.
+# It must be applied to PATTERNS too, not only text -- see bnnorm.
+nrm = lambda s: re.sub(r"\s+", " ", canon(s or ""))
 
-chunks = []
-for tag in CORPORA:
-    for l in (P / f"chunks_{tag}_final.jsonl").open(encoding="utf-8"):
-        c = json.loads(l)
-        c["_norm"] = nrm(c["display_text"])
-        c["_head"] = nrm(" > ".join(c["heading_path"]))
-        c["_body"] = (c["_norm"][len(c["_head"]):].lstrip()
-                      if c["_head"] and c["_norm"].startswith(c["_head"])
-                      else c["_norm"])
-        chunks.append(c)
 
-# how many distinct product patterns does each heading name? 3+ means the
-# heading is a list, not a definition.
-_ALL_PATS = [re.compile(p) for *_, p in NAMED] + \
-            [re.compile(re.escape(n)) for _, n, _ in PROGRAMMES]
-for c in chunks:
-    c["_head_products"] = sum(1 for rx in _ALL_PATS if rx.search(c["_head"]))
+def compile_pat(pat):
+    """Compile a pattern normalised the same way as the corpus text.
 
-DEBUG = "--debug" in sys.argv
-rows = []
-_RETAG_RX = dict(RETAG_PROD)
-for key, name, aliases in PROGRAMMES:
-    hits = [c for c in chunks if key in c["product"]]
-    rx = _RETAG_RX[key]
-    if DEBUG:
-        print(f"  [{key}]")
-    rows.append((key, "brac_programme", name, aliases,
-                 defining_chunk(rx, hits, require_heading=True, debug=DEBUG),
-                 [c["chunk_id"] for c in hits]))
+    canon_pattern, not canon: the latter's separator stripping rewrites regex
+    quantifiers ({0,4} -> {04}). Without any normalisation, a literal saved
+    with precomposed য়/ড়/ঢ় cannot match NFC text and silently under-matches.
+    """
+    return re.compile(canon_pattern(pat))
 
-for key, name, aliases, pat in NAMED:
-    rx = re.compile(pat)
-    hits = [c for c in chunks if rx.search(c["_norm"])]
-    if DEBUG:
-        print(f"  [{key}]")
-    rows.append((key, "brac_product", name, aliases,
-                 defining_chunk(rx, hits, debug=DEBUG),
-                 [c["chunk_id"] for c in hits]))
 
-for key, etype, name, aliases, pat in ENTITIES:
-    rx = re.compile(pat)
-    hits = [c for c in chunks if rx.search(c["_norm"])]
-    if DEBUG:
-        print(f"  [{key}]")
-    rows.append((key, etype, name, aliases,
-                 defining_chunk(rx, hits, debug=DEBUG),
-                 [c["chunk_id"] for c in hits]))
+def load_chunks():
+    chunks = []
+    for tag in CORPORA:
+        for l in (P / f"chunks_{tag}_final.jsonl").open(encoding="utf-8"):
+            c = json.loads(l)
+            c["_norm"] = nrm(c["display_text"])
+            c["_head"] = nrm(" > ".join(c["heading_path"]))
+            c["_body"] = (c["_norm"][len(c["_head"]):].lstrip()
+                          if c["_head"] and c["_norm"].startswith(c["_head"])
+                          else c["_norm"])
+            chunks.append(c)
+    # how many distinct product patterns does each heading name? 3+ means the
+    # heading is a list, not a definition.
+    all_pats = ([compile_pat(p) for *_, p in NAMED]
+                + [rx for k, rx in RETAG_PROD
+                   if k in {key for key, *_ in PROGRAMMES}])
+    for c in chunks:
+        c["_head_products"] = sum(1 for rx in all_pats if rx.search(c["_head"]))
+    return chunks
 
-with OUT.open("w", newline="", encoding="utf-8-sig") as f:
-    w = csv.writer(f)
-    w.writerow(["product_key", "entity_type", "name_bn", "aliases",
-                "defining_chunk_id", "chunk_ids", "status"])
+
+def build_rows(chunks, debug=False):
+    rows = []
+    retag_rx = dict(RETAG_PROD)
+    specs = ([("brac_programme", k, n, a, retag_rx[k], True)
+              for k, n, a in PROGRAMMES]
+             + [("brac_product", k, n, a, compile_pat(p), False)
+                for k, n, a, p in NAMED]
+             + [(t, k, n, a, compile_pat(p), False)
+                for k, t, n, a, p in ENTITIES])
+    for etype, key, name, aliases, rx, req_head in specs:
+        if etype == "brac_programme":
+            hits = [c for c in chunks if key in c["product"]]
+        else:
+            hits = [c for c in chunks if rx.search(c["_norm"])]
+        if debug:
+            print(f"  [{key}]")
+        rows.append((key, etype, name, aliases,
+                     defining_chunk(rx, hits, require_heading=req_head,
+                                    debug=debug),
+                     [c["chunk_id"] for c in hits]))
+    return rows
+
+
+def main(debug=False):
+    chunks = load_chunks()
+    rows = build_rows(chunks, debug)
+
+    with OUT.open("w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f)
+        w.writerow(["product_key", "entity_type", "name_bn", "aliases",
+                    "defining_chunk_id", "chunk_ids", "status"])
+        for key, etype, name, aliases, dc, ids in rows:
+            w.writerow([key, etype, name, aliases,
+                        dc["chunk_id"] if dc else "", ";".join(ids), ""])
+
+    print(f"{len(rows)} rows -> {OUT}\n")
+    print(f"  {'key':<26}{'type':<15}{'n':>5}{'prog':>6}{'dabi':>6}  "
+          f"defining_chunk_id")
+    empty, mention_only = [], []
     for key, etype, name, aliases, dc, ids in rows:
-        w.writerow([key, etype, name, aliases,
-                    dc["chunk_id"] if dc else "", ";".join(ids), ""])
+        p = sum(1 for i in ids if i.startswith("progoti"))
+        d = len(ids) - p
+        note = ""
+        if not ids:
+            note = "  <-- NO MATCH"
+            empty.append(key)
+        elif not dc:
+            note = "  <-- MENTION ONLY"
+            mention_only.append(key)
+        elif not p or not d:
+            note = "  (one manual only)"
+        print(f"  {key:<26}{etype:<15}{len(ids):>5}{p:>6}{d:>6}  "
+              f"{(dc['chunk_id'] if dc else '-'):<20}{note}")
 
-print(f"{len(rows)} rows -> {OUT}\n")
-print(f"  {'key':<26}{'type':<15}{'n':>5}{'prog':>6}{'dabi':>6}  defining_chunk_id")
-empty, mention_only = [], []
-for key, etype, name, aliases, dc, ids in rows:
-    p = sum(1 for i in ids if i.startswith("progoti"))
-    d = len(ids) - p
-    note = ""
-    if not ids:
-        note = "  <-- NO MATCH"
-        empty.append(key)
-    elif not dc:
-        note = "  <-- MENTION ONLY"
-        mention_only.append(key)
-    elif not p or not d:
-        note = "  (one manual only)"
-    print(f"  {key:<26}{etype:<15}{len(ids):>5}{p:>6}{d:>6}  "
-          f"{(dc['chunk_id'] if dc else '-'):<20}{note}")
+    if mention_only:
+        print(f"\n  MENTION-ONLY (named but never defined): {mention_only}")
+    if empty:
+        print(f"\n  PATTERN MISS -- fix these: {empty}")
 
-if mention_only:
-    print(f"\n  MENTION-ONLY (named but never defined): {mention_only}")
-if empty:
-    print(f"\n  PATTERN MISS -- fix these: {empty}")
+
+if __name__ == "__main__":
+    main("--debug" in sys.argv)

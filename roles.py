@@ -68,57 +68,73 @@ ROLES = [
     ("adc", "এডিসি", "এডিসি", "এডিসি", "Assistant District Coordinator", ""),
 ]
 
-nrm = lambda s: re.sub(r"\s+", " ", canon(unicodedata.normalize("NFC", s or "")))
-
-text, chunks = {}, {}
-for tag in CORPORA:
-    cs = [json.loads(l) for l in
-          (P / f"chunks_{tag}_final.jsonl").open(encoding="utf-8")]
-    chunks[tag] = [nrm(c["display_text"]) for c in cs]
-    text[tag] = "\n".join(chunks[tag])
+# canon() includes NFC. Role names must go through it too: বিভাগীয় contains
+# য়, which NFC decomposes, so a precomposed literal would silently count 0.
+nrm = lambda s: re.sub(r"\s+", " ", canon(s or ""))
 
 
-def counts(term):
-    if not term:
-        return 0, 0
-    return (text["dabi_2025"].count(term),
-            text["progoti"].count(term))
+def load_text():
+    text = {}
+    for tag in CORPORA:
+        cs = [json.loads(l) for l in
+              (P / f"chunks_{tag}_final.jsonl").open(encoding="utf-8")]
+        text[tag] = "\n".join(nrm(c["display_text"]) for c in cs)
+    return text
 
 
-rows = []
-for key, nd, npg, abbrev, eng, note in ROLES:
-    d_dabi, _ = counts(nd)
-    _, p_prog = counts(npg)
-    # cross counts expose whether a name really is manual-specific
-    _, nd_in_prog = counts(nd)
-    npg_in_dabi, _ = counts(npg)
-    manual_specific = nd != npg and nd_in_prog == 0 and npg_in_dabi == 0
-    rows.append(dict(
-        role_key=key, name_dabi_2025=nd, name_progoti=npg, abbrev=abbrev,
-        english=eng,
-        equivalence="manual_specific_name" if manual_specific else
-                    ("identical_name" if nd == npg else "differs"),
-        n_dabi=d_dabi, n_progoti=p_prog,
-        n_dabi_name_in_progoti=nd_in_prog, n_progoti_name_in_dabi=npg_in_dabi,
-        expand_in_query="NO", note=note, status=""))
+def build_rows(text):
+    def counts(term):
+        if not term:
+            return 0, 0
+        t = nrm(term)
+        return text["dabi_2025"].count(t), text["progoti"].count(t)
 
-with OUT.open("w", newline="", encoding="utf-8-sig") as f:
-    w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-    w.writeheader()
-    w.writerows(rows)
+    rows = []
+    for key, nd, npg, abbrev, eng, note in ROLES:
+        d_dabi, _ = counts(nd)
+        _, p_prog = counts(npg)
+        # cross counts expose whether a name really is manual-specific
+        _, nd_in_prog = counts(nd)
+        npg_in_dabi, _ = counts(npg)
+        manual_specific = nd != npg and nd_in_prog == 0 and npg_in_dabi == 0
+        rows.append(dict(
+            role_key=key, name_dabi_2025=nd, name_progoti=npg, abbrev=abbrev,
+            english=eng,
+            equivalence="manual_specific_name" if manual_specific else
+                        ("identical_name" if nd == npg else "differs"),
+            n_dabi=d_dabi, n_progoti=p_prog,
+            n_dabi_name_in_progoti=nd_in_prog,
+            n_progoti_name_in_dabi=npg_in_dabi,
+            expand_in_query="NO", note=note, status=""))
+    return rows
 
-print(f"{len(rows)} roles -> {OUT}\n")
-print(f"  {'role_key':<20}{'dabi':<20}{'progoti':<20}"
-      f"{'n_d':>6}{'n_p':>6}  equivalence")
-for r in rows:
-    print(f"  {r['role_key']:<20}{r['name_dabi_2025']:<20}{r['name_progoti']:<20}"
-          f"{r['n_dabi']:>6}{r['n_progoti']:>6}  {r['equivalence']}")
 
-ms = [r for r in rows if r["equivalence"] == "manual_specific_name"]
-print(f"\n  manual-specific role names: {[r['role_key'] for r in ms]}")
-for r in ms:
-    print(f"    {r['role_key']}: {r['name_dabi_2025']} appears "
-          f"{r['n_dabi_name_in_progoti']}x in Progoti; {r['name_progoti']} appears "
-          f"{r['n_progoti_name_in_dabi']}x in Dabi  <- complementary, so the "
-          f"term identifies the manual")
-print("\n  expand_in_query is NO for every row, by design. See module docstring.")
+def main():
+    rows = build_rows(load_text())
+
+    with OUT.open("w", newline="", encoding="utf-8-sig") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        w.writeheader()
+        w.writerows(rows)
+
+    print(f"{len(rows)} roles -> {OUT}\n")
+    print(f"  {'role_key':<20}{'dabi':<20}{'progoti':<20}"
+          f"{'n_d':>6}{'n_p':>6}  equivalence")
+    for r in rows:
+        print(f"  {r['role_key']:<20}{r['name_dabi_2025']:<20}"
+              f"{r['name_progoti']:<20}"
+              f"{r['n_dabi']:>6}{r['n_progoti']:>6}  {r['equivalence']}")
+
+    ms = [r for r in rows if r["equivalence"] == "manual_specific_name"]
+    print(f"\n  manual-specific role names: {[r['role_key'] for r in ms]}")
+    for r in ms:
+        print(f"    {r['role_key']}: {r['name_dabi_2025']} appears "
+              f"{r['n_dabi_name_in_progoti']}x in Progoti; {r['name_progoti']} "
+              f"appears {r['n_progoti_name_in_dabi']}x in Dabi  <- complementary, "
+              f"so the term identifies the manual")
+    print("\n  expand_in_query is NO for every row, by design. "
+          "See module docstring.")
+
+
+if __name__ == "__main__":
+    main()
