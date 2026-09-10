@@ -1,4 +1,4 @@
-﻿"""Registry of every product and insurance entity named in either manual.
+"""Registry of every product and insurance entity named in either manual.
 
 entity_type separates things that are NOT the same kind of thing:
 
@@ -52,128 +52,16 @@ from bnnorm import canon, canon_pattern
 # re.escape("দাবি") matches inside বিমাদাবি and made §5.2.6 (insurance claim
 # procedure) look like the defining section for the দাবি programme -- the same
 # false positive retag.py exists to prevent.
-from retag import PROD as RETAG_PROD
+from productmatch import (ENTITIES, NAMED, PROGRAMME_NAMES, PROGRAMMES,
+                          compile_pat)
 
 P = Path("data/processed")
 CORPORA = ("progoti", "dabi_2025")
 _args = [a for a in sys.argv[1:] if not a.startswith("--")]
 OUT = Path(_args[0] if _args else "products_catalogue.csv")
 
-# programme-level keys come from the retag `product` field
-PROGRAMMES = [
-    ("dabi",    "দাবি",       "দাবি কর্মসূচি; দাবি+; Dabi; Group Financing"),
-    ("progoti", "প্রগতি",     "প্রগতি কর্মসূচি; Progoti; Individual Lending; MELA"),
-    ("bcup",    "বিসিইউপি",   "BCUP"),
-    ("cdp",     "সিডিপি",     "CDP"),
-    ("ncdp",    "এনসিডিপি",   "NCDP"),
-    ("scdp",    "এসসিডিপি",   "SCDP"),
-]
 
-# Non-product entities. Kept in the same registry so one lookup answers
-# "who carries the risk on this product", but typed so they are never
-# mistaken for something BRAC sells.
-ENTITIES = [
-    ("shena_insurance", "underwriter", "সেনা ইন্স্যুরেন্স পিএলসি",
-     "Sena Insurance PLC; underwrites ফায়ার সেফটি (Progoti §5.4.6) and "
-     "গবাদিপ্রাণি সুরক্ষা (Dabi §5.4.3)",
-     r"সেনা\s*ইন্স্যুরেন্স"),
-    ("green_delta_insurance", "underwriter", "গ্রীন ডেল্টা ইন্স্যুরেন্স পিএলসি",
-     "Green Delta Insurance PLC; underwrites গবাদিপ্রাণি সুরক্ষা বিমা (Dabi only)",
-     r"গ্রীন\s*ডেল্টা"),
-    ("guardian_life", "underwriter", "গার্ডিয়ান লাইফ ইন্স্যুরেন্স লিমিটেড",
-     "গার্ডিান লাইফ (sic); ইইস্যুরেন্স (sic, Progoti); ইনশুরেন্স (Dabi); "
-     "underwrites ঋণ নিরাপত্তা বিমা and ছায়া-সঞ্চয় নিরাপত্তা বিমা",
-     # NFC decomposes য় to য + ়, so match loosely between ড and ান
-     r"গার্ড\S{0,4}ান\s*লাইফ"),
-    ("pioneer_insurance", "underwriter", "পাইওনিয়ার ইন্স্যুরেন্স কোম্পানি লিমিটেড",
-     "পাইওনিয়র (sic); co-underwrites ফায়ার সেফটি with সেনা (Progoti only)",
-     r"পাইওনিয়া?র"),
-    ("brac_microinsurance", "brac_unit", "ব্র্যাক মাইক্রোইন্স্যুরেন্স",
-     "BRAC Microinsurance central team; receives claim documents. "
-     "Not an insurer and not a product.",
-     r"(?:ব্র্যাক\s*)?মাইক্রোইন্স্যুরেন্স"),
-]
 
-# named products: (key, name_bn, aliases, pattern over canon'd text)
-NAMED = [
-    # --- দাবি loan products (§1.1.1, group financing)
-    ("dabi_general_loan", "দাবি + সাধারণ লোন", "দাবি সাধারণ লোন",
-     r"দাবি\s*\+?\s*সাধারণ\s*লোন"),
-    ("shadhin_loan", "স্বাধীন লোন", "স্বাধীণ ঋণ",
-     r"স্বাধী[নণ]\s*(?:লোন|ঋণ)"),
-    ("loan_18_month", "১৮ মাস মেয়াদি লোন", "১৮ মাস মেয়াদী ঋণ",
-     r"18\s*মাস\s*মেয়াদ[িী]\s*(?:লোন|ঋণ)"),
-    ("wash_loan", "ওয়াশ লোন", "WASH loan", r"ওয়াশ\s*লোন"),
-    ("projukti_loan", "প্রযুক্তি লোন", "technology loan", r"প্রযুক্তি\s*লোন"),
-
-    # --- প্রগতি loan products (§1.1.2, individual financing)
-    ("progoti_general_loan", "প্রগতি সাধারণ লোন", "ট্রেড লোন",
-     r"প্রগতি\s*সাধারণ\s*লোন|ট্রেড\s*লোন"),
-    ("migration_loan", "মাইগ্রেশন লোন", "", r"মাইগ্রেশন\s*লোন"),
-    # corpus spells it রেমিটেন্স only; ্যা alternative kept for future docs
-    ("remittance_loan", "রেমিটেন্স লোন", "রেমিট্যান্স লোন",
-     r"রেমিট(?:ে|্যা)ন্স\s*লোন"),
-    ("agribusiness_loan", "এগ্রিবিজনেস লোন", "", r"এগ্রিবিজনেস\s*লোন"),
-    ("nirvorota_loan", "নির্ভরতা লোন", "", r"নির্ভরতা\s*লোন"),
-    # গতি never owns a heading -- item 6 inside §1.1.2, plus the changelog.
-    # Lookbehind keeps it off the tail of প্রগতি লোন.
-    ("goti_loan", "গতি লোন", "goti loan", r"(?<!প্র)গতি\s*লোন"),
-    ("unmesh_loan", "উন্মেষ ঋণ", "উন্মেষ লোন", r"উন্মেষ\s*(?:লোন|ঋণ)"),
-
-    # --- common products (§1.1.3, all programmes)
-    ("prottasha_loan", "প্রত্যাশা লোন", "", r"প্রত্যাশা\s*লোন"),
-    # require লোন: bare রিফাইন্যান্সিং/রিশিডিউলিং is the PROCESS, discussed in
-    # §5.1.6 about insurance cover, and matching it stole the defining section.
-    ("refinance_loan", "রি-ফাইন্যান্স লোন", "রিফাইন্যান্সিং (process, §5.1.6)",
-     r"রি\s*-?\s*ফাইন্যান্স\s*লোন"),
-    ("rescheduled_loan", "রি-সিডিউলড লোন", "রি-সিডিউল লোন; রিশিডিউলিং (process)",
-     r"রি\s*-?\s*সিডিউল(?:ড)?\s*লোন"),
-
-    # --- savings products (§1.2)
-    ("general_savings", "সাধারণ সঞ্চয়", "পাশবই সঞ্চয়; বাধ্যতামূলক সাধারণ সঞ্চয়",
-     r"সাধারণ\s*সঞ্চয়|পাশবই\s*সঞ্চয়"),
-    ("term_savings", "মেয়াদী সঞ্চয়", "মেয়াদি সঞ্চয়; সঞ্চয় স্কীম",
-     r"মেয়াদ[িী]\s*সঞ্চয়"),
-    ("monthly_profit_savings", "মাসিক মুনাফাভিত্তিক সঞ্চয় প্রকল্প", "",
-     r"মাসিক\s*মুনাফা\s*ভিত্তিক\s*সঞ্চয়|মাসিক\s*মুনাফাভিত্তিক\s*সঞ্চয়"),
-    ("double_profit_savings", "দ্বিগুণ মুনাফাভিত্তিক সঞ্চয় প্রকল্প", "",
-     r"দ্বিগুণ\s*মুনাফা\s*ভিত্তিক\s*সঞ্চয়|দ্বিগুণ\s*মুনাফাভিত্তিক\s*সঞ্চয়"),
-    ("onehalf_profit_savings", "দেড়গুণ মুনাফাভিত্তিক সঞ্চয় প্রকল্প", "",
-     r"দেড়গুণ\s*মুনাফা\s*ভিত্তিক\s*সঞ্চয়|দেড়গুণ\s*মুনাফাভিত্তিক\s*সঞ্চয়"),
-    ("money_plant_savings", "মানি-প্লান্ট সঞ্চয় প্রকল্প",
-     "মানিপ্ল্যান্ট সঞ্চয় প্রকল্প; মানি প্লান্ট সঞ্চয় প্রকল্প",
-     r"মানি\s*-?\s*প্ল[া্]?[যা]?ান্ট\s*সঞ্চয়"),
-    ("lumpsum_fixed_savings", "এককালীন স্থায়ী সঞ্চয় প্রকল্প", "",
-     r"এককালীন\s*স্থায়ী\s*সঞ্চয়"),
-
-    # --- insurance (ch. 5)
-    ("loan_security_insurance", "ঋণ নিরাপত্তা বিমা", "",
-     r"ঋণ\s*নিরাপত্তা\s*বিমা"),
-    ("chaya_savings_insurance", "ছায়া-সঞ্চয় নিরাপত্তা বিমা", "",
-     r"ছায়া\s*-?\s*সঞ্চয়\s*নিরাপত্তা\s*বিমা"),
-    ("crop_insurance", "শস্য নিরাপত্তা বিমা", "শস্য বিমা; শস্য নিাপত্তা বিমা (sic)",
-     r"শস্য\s*নি(?:রা)?পত্তা\s*বিমা|শস্য\s*বিমা"),
-    ("fire_safety_insurance", "ফায়ার সেফটি ইন্স্যুরেন্স", "Fire Safety Insurance",
-     r"ফায়ার\s*সেফটি\s*ইন্স্যুরেন্স"),
-    ("livestock_insurance", "গবাদিপ্রাণি সুরক্ষা বিমা", "লাইভস্টক গ্রো; Livestock Grow",
-     r"গবাদিপ্রাণি\s*সুরক্ষা\s*বিমা|লাইভস্টক\s*গ্রো"),
-    ("dairy_cow_insurance", "দুগ্ধজাত গাভীর বিমা", "", r"দুগ্ধজাত\s*গাভীর\s*বিমা"),
-    ("cattle_fattening_insurance", "গরু মোটাতাজাকরণ বিমা", "",
-     r"গরু\s*মোটাতাজাকরণ\s*বিমা"),
-
-    # --- named but never defined in either manual (expect empty
-    #     defining_chunk_id). Real products with real operational rules
-    #     attached elsewhere, so they must be findable.
-    ("arogya_loan", "আরোগ্য ঋণ", "health loan; §5.1.2 excludes its customers "
-     "from ঋণ নিরাপত্তা বিমা cover", r"আরোগ্য\s*(?:ঋণ|লোন)"),
-    ("bishesh_savings", "বিশেষ সঞ্চয়",
-     "ডিপিএস; umbrella for ডিপিএস + মাসিক মুনাফা; collateral for প্রত্যাশা লোন",
-     r"বিশেষ\s*সঞ্চয়|ডিপিএস"),
-    ("credit_shield_insurance", "ক্রেডিট শিল্ড ইন্স্যুরেন্স",
-     "named once in সূচনা only; may be the English name for "
-     "ঋণ নিরাপত্তা বিমা -- CONFIRM before treating as distinct",
-     r"ক্রেডিট\s*শিল্ড"),
-]
 
 # --- defining-section detection -------------------------------------------
 # A definition looks different from a mention: it sits under the product's own
@@ -277,14 +165,6 @@ def defining_chunk(rx, cands, require_heading=False, debug=False):
 nrm = lambda s: re.sub(r"\s+", " ", canon(s or ""))
 
 
-def compile_pat(pat):
-    """Compile a pattern normalised the same way as the corpus text.
-
-    canon_pattern, not canon: the latter's separator stripping rewrites regex
-    quantifiers ({0,4} -> {04}). Without any normalisation, a literal saved
-    with precomposed য়/ড়/ঢ় cannot match NFC text and silently under-matches.
-    """
-    return re.compile(canon_pattern(pat))
 
 
 def load_chunks():
@@ -301,7 +181,7 @@ def load_chunks():
     # how many distinct product patterns does each heading name? 3+ means the
     # heading is a list, not a definition.
     all_pats = ([compile_pat(p) for *_, p in NAMED]
-                + [rx for k, rx in RETAG_PROD
+                + [rx for k, rx in PROGRAMMES
                    if k in {key for key, *_ in PROGRAMMES}])
     for c in chunks:
         c["_head_products"] = sum(1 for rx in all_pats if rx.search(c["_head"]))
@@ -310,9 +190,9 @@ def load_chunks():
 
 def build_rows(chunks, debug=False):
     rows = []
-    retag_rx = dict(RETAG_PROD)
+    retag_rx = dict(PROGRAMMES)
     specs = ([("brac_programme", k, n, a, retag_rx[k], True)
-              for k, n, a in PROGRAMMES]
+              for k, (n, a) in PROGRAMME_NAMES.items()]
              + [("brac_product", k, n, a, compile_pat(p), False)
                 for k, n, a, p in NAMED]
              + [(t, k, n, a, compile_pat(p), False)

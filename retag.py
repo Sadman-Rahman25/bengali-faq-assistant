@@ -37,31 +37,16 @@ import sys, json, re, unicodedata
 from collections import Counter
 from pathlib import Path
 
+from productmatch import PROGRAMME_NAMES, PROGRAMMES, programmes_in
+
 SRC = Path(sys.argv[1] if len(sys.argv) > 1 else "data/processed/chunks_progoti.jsonl")
 
-PROD = [
-    ("progoti", re.compile(r"প্রগতি")),
-    ("bcup",    re.compile(r"বিসিইউপি")),
-    ("ncdp",    re.compile(r"এনসিডিপি")),
-    ("scdp",    re.compile(r"এসসিডিপি")),
-    # সিডিপি only when not the tail of এনসিডিপি / এসসিডিপি
-    ("cdp",     re.compile(r"(?<![নস])সিডিপি")),
-    # দাবি only when not an insurance/death claim compound, joined or spaced
-    ("dabi",    re.compile(r"(?<!বিমা)(?<!বীমা)(?<!বিম)(?<!মৃত্যু)"
-                           r"(?<!বিমা )(?<!বীমা )(?<!মৃত্যু )দাবি")),
-    # গতি only as a product: a product word must follow, and প্রগতি/অগ্রগতি/
-    # সংগতি must not be what we are looking at. Lookahead keeps it off the
-    # common nouns (গতিশীল, গতিধারা, গতানুগতিক) without enumerating them.
-    ("goti",    re.compile(r"(?<!প্র)(?<!অগ্র)(?<!সং)(?<!সঙ্)"
-                           r"গতি\s*(?=লোন|কর্মসূচি|প্রোডাক্ট)")),
-]
+# The patterns live in productmatch, the one module allowed to hold product
+# literals (CONVENTIONS.md). PROD is re-exported for existing importers.
+PROD = PROGRAMMES
+prods = programmes_in
 
 nm = lambda s: re.sub(r"[ \t]+", " ", unicodedata.normalize("NFC", s or "")).strip()
-
-
-def prods(text):
-    t = nm(text)
-    return [k for k, rx in PROD if rx.search(t)]
 
 
 def main(src):
@@ -102,10 +87,10 @@ def main(src):
         for c in cs[:4]:
             head = " > ".join(c["heading_path"])[:56]
             hay = nm(c["display_text"])
-            probe = {"dabi": "দাবি", "goti": "গতি", "progoti": "প্রগতি",
-                     "cdp": "সিডিপি", "ncdp": "এনসিডিপি", "scdp": "এসসিডিপি",
-                     "bcup": "বিসিইউপি"}[k]
-            m = re.search(probe, hay)
+            # display probe only -- name comes from the shared table, never
+            # a literal re-typed here
+            probe = PROGRAMME_NAMES.get(k, (k,))[0]
+            m = re.search(re.escape(probe), hay)
             ctx = (hay[max(0, m.start() - 38):m.start() + 38].replace("\n", " ")
                    if m else "")
             print(f"    {c['chunk_id']}  {head}")
