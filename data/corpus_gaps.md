@@ -187,6 +187,59 @@ from.
 
 ---
 
+## 3.3 No loan-approval ceiling exists for সিডিও or পিও
+
+Neither manual states how much a সিডিও (Dabi) or পিও (Progoti) may approve.
+Verified by line-by-line search of both corpora.
+
+**What §7.1 প্রাধিকারসূচি actually covers.** Despite its name — টেবিল অব
+অথরিটি — chapter 7 contains **zero** loan-approval rows. Every row is
+procurement or administration:
+
+| Row | Subject |
+|---|---|
+| ১ | স্থায়ী সম্পদ: টেবিল, চেয়ার, র‍্যাক, ফ্যান, আলমারী |
+| ৯ | বাউন্ডারী ওয়াল মেরামত, রং করা, টিউবওয়েল স্থাপন |
+| ১২ | নতুন অফিস ভাড়ার অনুমোদন |
+| ১৫ | জরুরিভিত্তিতে কর্মসূচির প্রয়োজনে খরচ |
+
+Its own preamble says so: *ক্রয় ও অন্যান্য অনুমোদনে কিছু পরিবর্তন ও
+আধুনিকীকরণ করা হয়েছে*.
+
+**The manual points at a clause it does not contain.** The পরিবর্তন সমূহ
+changelog records:
+
+> পরিবর্তণ: **ঋণ অনুমোদন সিলিং বৃদ্ধি — ২.১.১(ট) — ১৮**
+
+So the ceiling exists and was raised. But **no ২.১.১(ট) heading is present in
+either manual.** §2.1.1 runs (ক) through (ছ) and stops; there is no (ট). The
+document cites its own clause that isn't there.
+
+The nearest related content, none of which answers the question:
+
+| Section | What it says |
+|---|---|
+| §2.1.2(গ) | সিডিও/সিও notifies the member **after** approval — does not approve |
+| §4.4.6 ঋণ অনুমোদন | covers the এলাকা ব্যবস্থাপক, no taka figure |
+| §2.1.2(গ), Progoti | *প্রগতি কর্মসূচির ঋণ অনুমোদন সিলিং* … refers out to পরিপত্র প/০২/২০১৮, প/২১/২০১৯, প/০৯/২০২২, প/৮১/২০২২ |
+
+**Why this one is dangerous rather than merely missing.** A reader looking for
+lending authority in a chapter called "Table of Authority" will find taka
+figures against named roles — ২ লক্ষ টাকা পর্যন্ত বিভাগীয় ব্যবস্থাপক, and so
+on — and they are the wrong figures. They authorise buying furniture and
+renting offices. Nothing on the page says it is not about lending. This is the
+one gap in this document where the plausible wrong answer is sitting in the
+manual, formatted like the right one.
+
+**Suggested action:** either add the ২.১.১(ট) clause the changelog already
+references, or state in §7.1 that lending authority is governed separately and
+name the পরিপত্র. Until then, an answer to "how much can a সিডিও approve?"
+should be a pointer to the circular, not a figure. This case is carried in
+`data/eval/bootstrap_eval.json` as category `unanswerable_in_corpus`, with a
+seeded `must_not` against quoting the §7.1 procurement limits.
+
+---
+
 ## 4. The same passage under two clause numbers in one manual
 
 One passage appears **twice within each manual**, under two different
@@ -231,6 +284,7 @@ but they do not block anything.
 
 | Priority | Item | Owner |
 |---|---|---|
+| High | Add the ২.১.১(ট) loan-approval ceiling the changelog cites, or say in §7.1 that lending authority is governed separately | Operations |
 | High | Define আরোগ্য ঋণ, or explain the §5.1.2 exclusion | Product team |
 | High | Always cite manual + clause; §5.4 differs between manuals | All authors |
 | Medium | Glossary for বিসিইউপি / সিডিপি / এনসিডিপি / এসসিডিপি | Product team |

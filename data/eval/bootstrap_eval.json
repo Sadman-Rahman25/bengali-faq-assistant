@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "created": "2026-09-10",
+  "corpora": ["progoti", "dabi_2025"],
+  "about": "Bootstrap evaluation set. reference_answer and expected_facts are written by a human reading the manuals; they are intentionally empty here, except for pre-seeded negative constraints where the wrong answer is already known. Chunk ids are deliberately absent from this file, including from prose: they shift on every build (one changed table went from 3 parts to 5 when the split budget was corrected, renumbering every part), and a stale reference chunk makes the eval assert against something that no longer exists. Questions are anchored to manual + section, which are stable.",
+  "expected_facts_format": "Each entry is {type, fact}. type is 'must' (the answer has to contain this) or 'must_not' (the answer is wrong if it contains this). Negative constraints are seeded where a specific plausible wrong answer has already been identified in the corpus.",
+  "categories": {
+    "unanswerable": "The fact is absent from the corpus AND from the manuals themselves. Correct answer: not documented.",
+    "unanswerable_in_corpus": "The fact is absent from the built corpus, but the manuals point outside themselves to where it lives. Correct answer: not in this manual, and say where to look. Distinct from 'unanswerable' because the two demand different responses — a pointer versus an admission of absence.",
+    "tiered_fact": "One attribute whose value is banded, so a complete answer must return every band, not the first one retrieved."
+  },
+  "questions": [
+    {
+      "id": "01",
+      "category": "product_status",
+      "question": "স্বাধীন লোন কি এখনও পাওয়া যায়?",
+      "reference_answer": "",
+      "expected_facts": [],
+      "manual": "dabi_2025",
+      "section": "১.১.১ দাবি + কর্মসূচি (গ্রুপ ফাইন্যান্সিং) — দাবি পাইলট প্রোডাক্টসমূহ",
+      "product": ["dabi"],
+      "difficulty": "hard",
+      "notes": "Needs §1.1.1 plus the পরিবর্তন সমূহ changelog, which records স্বাধীণ ঋণ as a নতুন সংযুক্তি. Note the spelling differs between the two: §1.1.1 writes স্বাধীন লোন, the changelog writes স্বাধীণ ঋণ (ন vs ণ, লোন vs ঋণ). A system matching one spelling only will find half the evidence. Hard because 'still available?' is a status question the manual never answers in those words."
+    },
+    {
+      "id": "02",
+      "category": "cross_manual_clause",
+      "question": "গবাদিপ্রাণি সুরক্ষা বিমার আওতায় কী কী অন্তর্ভুক্ত?",
+      "reference_answer": "",
+      "expected_facts": [],
+      "manual": "dabi_2025",
+      "section": "৫.৪ গবাদিপ্রাণি সুরক্ষা বিমা (লাইভস্টক গ্রো) — ৫.৪.৩",
+      "product": ["dabi"],
+      "difficulty": "medium",
+      "notes": "THE CLAUSE-COLLISION TEST. §5.4 is গবাদিপ্রাণি সুরক্ষা বিমা in Dabi but ফায়ার সেফটি ইন্স্যুরেন্স in Progoti — the same number, different products. An answer that cites '§5.4' without naming the manual is wrong half the time. §5.4.3 lists two covered products (দুগ্ধজাত গাভি, গরু মোটাতাজাকরণ) and names both underwriters. Progoti has no livestock insurance at all, so retrieval must not fall back to it."
+    },
+    {
+      "id": "03",
+      "category": "unanswerable",
+      "question": "আরোগ্য ঋণের ঋণসীমা ও মেয়াদ কত?",
+      "reference_answer": "",
+      "expected_facts": [],
+      "manual": "none",
+      "section": "",
+      "product": [],
+      "difficulty": "medium",
+      "notes": "Verified unanswerable: আরোগ্য ঋণ appears in exactly 4 chunks across both manuals (সূচনা in each, §5.1.2 in each) and is never defined. §5.1.2 excludes its customers from ঋণ নিরাপত্তা বিমা, so the product is real and carries a rule — which makes fabricating a ceiling tempting. Correct behaviour is to say the manuals name the product but never state its limit or term. See data/corpus_gaps.md §1.1."
+    },
+    {
+      "id": "04",
+      "category": "unanswerable_in_corpus",
+      "question": "সিডিও কত টাকা পর্যন্ত ঋণ অনুমোদন করতে পারেন?",
+      "reference_answer": "",
+      "expected_facts": [
+        {
+          "type": "must_not",
+          "fact": "Must NOT quote §7.1 প্রাধিকারসূচি procurement limits (furniture, office rent, repairs, emergency spend) as loan-approval authority. Those are purchase and administration ceilings, not lending authority."
+        }
+      ],
+      "manual": "dabi_2025",
+      "section": "২.১.১(ট) ঋণ অনুমোদন সিলিং — cited by পরিবর্তন সমূহ but ABSENT from the corpus",
+      "product": ["dabi"],
+      "difficulty": "medium",
+      "notes": "unanswerable_in_corpus, not unanswerable: the manual points outside itself. The পরিবর্তন সমূহ changelog records 'ঋণ অনুমোদন সিলিং বৃদ্ধি — ২.১.১(ট) — ১৮', so the ceiling exists and was raised, but no ২.১.১(ট) heading is present in the built corpus. Correct answer is therefore a POINTER — not in this manual, see the circular / that clause — which differs from Q03 and Q12, where the fact is absent outright and the correct answer is 'not documented'. Verified by line-by-line search: §7.1 contains ZERO loan-approval rows; §2.1.2(গ) has সিডিও/সিও only notifying the member AFTER approval; §4.4.6 covers the এলাকা ব্যবস্থাপক. Also still a role-routing test — see 04b. The §7.1 trap is the reason for the seeded must_not."
+    },
+    {
+      "id": "04b",
+      "category": "unanswerable_in_corpus",
+      "question": "পিও কত টাকা পর্যন্ত ঋণ অনুমোদন করতে পারেন?",
+      "reference_answer": "",
+      "expected_facts": [
+        {
+          "type": "must_not",
+          "fact": "Must NOT quote §7.1 প্রাধিকারসূচি procurement limits (furniture, office rent, repairs, emergency spend) as loan-approval authority. Those are purchase and administration ceilings, not lending authority."
+        }
+      ],
+      "manual": "progoti",
+      "section": "২.১.১(ট) ঋণ অনুমোদন সিলিং — cited by পরিবর্তন সমূহ but ABSENT from the corpus",
+      "product": ["progoti"],
+      "difficulty": "medium",
+      "notes": "Same question in the other manual's vocabulary, and unanswerable_in_corpus for the same reason as 04. Still carries the role-routing test: সিডিও appears 127 times in Dabi and 0 in Progoti; পিও 142 in Progoti and 0 in Dabi, so the term alone identifies which manual the asker works under. Do NOT expand one term to the other at query time (see roles_registry.csv) — the pointer given back should name the manual the asker actually works under. A system that answers this from Dabi content has failed the routing test even if the pointer itself is right."
+    },
+    {
+      "id": "05",
+      "category": "single_fact",
+      "question": "উন্মেষ ঋণের সার্ভিস চার্জ কত?",
+      "reference_answer": "",
+      "expected_facts": [],
+      "manual": "progoti",
+      "section": "১.১.২ প্রগতি কর্মসূচি (ইন্ডিভিজুয়াল ফাইন্যান্সিং) — প্রগতি পাইলট প্রোডাক্টসমূহ",
+      "product": ["progoti"],
+      "difficulty": "easy",
+      "notes": "Flat single figure, unlike the tiered products, so it is a clean single_fact. The product is named উন্মেষ ঋণ in prose and উন্মেষ লোন in its own feature table — both spellings must resolve. Progoti-only: no equivalent in Dabi. A tiered alternative if you want this harder: গতি লোন charges 24% / 22% / 20% by amount band, where a correct answer must give all three."
+    },
+    {
+      "id": "06",
+      "category": "single_fact",
+      "question": "প্রগতি সাধারণ লোনের ঋণসীমা কত?",
+      "reference_answer": "",
+      "expected_facts": [],
+      "manual": "progoti",
+      "section": "১.১.২ প্রগতি কর্মসূচি (ইন্ডিভিজুয়াল ফাইন্যান্সিং)",
+      "product": ["progoti"],
+      "difficulty": "easy",
+      "notes": "The figure sits in a wide feature table whose columns cover five products side by side, so the risk is reading the neighbouring column (মাইগ্রেশন / রেমিটেন্স / এগ্রিবিজনেস / নির্ভরতা লোন) instead. The answer distinguishes new from repeat lending. Also note প্রগতি সাধারণ লোন is described in §1.1.2 as also known as ট্রেড লোন, so that alias should reach the same answer."
+    },
+    {
+      "id": "07",
+      "category": "single_fact",
+      "question": "নতুন অফিস ভাড়ার অনুমোদন ৫ লক্ষ টাকা হলে কে অনুমোদন দেবেন?",
+      "reference_answer": "",
+      "expected_facts": [],
+      "manual": "dabi_2025",
+      "section": "৭.১ প্রাধিকারসূচি (টেবিল অব অথরিটি) — ক্রম ১২",
+      "product": ["dabi"],
+      "difficulty": "medium",
+      "notes": "Row 12 gives three bands: up to ২ লক্ষ, up to ১০ লক্ষ, and above ১০ লক্ষ, each with a different approver. ৫ লক্ষ falls in the middle band, so the answer requires picking the right tier rather than quoting the first figure found. This is the authority table's actual subject matter (procurement and administration), unlike questions 04/04b."
+    },
+    {
+      "id": "08",
+      "category": "procedural",
+      "question": "বিমাদাবি করার ধাপগুলো কী?",
+      "reference_answer": "",
+      "expected_facts": [],
+      "manual": "both",
+      "section": "৫.১.৮ বিমাদাবি পদ্ধতি",
+      "product": ["dabi", "progoti"],
+      "difficulty": "medium",
+      "notes": "Multi-step procedure spanning several chunks, so it tests whether the steps are retrieved and ordered completely rather than partially. Two traps. First, বিমাদাবি is NOT the দাবি loan product — a system matching দাবি by substring will pull loan content into an insurance answer. Second, one passage of this procedure is printed under BOTH §5.1.8 and §5.1.9 in each manual (verified identical), so a naive answer may duplicate a step; see data/corpus_gaps.md §4."
+    },
+    {
+      "id": "09",
+      "category": "procedural",
+      "question": "গ্রুপ ফরমেশনের প্রক্রিয়া কী?",
+      "reference_answer": "",
+      "expected_facts": [],
+      "manual": "dabi_2025",
+      "section": "২.১.১(গ) গ্রুপ ফরমেশন সার্ভে এবং ২.১.১(ঘ) গ্রুপ ফরমেশন বিস্তারিত",
+      "product": ["dabi"],
+      "difficulty": "medium",
+      "notes": "The procedure is split across two sub-sections — (গ) the survey and (ঘ) the detail — so a complete answer needs both. Group formation is the দাবি (group financing) model; প্রগতি is individual lending, so this is Dabi-side content even though both manuals carry §2.1.1."
+    },
+    {
+      "id": "10",
+      "category": "conditional_eligibility",
+      "question": "জমির দলিল কখন জমা দিতে হয়?",
+      "reference_answer": "",
+      "expected_facts": [],
+      "manual": "progoti",
+      "section": "১.১.২ প্রগতি কর্মসূচি — লোনের শর্তাবলী",
+      "product": ["progoti"],
+      "difficulty": "medium",
+      "notes": "The rule is conditional: নির্ধারিত সিলিং অতিক্রম করলে the customer must submit জমির দলিল, খারিজ/খতিয়ান and খাজনা রশিদ. A correct answer must carry the condition, not just the requirement — 'always required' is wrong. Complication worth checking: for গতি লোন the same table states জমির দলিল জমা দিতে হবে with no ceiling condition attached, so the answer may differ by product. §2.3.1 also lists জমির দলিল in an instruments matrix by loan type."
+    },
+    {
+      "id": "11",
+      "category": "cross_product",
+      "question": "দাবি ও প্রগতি লোনের মেয়াদ ও সার্ভিস চার্জে পার্থক্য কী?",
+      "reference_answer": "",
+      "expected_facts": [],
+      "manual": "both",
+      "section": "১.১.১ দাবি + কর্মসূচি এবং ১.১.২ প্রগতি কর্মসূচি",
+      "product": ["dabi", "progoti"],
+      "difficulty": "hard",
+      "notes": "Requires reading two feature tables and contrasting them, not quoting one. The shape of the difference is that দাবি carries a single flat service charge while প্রগতি is banded by loan amount, and the terms differ too. Hard because the evidence is in two tables in different sections, and because both tables use the same row labels (সার্ভিস চার্জ (ক্রমহ্রাসমান), লোনের মেয়াদ), which makes the retrieved fragments easy to conflate."
+    },
+    {
+      "id": "12",
+      "category": "unanswerable",
+      "question": "গতি লোনের প্রসেসিং ফি কত?",
+      "reference_answer": "",
+      "expected_facts": [],
+      "manual": "none",
+      "section": "",
+      "product": ["progoti"],
+      "difficulty": "hard",
+      "notes": "Verified unanswerable: the strings প্রসেসিং ফি and প্রসেসিং appear ZERO times in either manual (also absent: আবেদন ফি, সদস্য ফি, বিলম্ব ফি, গ্রেস পিরিয়ড). Chosen to be maximally tempting rather than obviously absent — গতি লোন is a real product with a full feature table listing ঋণের পরিমাণ, মেয়াদ, আদায় পদ্ধতি, সার্ভিস চার্জ and সঞ্চয়, so retrieval will confidently surface that table and a weak system will present সার্ভিস চার্জ as if it were the processing fee. Correct behaviour is to state that no processing fee is mentioned for this or any product. Pairs with Q13, which asks for that same table's service charge legitimately — the two together separate 'read the table' from 'read the table and answer a question it does not address'."
+    },
+    {
+      "id": "13",
+      "category": "tiered_fact",
+      "question": "গতি লোনের সার্ভিস চার্জ কত?",
+      "reference_answer": "",
+      "expected_facts": [],
+      "manual": "progoti",
+      "section": "১.১.২ প্রগতি কর্মসূচি (ইন্ডিভিজুয়াল ফাইন্যান্সিং) — গতি লোন বৈশিষ্ট্যসমূহ",
+      "product": ["progoti", "goti"],
+      "difficulty": "medium",
+      "notes": "Banded by loan amount into three tiers, so a complete answer must give all three and their thresholds — returning only the first is the characteristic failure. Contrast with Q05, which is the same attribute on a product with one flat figure; together they test whether the system notices that 'the service charge' is sometimes one number and sometimes three. গতি লোন is also the product this pipeline nearly lost: it owns no heading (it is item 6 inside §1.1.2 প্রগতি কর্মসূচি) and bare substring matching confuses it with প্রগতি, so an earlier pass dropped the tag entirely. Retrieval must find a product that has no section of its own. Progoti-only; Dabi mentions গতি লোন solely in its changelog."
+    }
+  ]
+}
