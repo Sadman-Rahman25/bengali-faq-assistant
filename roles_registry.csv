@@ -1,0 +1,12 @@
+﻿role_key,name_dabi_2025,name_progoti,abbrev,english,equivalence,n_dabi,n_progoti,n_dabi_name_in_progoti,n_progoti_name_in_dabi,expand_in_query,note,status
+field_officer,সিডিও,পিও,সিডিও / পিও,Credit Development Officer (Dabi) / Programme Organiser (Progoti),manual_specific_name,127,142,0,0,NO,"SAME ROLE, DIFFERENT NAME PER MANUAL. Do not expand one to the other; the term identifies which manual the asker works under.",
+credit_officer,সিও,সিও,সিও,Credit Officer,identical_name,39,62,62,39,NO,"appears in both, often as the pair সিডিও/সিও or পিও/সিও",
+branch_manager,শাখা ব্যবস্থাপক,শাখা ব্যবস্থাপক,বিএম,Branch Manager,identical_name,86,89,89,86,NO,,
+area_manager,এলাকা ব্যবস্থাপক,এলাকা ব্যবস্থাপক,এএম,Area Manager,identical_name,78,128,128,78,NO,APPROVAL CHAIN DIFFERS: Dabi writes এএম(দাবি) where Progoti writes এএম(দাবি)/আরএম(প্রগতি) -- Progoti adds the RM as an approver.,
+regional_manager,আঞ্চলিক ব্যবস্থাপক,আঞ্চলিক ব্যবস্থাপক,আরএম,Regional Manager,identical_name,51,62,62,51,NO,see area_manager: RM appears in the Progoti approval chain where Dabi names only the AM,
+divisional_manager,বিভাগীয় ব্যবস্থাপক,বিভাগীয় ব্যবস্থাপক,ডিএম,Divisional Manager,identical_name,29,29,29,29,NO,,
+programme_head,কর্মসূচি প্রধান,কর্মসূচি প্রধান,,Programme Head,identical_name,10,11,11,10,NO,,
+branch_accountant,হিসাব কর্মকর্তা,হিসাব কর্মকর্তা,,Branch Accountant,identical_name,88,93,93,88,NO,,
+programme_assistant,পিএ,পিএ,পিএ,Programme Assistant,identical_name,95,76,76,95,NO,,
+programme_sohokari,পিএস,পিএস,পিএস,Programme Sohokari,identical_name,61,61,61,61,NO,,
+adc,এডিসি,এডিসি,এডিসি,Assistant District Coordinator,identical_name,17,17,17,17,NO,,

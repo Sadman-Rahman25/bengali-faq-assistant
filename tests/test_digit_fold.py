@@ -4,14 +4,20 @@ A query for ৪০,০০০ against a folded index silently returns nothing use
 no exception, no warning, just a confident answer from the wrong chunk. This
 test is the thing that throws.
 
-The fixture figure is chosen so the test cannot pass vacuously:
+Every corpus gets its own fixture, chosen so the test cannot pass vacuously:
 
-    ৪০,০০০  (folds to 40000) -- a branch-office allocation ceiling in
-    ৭.১ প্রাধিকারসূচি (টেবিল অব অথরিটি), chunk progoti_0307_p2.
+    progoti    ৪০,০০০  (-> 40000)   branch-office allocation ceiling,
+                                     §7.1 প্রাধিকারসূচি, progoti_0307_p2
+    dabi_2025  ১০,২০,০০০ (-> 1020000) total insurance payout (১০ লক্ষ cover
+                                     + ২০,০০০ immediate), §5.1.5,
+                                     dabi_2025_0191
 
-It occurs in exactly ONE chunk, in Bengali digits, and NOWHERE in the corpus
-in ASCII digits. So an ASCII query can only ever reach it through folding --
-if folding is dropped on either side, there is no other path to a pass.
+Each figure occurs in exactly ONE chunk of its corpus, in Bengali digits, and
+NOWHERE in that corpus in ASCII digits. So an ASCII query can only ever reach
+it through folding -- if folding is dropped on either side there is no other
+path to a pass. Both are comma-grouped, which makes strip_groups load-bearing
+too; the Dabi one additionally uses lakh-style grouping (১০,২০,০০০), so it
+exercises a separator position the Progoti fixture does not.
 
 Runs standalone (python tests/test_digit_fold.py) or under pytest.
 """
@@ -25,28 +31,30 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from bnnorm import canon, tokenize  # noqa: E402
 
-CHUNKS = (Path(__file__).resolve().parent.parent
-          / "data" / "processed" / "chunks_progoti_final.jsonl")
-
-# The fixture. All four forms are things a user plausibly types for the same
-# figure, and all four must reach the same chunk. The separator-free forms are
-# what make strip_groups load-bearing: the corpus writes it as ৪০,০০০, so a
-# query of 40000 can only match if separators are stripped on BOTH sides.
-QUERIES = {
-    "bengali+comma": "৪০,০০০ টাকা",
-    "bengali+nosep": "৪০০০০ টাকা",
-    "ascii+comma": "40,000 টাকা",
-    "ascii+nosep": "40000 টাকা",
-}
-BENGALI_QUERY = QUERIES["bengali+comma"]
-ASCII_QUERY = QUERIES["ascii+comma"]
-FIGURE = "40000"                    # as it appears in chunk["numbers"]
-EXPECT_CHUNK = "progoti_0307_p2"
+DATA = Path(__file__).resolve().parent.parent / "data" / "processed"
 K = 5
 
+# Per corpus: the four forms a user plausibly types for one figure. All four
+# must reach the same chunk. The separator-free forms are what make
+# strip_groups load-bearing -- the corpus writes ৪০,০০০, so a query of 40000
+# can only match if separators are stripped on BOTH sides.
+FIXTURES = [
+    dict(tag="progoti", figure="40000", chunk="progoti_0307_p2",
+         queries={"bengali+comma": "৪০,০০০ টাকা",
+                  "bengali+nosep": "৪০০০০ টাকা",
+                  "ascii+comma": "40,000 টাকা",
+                  "ascii+nosep": "40000 টাকা"}),
+    dict(tag="dabi_2025", figure="1020000", chunk="dabi_2025_0191",
+         queries={"bengali+comma": "১০,২০,০০০ টাকা",
+                  "bengali+nosep": "১০২০০০০ টাকা",
+                  "ascii+comma": "10,20,000 টাকা",
+                  "ascii+nosep": "1020000 টাকা"}),
+]
 
-def load():
-    return [json.loads(l) for l in CHUNKS.open(encoding="utf-8")]
+
+def load(tag):
+    return [json.loads(l) for l in
+            (DATA / f"chunks_{tag}_final.jsonl").open(encoding="utf-8")]
 
 
 # --------------------------------------------------------------------------
@@ -113,82 +121,93 @@ _local_canon = lambda s: s.translate(_LOCAL_FOLD).replace(",", "").rstrip(".")
 
 
 def test_fixture_is_bengali_digits_only():
-    chunks = load()
-    bengali_hits, ascii_hits = set(), set()
-    for c in chunks:
-        dt = c["display_text"]
-        for m in re.finditer(r"[০-৯][০-৯,\.]*", dt):
-            if _local_canon(m.group(0)) == FIGURE:
-                bengali_hits.add(c["chunk_id"])
-        for m in re.finditer(r"[0-9][0-9,\.]*", dt):
-            if _local_canon(m.group(0)) == FIGURE:
-                ascii_hits.add(c["chunk_id"])
+    for fx in FIXTURES:
+        tag, figure, expect = fx["tag"], fx["figure"], fx["chunk"]
+        chunks = load(tag)
+        bengali_hits, ascii_hits = set(), set()
+        for c in chunks:
+            dt = c["display_text"]
+            for m in re.finditer(r"[০-৯][০-৯,\.]*", dt):
+                if _local_canon(m.group(0)) == figure:
+                    bengali_hits.add(c["chunk_id"])
+            for m in re.finditer(r"[0-9][0-9,\.]*", dt):
+                if _local_canon(m.group(0)) == figure:
+                    ascii_hits.add(c["chunk_id"])
 
-    assert bengali_hits == {EXPECT_CHUNK}, (
-        f"fixture drifted: {FIGURE} should appear in Bengali digits in exactly "
-        f"{EXPECT_CHUNK}, found {sorted(bengali_hits)}")
-    assert not ascii_hits, (
-        f"fixture is now VACUOUS: {FIGURE} also appears in ASCII digits in "
-        f"{sorted(ascii_hits)}, so an ASCII query could succeed without folding")
-    assert FIGURE in next(c for c in chunks if c["chunk_id"] == EXPECT_CHUNK)["numbers"]
+        assert bengali_hits == {expect}, (
+            f"[{tag}] fixture drifted: {figure} should appear in Bengali digits "
+            f"in exactly {expect}, found {sorted(bengali_hits)}")
+        assert not ascii_hits, (
+            f"[{tag}] fixture is now VACUOUS: {figure} also appears in ASCII "
+            f"digits in {sorted(ascii_hits)}, so an ASCII query could succeed "
+            f"without folding")
+        hit = next(c for c in chunks if c["chunk_id"] == expect)
+        assert figure in hit["numbers"], (
+            f"[{tag}] {figure} is not in {expect}'s numbers list")
 
 
 # --------------------------------------------------------------------------
 # The real assertions, on the correctly-wired index.
 # --------------------------------------------------------------------------
 def test_bengali_and_ascii_return_identical_topk():
-    idx = BM25(load(), canon)
-    got = {label: idx.search(q, canon) for label, q in QUERIES.items()}
-    for label, top in got.items():
-        assert top, f"query form {label!r} returned nothing at all"
-    distinct = {tuple(v) for v in got.values()}
-    assert len(distinct) == 1, (
-        "query forms disagree on top-k:\n"
-        + "\n".join(f"  {l:<14} {v}" for l, v in got.items()))
+    for fx in FIXTURES:
+        idx = BM25(load(fx["tag"]), canon)
+        got = {label: idx.search(q, canon) for label, q in fx["queries"].items()}
+        for label, top in got.items():
+            assert top, f"[{fx['tag']}] query form {label!r} returned nothing"
+        distinct = {tuple(v) for v in got.values()}
+        assert len(distinct) == 1, (
+            f"[{fx['tag']}] query forms disagree on top-k:\n"
+            + "\n".join(f"  {l:<14} {v}" for l, v in got.items()))
 
 
 def test_top1_actually_contains_the_figure():
     """Parity alone would pass if every form returned the same WRONG chunk."""
-    chunks = load()
-    idx = BM25(chunks, canon)
-    by_id = {c["chunk_id"]: c for c in chunks}
-    for label, q in QUERIES.items():
-        top = idx.search(q, canon)
-        assert top, f"query form {label!r} returned nothing"
-        assert top[0] == EXPECT_CHUNK, (
-            f"{label} top-1 is {top[0]}, expected {EXPECT_CHUNK}")
-        assert FIGURE in by_id[top[0]]["numbers"], (
-            f"{label} top-1 {top[0]} does not actually contain {FIGURE} "
-            f"-- retrieval agreed on the wrong chunk")
+    for fx in FIXTURES:
+        tag, figure, expect = fx["tag"], fx["figure"], fx["chunk"]
+        chunks = load(tag)
+        idx = BM25(chunks, canon)
+        by_id = {c["chunk_id"]: c for c in chunks}
+        for label, q in fx["queries"].items():
+            top = idx.search(q, canon)
+            assert top, f"[{tag}] query form {label!r} returned nothing"
+            assert top[0] == expect, (
+                f"[{tag}] {label} top-1 is {top[0]}, expected {expect}")
+            assert figure in by_id[top[0]]["numbers"], (
+                f"[{tag}] {label} top-1 {top[0]} does not actually contain "
+                f"{figure} -- retrieval agreed on the wrong chunk")
 
 
 # --------------------------------------------------------------------------
 # The part that stops this file rotting into a no-op: if someone removes
 # folding from either side, the assertions above MUST start failing.
 # --------------------------------------------------------------------------
-def _correct_behaviour(index_norm, query_norm):
+def _correct_behaviour(fx, index_norm, query_norm):
     """Does this wiring satisfy parity AND correctness, for every query form?"""
-    chunks = load()
+    chunks = load(fx["tag"])
     idx = BM25(chunks, index_norm)
     by_id = {c["chunk_id"]: c for c in chunks}
-    tops = [idx.search(q, query_norm) for q in QUERIES.values()]
+    tops = [idx.search(q, query_norm) for q in fx["queries"].values()]
     if not all(tops) or len({tuple(t) for t in tops}) != 1:
         return False
-    return tops[0][0] == EXPECT_CHUNK and FIGURE in by_id[tops[0][0]]["numbers"]
+    return (tops[0][0] == fx["chunk"]
+            and fx["figure"] in by_id[tops[0][0]]["numbers"])
 
 
 def test_dropping_folding_is_detected():
-    assert _correct_behaviour(canon, canon), \
-        "correctly-wired index should pass -- something else is broken"
+    for fx in FIXTURES:
+        assert _correct_behaviour(fx, canon, canon), (
+            f"[{fx['tag']}] correctly-wired index should pass -- "
+            f"something else is broken")
 
-    for name, inorm, qnorm in (
-        ("folded index, raw query", canon, IDENTITY),
-        ("raw index, folded query", IDENTITY, canon),
-        ("no folding anywhere", IDENTITY, IDENTITY),
-    ):
-        assert not _correct_behaviour(inorm, qnorm), (
-            f"'{name}' PASSED -- this test can no longer detect a dropped "
-            f"fold, so it is not protecting anything")
+        for name, inorm, qnorm in (
+            ("folded index, raw query", canon, IDENTITY),
+            ("raw index, folded query", IDENTITY, canon),
+            ("no folding anywhere", IDENTITY, IDENTITY),
+        ):
+            assert not _correct_behaviour(fx, inorm, qnorm), (
+                f"[{fx['tag']}] '{name}' PASSED -- this test can no longer "
+                f"detect a dropped fold, so it is not protecting anything")
 
 
 if __name__ == "__main__":
