@@ -64,55 +64,61 @@ def prods(text):
     return [k for k, rx in PROD if rx.search(t)]
 
 
-chunks = [json.loads(l) for l in SRC.open(encoding="utf-8")]
+def main(src):
+    chunks = [json.loads(l) for l in src.open(encoding="utf-8")]
 
-before = Counter()
-after = Counter()
-added, removed = Counter(), Counter()
-examples = {}
-changed = 0
+    before = Counter()
+    after = Counter()
+    added, removed = Counter(), Counter()
+    examples = {}
+    changed = 0
 
-for c in chunks:
-    old = list(c.get("product") or [])
-    new = prods(c["display_text"])
-    before.update(old or ["<none>"])
-    after.update(new or ["<none>"])
-    for k in set(old) - set(new):
-        removed[k] += 1
-        examples.setdefault(("-", k), []).append(c)
-    for k in set(new) - set(old):
-        added[k] += 1
-        examples.setdefault(("+", k), []).append(c)
-    if set(old) != set(new):
-        changed += 1
-    c["product"] = new
-
-print("=" * 74)
-print(f"PRODUCT RETAG  ({SRC.name})   {changed} of {len(chunks)} chunks changed")
-print("=" * 74)
-print(f"  {'product':<10}{'before':>8}{'after':>8}{'added':>8}{'removed':>9}")
-for k in sorted(set(before) | set(after)):
-    print(f"  {k:<10}{before.get(k, 0):>8}{after.get(k, 0):>8}"
-          f"{added.get(k, 0):>8}{removed.get(k, 0):>9}")
-
-for (sign, k), cs in sorted(examples.items()):
-    word = "REMOVED" if sign == "-" else "ADDED"
-    print(f"\n  {word} {k} -- {len(cs)} chunks, first 4:")
-    for c in cs[:4]:
-        head = " > ".join(c["heading_path"])[:56]
-        hay = nm(c["display_text"])
-        probe = {"dabi": "দাবি", "goti": "গতি", "progoti": "প্রগতি",
-                 "cdp": "সিডিপি", "ncdp": "এনসিডিপি", "scdp": "এসসিডিপি",
-                 "bcup": "বিসিইউপি"}[k]
-        m = re.search(probe, hay)
-        ctx = hay[max(0, m.start() - 38):m.start() + 38].replace("\n", " ") if m else ""
-        print(f"    {c['chunk_id']}  {head}")
-        print(f"      …{ctx}…")
-
-dst = SRC.with_name(SRC.stem + "_retagged.jsonl")
-with dst.open("w", encoding="utf-8") as f:
     for c in chunks:
-        f.write(json.dumps(c, ensure_ascii=False) + "\n")
-print(f"\n  -> {dst}")
-print("  Spot-check a REMOVED dabi chunk: it should be about বিমাদাবি")
-print("  (insurance claim), not about the দাবি loan product.")
+        old = list(c.get("product") or [])
+        new = prods(c["display_text"])
+        before.update(old or ["<none>"])
+        after.update(new or ["<none>"])
+        for k in set(old) - set(new):
+            removed[k] += 1
+            examples.setdefault(("-", k), []).append(c)
+        for k in set(new) - set(old):
+            added[k] += 1
+            examples.setdefault(("+", k), []).append(c)
+        if set(old) != set(new):
+            changed += 1
+        c["product"] = new
+
+    print("=" * 74)
+    print(f"PRODUCT RETAG  ({src.name})   {changed} of {len(chunks)} chunks changed")
+    print("=" * 74)
+    print(f"  {'product':<10}{'before':>8}{'after':>8}{'added':>8}{'removed':>9}")
+    for k in sorted(set(before) | set(after)):
+        print(f"  {k:<10}{before.get(k, 0):>8}{after.get(k, 0):>8}"
+              f"{added.get(k, 0):>8}{removed.get(k, 0):>9}")
+
+    for (sign, k), cs in sorted(examples.items()):
+        word = "REMOVED" if sign == "-" else "ADDED"
+        print(f"\n  {word} {k} -- {len(cs)} chunks, first 4:")
+        for c in cs[:4]:
+            head = " > ".join(c["heading_path"])[:56]
+            hay = nm(c["display_text"])
+            probe = {"dabi": "দাবি", "goti": "গতি", "progoti": "প্রগতি",
+                     "cdp": "সিডিপি", "ncdp": "এনসিডিপি", "scdp": "এসসিডিপি",
+                     "bcup": "বিসিইউপি"}[k]
+            m = re.search(probe, hay)
+            ctx = (hay[max(0, m.start() - 38):m.start() + 38].replace("\n", " ")
+                   if m else "")
+            print(f"    {c['chunk_id']}  {head}")
+            print(f"      …{ctx}…")
+
+    dst = src.with_name(src.stem + "_retagged.jsonl")
+    with dst.open("w", encoding="utf-8") as f:
+        for c in chunks:
+            f.write(json.dumps(c, ensure_ascii=False) + "\n")
+    print(f"\n  -> {dst}")
+    print("  Spot-check a REMOVED dabi chunk: it should be about বিমাদাবি")
+    print("  (insurance claim), not about the দাবি loan product.")
+
+
+if __name__ == "__main__":
+    main(SRC)
