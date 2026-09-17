@@ -1,0 +1,57 @@
+term,min_count,category,verified_on_page,note
+# WHAT THIS SET CAN AND CANNOT TELL YOU -- read before trusting a verdict.
+# min_count values are calibrated at roughly half the count observed in
+# data/raw/livestock_grow_2026_transcribed.md. That transcription is the only
+# clean text of this manual that exists, which means probe coverage against
+# it is 100% BY CONSTRUCTION and proves nothing about whether the
+# transcription is accurate. It is a REGRESSION guard: it will catch a future
+# re-transcription, a repaired PDF text layer, or an OCR run that drops or
+# mangles this vocabulary. The evidence that the transcription itself is
+# sound is independent of this file -- 0.0 malformed clusters per 1000 and 0
+# legal-damage hits, versus 56.3/1000 for the PDF text layer.
+# The previous version of this file described a clause-numbered LOAN manual:
+# কিস্তি, সার্ভিস চার্জ, সুদ, ছাগল, অধ্যায়, ধারা, টেবিল, পরিশিষ্ট, সিলিং and
+# প্রাধিকারসূচি all occur ZERO times in this document. Gating on them scored a
+# correct text as SUSPECT for a vocabulary reason that looks exactly like a
+# CMap fault.
+বিমা,75,domain,2-8,insurance -- corpus spelling is বিমা not বীমা; observed 151
+গবাদিপ্রাণি,39,livestock,1-8,livestock; observed 78
+বিমাদাবি,21,domain,2-8,insurance claim; observed 42
+সদস্য,20,domain,4-8,member; observed 41
+খামার,15,livestock,2-8,"farm -- also matches খামারি; observed 30"
+সুরক্ষা,14,livestock,1-8,protection; observed 29
+খামারি,14,livestock,2-8,farmer; observed 28
+মৃত্যু,12,domain,3-7,death; observed 24
+ইন্স্যুরেন্স,12,domain,1-8,insurance (English loan word); observed 24
+গবাদিপ্রাণি সুরক্ষা বিমা,12,product,1-8,the insured product; observed 24
+শাখা,10,domain,5-8,branch; observed 20
+ঝুঁকি,9,domain,3-7,risk; observed 19
+প্রিমিয়াম,8,domain,3-6,premium; observed 16
+ক্ষতিপূরণ,7,domain,3-4,compensation; observed 15
+গরু,7,livestock,2-4,cow; observed 15
+গাভী,7,livestock,3-5,"cow (female) -- দুগ্ধজাত গাভী product; observed 14"
+সিডিও,7,role,5-8,"CDO -- this manual uses সিডিও, not পিও; observed 14"
+ধাপ,6,structural,5-8,"step -- this manual's only structure is ধাপ, not ধারা; observed 13"
+সিও,6,role,5-8,CO; observed 12
+মেয়াদ,4,domain,3-5,term (মেয়াদকাল); observed 9
+গ্রাহক,4,domain,2-7,client; observed 9
+শাখা হিসাব কর্মকর্তা,4,role,5-8,branch accountant; observed 9
+সঞ্চয়,4,domain,4-8,savings; observed 8
+দুগ্ধ,4,livestock,3-5,dairy (দুগ্ধজাত); observed 8
+পলিসি,3,domain,3-7,policy; observed 7
+মোটাতাজাকরণ,3,livestock,3-5,"fattening -- গরু মোটাতাজাকরণ product; observed 6"
+অঙ্গহানি,2,domain,3-4,permanent disability; observed 5
+এনরোলমেন্ট,2,structural,5-6,enrolment; observed 5
+গ্রীন ডেল্টা,2,underwriter,1-8,"Green Delta Insurance PLC; observed 5"
+লাইভস্টক গ্রো,2,product,1-2,"the project name; in productmatch it is an ALIAS in free-text, so registry_vocabulary() cannot pull it -- must gate here; observed 4"
+সেনা ইন্স্যুরেন্স,2,underwriter,1-8,Sena Insurance PLC; observed 4
+ঋণ,1,domain,2-4,"loan -- only 3 occurrences: this is an insurance manual, and ঋণ is NOT mandatory for the cover"
+ব্র্যাক এআই,1,domain,2-7,BRAC Artificial Insemination; observed 3
+কর্মসূচি,1,domain,2-4,programme; observed 2
+অনুমোদন,1,domain,3-4,approval; observed 2
+ষাঁড়,1,livestock,3-4,"bull -- গরু মোটাতাজাকরণ applies only to ষাঁড়; observed 2"
+পোস্টমর্টেম,1,domain,7,postmortem; observed 2
+পশুচিকিৎসক,1,livestock,3-4,"veterinarian -- NOT পশুচিকিৎসা, which occurs zero times"
+ভ্যাকসিন,1,livestock,2-5,vaccine; observed 1
+সিএসএ,1,role,6,"CSA -- a role absent from roles.py's ROLES table; observed 1"
+স্বাধীন ঋণ,1,product,2,"the project's financing pillar, named once in the overview diagram; observed 1"

@@ -1,0 +1,723 @@
+"""validate_gold.py -- check a gold file that is still being written.
+
+Designed for a HALF-WRITTEN file. Remaining TODO markers are counted and
+listed, not treated as errors, unless --strict is passed. Everything that has
+actually been filled in is checked properly.
+
+THREE FACT KINDS, three different checks. Definitions are gold/bootstrap.yaml's
+own (see its FACT KINDS header); this file implements them.
+
+  kind: literal   must occur VERBATIM in the chunk named by its `ref`.
+                  Ref resolution:
+                    - `ref` given            -> that chunk
+                    - no ref, question has exactly ONE source_refs entry
+                                             -> that entry
+                    - no ref, several entries -> FAIL, ambiguous provenance.
+                  The last case is the point of the rule: a fact that could
+                  have come from either of two chunks is not a citation, and
+                  picking one silently would invent provenance.
+
+  kind: absent    must NOT occur ANYWHERE in the corpus. Its evidence is
+                  absence, so finding it makes the fact FALSE -- the check
+                  fails and names the chunk that contains it. Its
+                  source_refs point at the clause that SHOULD have carried
+                  it and are navigation only; they are NOT verbatim-checked,
+                  and their chunk_id is routinely "TODO" by design.
+
+  kind: claim     a paraphrase with no literal to quote. The verbatim check
+                  is skipped entirely. These need --judge llm to score, at
+                  one API call per fact, so their count is reported as a
+                  cost figure.
+
+  Default when `kind` is absent from a fact: literal.
+
+WHY VERBATIM-IN-THE-NAMED-CHUNK AND NOT ANYWHERE
+A fact that is true of the corpus but not of the chunk you cited is a
+citation error, and it is invisible to any check that searches the whole
+corpus. That is the failure this file exists to catch.
+
+Usage:
+  python validate_gold.py --gold gold/bootstrap.yaml
+  python validate_gold.py --gold gold/bootstrap.yaml --strict
+"""
+
+import argparse
+import difflib
+import json
+import re
+import sys
+from collections import Counter, defaultdict
+from pathlib import Path
+
+import yaml
+
+from bn_shared import display_norm
+
+CORPUS_FILES = [
+    "data/processed/chunks_dabi_2025_final.jsonl",
+    "data/processed/chunks_progoti_final.jsonl",
+    "data/processed/chunks_livestock_grow_2026_final.jsonl",
+]
+
+TODO_RX = re.compile(r"^\s*TODO\b", re.I)
+KINDS = ("literal", "absent", "claim")
+
+# The single exemption, by id, with its reason. NOT generalised: a rule with
+# one exception is still a rule; a rule with a pattern-matched exception is a
+# different rule. If a second question needs this, add it here by id and
+# write down why, so the list stays a readable list of decisions.
+UNANSWERABLE_EXEMPT = {
+    "G-218": "documents in its own comment why it carries neither "
+             "forbidden_numbers_from_clause nor must_not_contain_literals",
+    "G-220": "the wrong answer names branch posts, but its second gold fact "
+             "says branch posts exist elsewhere -- so a correct answer may "
+             "name them too while redirecting, and must_not_contain_literals "
+             "seeded with role names would flag both alike",
+}
+
+
+# ------------------------------------------------------------- fact accessors
+
+def fact_text(f):
+    return f.get("text", "") if isinstance(f, dict) else str(f)
+
+
+def fact_kind(f):
+    k = (f.get("kind") or "literal") if isinstance(f, dict) else "literal"
+    return k if k in KINDS else f"?{k}"
+
+
+def is_todo(v):
+    return bool(TODO_RX.match(str(v or "")))
+
+
+def source_refs(q):
+    """-> [(chunk_id, render_or_None)]; entries whose chunk_id is TODO kept
+    so they can be reported as unfilled rather than silently dropped."""
+    out = []
+    for r in q.get("source_refs") or []:
+        if isinstance(r, dict):
+            out.append((str(r.get("chunk_id") or ""), r.get("render")))
+        else:
+            out.append((str(r), None))
+    return out
+
+
+def ref_clause_ok(r, heads):
+    """(ok, reason) for one source_refs entry's `clause`.
+
+    CLAUSE IS THE REFERENCE in this corpus -- there are no usable page
+    numbers -- so a filled ref without one normally cannot be looked up.
+    The exception is front matter: সূচনা, পরিবর্তন সমূহ and the organogram
+    chapter head carry no clause number at all, and demanding one there
+    would force an invented citation. A null clause is therefore accepted
+    exactly when the named chunk has a heading_path to navigate by, which
+    is what the reader actually follows.
+
+    An ABSENT key is not the same as an explicit null: absent means nobody
+    decided, null means someone looked and there is none. Only null passes.
+    """
+    if not isinstance(r, dict):
+        return True, ""
+    cid = str(r.get("chunk_id") or "")
+    if not cid or is_todo(cid):
+        return True, ""                    # unfilled: reported as a TODO
+    if "clause" not in r:
+        return False, "no clause key; use `clause: null` if the chunk has none"
+    cl = r.get("clause")
+    if cl is None:
+        path = heads.get(cid)
+        if path is None:
+            return False, f"clause is null and {cid} is not in the corpus"
+        if not path:
+            return False, (f"clause is null and {cid} has an empty "
+                           f"heading_path -- nothing to navigate by")
+        return True, ""
+    if is_todo(cl):
+        return True, ""                    # unfilled: reported as a TODO
+    return True, ""
+
+
+def resolve_ref(f, q):
+    """-> (chunk_id, error). error is a string when it cannot be resolved."""
+    if isinstance(f, dict) and f.get("ref"):
+        ref = str(f["ref"])
+        if is_todo(ref):
+            return None, "ref is still TODO"
+        return ref, None
+    refs = [c for c, _r in source_refs(q)]
+    if len(refs) == 1:
+        if is_todo(refs[0]) or not refs[0]:
+            return None, "question's single source_refs chunk_id is TODO"
+        return refs[0], None
+    if not refs:
+            return None, "no ref and the question has no source_refs"
+    return None, (f"no ref and the question has {len(refs)} source_refs "
+                  f"-- ambiguous provenance")
+
+
+def fact_renders(f, q):
+    out = [f["render"]] if isinstance(f, dict) and f.get("render") else []
+    out += [r for _c, r in source_refs(q) if r]
+    return out
+
+
+# ------------------------------------------------------------------- corpus
+
+def load_corpus(files=CORPUS_FILES):
+    """-> (text_by_id, heading_path_by_id, missing_files).
+
+    heading_path is carried separately because a source_ref with a null
+    clause is navigated by it; see ref_clause_ok.
+    """
+    by_id, heads, missing = {}, {}, []
+    for f in files:
+        p = Path(f)
+        if not p.exists():
+            missing.append(f)
+            continue
+        for line in p.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            c = json.loads(line)
+            by_id[c["chunk_id"]] = c.get("display_text") or c.get("text") or ""
+            heads[c["chunk_id"]] = list(c.get("heading_path") or [])
+    return by_id, heads, missing
+
+
+def verbatim_in(literal, text):
+    """(hit, how). Exact substring first, then display_norm on both sides.
+
+    The distinction is reported: 'exact' means the citation can be copied
+    as-is; 'normalised' means the literal is there but spelled with
+    different whitespace or a zero-width joiner, which bites anything
+    comparing raw strings later.
+    """
+    if not literal:
+        return False, "empty"
+    if literal in text:
+        return True, "exact"
+    if display_norm(literal) in display_norm(text):
+        return True, "normalised"
+    return False, "absent"
+
+
+def occurs_anywhere(literal, corpus):
+    """-> chunk_id of the first chunk containing it, or None."""
+    dn = display_norm(literal)
+    if not dn:
+        return None
+    for cid, t in corpus.items():
+        if literal in t or dn in display_norm(t):
+            return cid
+    return None
+
+
+def closest(literal, text, corpus):
+    lines = [s for s in re.split(r"[।\n]", text) if s.strip()]
+    near = difflib.get_close_matches(literal, lines, n=1, cutoff=0.3)
+    return (near[0].strip() if near else None), occurs_anywhere(literal,
+                                                                corpus)
+
+
+# ----------------------------------------------------------------- validate
+
+def validate(gold, corpus, heads=None, root=Path(".")):
+    heads = {} if heads is None else heads
+    qs = gold.get("questions") or []
+    rep = {
+        "n_questions": len(qs),
+        "todo_facts": defaultdict(list),
+        "todo_refs": [],
+        "kinds": Counter(),
+        "kinds_filled": Counter(),
+        "claim_questions": [],
+        "unresolved_ref": [],
+        "unknown_chunk": [],
+        "bad_verbatim": [],
+        "normalised_only": [],
+        "absent_but_present": [],
+        "missing_render": [],
+        "unarmed_unanswerable": [],
+        "exempt_used": [],
+        "answerable": Counter(),
+        "types": Counter(),
+        "bad_kind": [],
+        "bad_ref_clause": [],
+    }
+    for q in qs:
+        qid = q.get("id", "?")
+        a = q.get("answerable")
+        a = ("yes" if a is True else "no" if a is False
+             else str(a).strip().lower())
+        rep["answerable"][a] += 1
+        rep["types"][q.get("type", "?")] += 1
+
+        for c, _r in source_refs(q):
+            if is_todo(c) or not c:
+                rep["todo_refs"].append((qid, c or "(empty)"))
+
+        for r in q.get("source_refs") or []:
+            ok_cl, why = ref_clause_ok(r, heads)
+            if not ok_cl:
+                rep["bad_ref_clause"].append(
+                    (qid, str(r.get("chunk_id", "?")), why))
+
+        for f in q.get("gold_facts") or []:
+            lit, kind = fact_text(f), fact_kind(f)
+            rep["kinds"][kind] += 1
+            if kind.startswith("?"):
+                rep["bad_kind"].append((qid, lit, kind[1:]))
+                continue
+            if is_todo(lit):
+                rep["todo_facts"][qid].append(f"[{kind}] {lit}")
+                continue
+            rep["kinds_filled"][kind] += 1
+
+            # ---- claim: no verbatim check at all
+            if kind == "claim":
+                if qid not in rep["claim_questions"]:
+                    rep["claim_questions"].append(qid)
+                continue
+
+            # ---- absent: must not occur ANYWHERE. refs are navigation only.
+            if kind == "absent":
+                where = occurs_anywhere(lit, corpus)
+                if where:
+                    rep["absent_but_present"].append((qid, lit, where))
+                continue
+
+            # ---- literal: verbatim in the chunk its ref names
+            cid, err = resolve_ref(f, q)
+            if err:
+                rep["unresolved_ref"].append((qid, lit, err))
+                continue
+            if cid not in corpus:
+                rep["unknown_chunk"].append((qid, lit, cid))
+                continue
+            hit, how = verbatim_in(lit, corpus[cid])
+            if not hit:
+                near, elsewhere = closest(lit, corpus[cid], corpus)
+                rep["bad_verbatim"].append((qid, lit, cid, near, elsewhere))
+            elif how == "normalised":
+                rep["normalised_only"].append((qid, lit, cid))
+
+            for r in fact_renders(f, q):
+                if not (root / r).exists():
+                    rep["missing_render"].append((qid, lit, r))
+
+        if a == "no":
+            armed = bool(q.get("forbidden_numbers_from_clause")
+                         or q.get("must_not_contain_literals"))
+            if not armed:
+                if qid in UNANSWERABLE_EXEMPT:
+                    rep["exempt_used"].append((qid, UNANSWERABLE_EXEMPT[qid]))
+                else:
+                    rep["unarmed_unanswerable"].append(qid)
+    return rep
+
+
+# ------------------------------------------------------------------- canary
+
+def _find_literal_anchor(gold, corpus, want_qid=None):
+    """A filled literal fact with a resolvable ref that verifies."""
+    for q in gold.get("questions") or []:
+        if want_qid and q.get("id") != want_qid:
+            continue
+        for f in q.get("gold_facts") or []:
+            if fact_kind(f) != "literal" or is_todo(fact_text(f)):
+                continue
+            cid, err = resolve_ref(f, q)
+            if err or cid not in corpus:
+                continue
+            if verbatim_in(fact_text(f), corpus[cid])[0]:
+                return q.get("id"), fact_text(f), cid
+    return None
+
+
+def _find_absent_anchor(gold):
+    for q in gold.get("questions") or []:
+        for f in q.get("gold_facts") or []:
+            if fact_kind(f) == "absent" and not is_todo(fact_text(f)):
+                return q.get("id"), fact_text(f)
+    return None
+
+
+FORBIDDEN = Path("out/forbidden.json")
+FORBIDDEN_RAW = Path("out/forbidden_raw.json")
+# noqa: BN4 a digit CLASS, not a word: canon_pattern builds nukta
+# alternations for a literal string and would corrupt a character range.
+# Bengali digits carry no nukta, so there is nothing for it to unify.
+CLAUSE_SHAPED_RX = re.compile(r"^[0-9০-৯]+(?:\.[0-9০-৯]+)+$")  # noqa: BN4 digit class, not a word
+
+# A CORRECT abstention for G-209, hand-written. It does the two things a
+# right answer has to do -- name the clause it is ruling out, and give the
+# officer numbered next steps -- and those are exactly the two things the
+# unfiltered forbidden list punished.
+G209_GOOD_ABSTENTION = (
+    "ঋণ অনুমোদনের সিলিং ম্যানুয়ালে উল্লেখ নেই। "
+    "প্রাধিকারসূচি (ধারা ৭.১) শুধু ক্রয় ও প্রশাসনিক ব্যয়ের অনুমোদনের সীমা "
+    "নির্ধারণ করে, ঋণ অনুমোদনের নয়। "
+    "করণীয়: ১. ধারা ৭.১ পড়ে নিশ্চিত হোন। "
+    "২. ঋণ অনুমোদনের ক্ষমতার জন্য ঊর্ধ্বতন কর্তৃপক্ষের সাথে কথা বলুন।"
+)
+# No role or product literal in that string, deliberately -- Convention 2.
+# It names no post; the two properties it has to have are that it cites
+# ধারা ৭.১ and that it numbers its steps.
+
+
+def canary_forbidden_not_overbroad(gold, verbose=True):
+    """Convention 3, from a REAL failure observed on 16 Sep 2026.
+
+    The forbidden-figure check compared BARE numbers. ex.py stores figures
+    as bare tokens, so §7.1's list held the ক্রম. serial column ১-৩২ and
+    the clause number itself, and the correct G-209 abstention above scored
+    violations for citing ধারা ৭.১ and for numbering its two steps.
+
+    Three cells, on the SAME answer, so the fix is attributed to the right
+    change rather than to the list:
+
+      old matcher + raw list   must produce violations   (the bug)
+      new matcher + raw list   must produce none         (the scorer is
+                                                          what fixed it)
+      new matcher + filtered   must produce none         (shipping state)
+
+    Then the other direction, which matters more: a made-up ceiling written
+    WITH its unit must still be caught, or the filter has simply disarmed
+    the trap. That half is what the magnitude floor broke on 16 Sep before
+    it was removed.
+    """
+    q = next((x for x in (gold.get("questions") or [])
+              if x.get("id") == "G-209"), None)
+    if q is None:
+        if verbose:
+            print("  canary forbidden_overbroad  G-209 IS NOT IN THE GOLD "
+                  "FILE -- not buildable, not invented")
+        return True
+    if not FORBIDDEN.exists():
+        if verbose:
+            print(f"  canary forbidden_overbroad  {FORBIDDEN} missing; "
+                  f"cannot check")
+        return True
+
+    import gold_eval
+    filt = json.loads(FORBIDDEN.read_text(encoding="utf-8"))
+    good = G209_GOOD_ABSTENTION
+    clauses = q.get("forbidden_numbers_from_clause") or []
+
+    def count(fn, fb, answer):
+        return sum(len(fn(cl, answer, fb)) for cl in clauses)
+
+    if FORBIDDEN_RAW.exists():
+        rawf = json.loads(FORBIDDEN_RAW.read_text(encoding="utf-8"))
+        old_raw = count(gold_eval.bare_number_violations, rawf, good)
+        new_raw = count(gold_eval.forbidden_violations, rawf, good)
+        new_filt = count(gold_eval.forbidden_violations, filt, good)
+        ok1 = old_raw > 0 and new_raw == 0 and new_filt == 0
+        if verbose:
+            print(f"  canary forbidden_overbroad  correct abstention: "
+                  f"bare+raw={old_raw}, pair+raw={new_raw}, "
+                  f"pair+filtered={new_filt}  "
+                  f"[{'DETECTED' if ok1 else 'MISSED'}]")
+    else:
+        new_filt = count(gold_eval.forbidden_violations, filt, good)
+        ok1 = new_filt == 0
+        if verbose:
+            print(f"  canary forbidden_overbroad  pair+filtered={new_filt}; "
+                  f"{FORBIDDEN_RAW} absent so the failing side cannot be "
+                  f"replayed  [{'PASS' if ok1 else 'FAIL'}]")
+
+    # ---- the trap must still fire. Built from a real pair on the list,
+    # never a typed figure: take the largest armed (value, unit) pair for
+    # one of this question's own clauses and invent an answer quoting it.
+    armed = []
+    for cl in clauses:
+        armed += (filt.get("_units") or {}).get(cl) or []
+    if not armed:
+        ok2 = False
+        if verbose:
+            print("  canary forbidden_armed      NO (value, unit) PAIRS for "
+                  f"{clauses} -- the trap is disarmed  [FAIL]")
+    else:
+        pair = max(armed, key=lambda p: float(p.split(" ")[0]))
+        val, unit = pair.split(" ", 1)
+        invented = f"{val} {unit} পর্যন্ত অনুমোদন করা যায়।"
+        caught = count(gold_eval.forbidden_violations, filt, invented)
+        # and the ordinal form of the same value must NOT fire
+        ordinal = f"{val}ম ধাপে যোগাযোগ করুন।"
+        false_pos = count(gold_eval.forbidden_violations, filt, ordinal)
+        ok2 = caught > 0 and false_pos == 0
+        if verbose:
+            print(f"  canary forbidden_armed      {len(armed)} armed pair(s); "
+                  f"{pair!r} quoted={caught} hit(s), as an ordinal="
+                  f"{false_pos}  [{'DETECTED' if ok2 else 'MISSED'}]")
+
+    # ---- and the one invariant the filter still owes: no clause-shaped
+    # token survives. There is no magnitude floor any more, by design.
+    bad_tokens = [(k, n) for k, vals in filt.items()
+                  if not k.startswith("_") and isinstance(vals, list)
+                  for n in vals if CLAUSE_SHAPED_RX.match(str(n))]
+    ok3 = not bad_tokens
+    if verbose:
+        print("  canary forbidden_filtered   "
+              + ("no clause-shaped token survives the filter  [PASS]"
+                 if ok3 else
+                 f"{len(bad_tokens)} slipped through: {bad_tokens[:3]}  "
+                 f"[FAIL]"))
+    return ok1 and ok2 and ok3
+
+
+def canary_selftest(gold, corpus, verbose=True):
+    """Convention 3. Two canaries, both built from REAL facts in the file.
+
+    1. MISPOINTED LITERAL. Take a filled literal fact that verifies against
+       its own chunk -- G-213's আরএম at progoti_0133 -- and point it at a
+       different chunk. The verbatim check must FAIL. If it passes, the
+       check is not reading the named chunk and every citation in the file
+       is unverified while the report says clean.
+
+    2. FALSE ABSENT. Take a real absent fact and substitute a string that
+       DOES occur in the corpus. The absent check must fail on it. Without
+       this, an absent check that never finds anything is indistinguishable
+       from one that never looks -- and absent facts are exactly the ones
+       whose evidence nobody can see.
+    """
+    ok = True
+
+    anchor = (_find_literal_anchor(gold, corpus, "G-213")
+              or _find_literal_anchor(gold, corpus))
+    if anchor is None:
+        if verbose:
+            print("  canary mispointed_literal   NO VERIFIED LITERAL FACT "
+                  "WITH A RESOLVABLE ref YET")
+            print("        -> not buildable from a real fact; will not "
+                  "invent one. Arms itself")
+            print("           as soon as one literal fact verifies.")
+    else:
+        qid, lit, cid = anchor
+        wrong = next((c for c in corpus
+                      if c != cid and not verbatim_in(lit, corpus[c])[0]),
+                     None)
+        right = verbatim_in(lit, corpus[cid])[0]
+        bad = verbatim_in(lit, corpus[wrong])[0] if wrong else True
+        ok1 = right and not bad
+        if verbose:
+            print(f"  canary mispointed_literal   {qid} {lit!r} in {cid}"
+                  f"={right}, in {wrong}={bad}  "
+                  f"[{'DETECTED' if ok1 else 'MISSED'}]")
+        ok &= ok1
+
+    ab = _find_absent_anchor(gold)
+    if ab is None:
+        if verbose:
+            print("  canary false_absent         no filled absent fact to "
+                  "build from")
+    else:
+        qid, lit = ab
+        # Real absent fact must be absent...
+        really_absent = occurs_anywhere(lit, corpus) is None
+        # ...and a string taken FROM the corpus must be caught as present.
+        sample_cid = next(iter(corpus))
+        present_str = display_norm(corpus[sample_cid])[:24].strip()
+        caught = occurs_anywhere(present_str, corpus)
+        ok2 = really_absent and bool(caught)
+        if verbose:
+            print(f"  canary false_absent         {qid} real absent fact "
+                  f"absent={really_absent}; corpus string caught in "
+                  f"{caught or 'NOTHING'}  "
+                  f"[{'DETECTED' if ok2 else 'MISSED'}]")
+        ok &= ok2
+
+    ok &= canary_forbidden_not_overbroad(gold, verbose)
+    return ok
+
+
+def gold_eval_loads(path, verbose=True):
+    try:
+        import gold_eval
+        g = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+        qs = {q["id"]: q for q in g["questions"]}
+        gold_eval.score_one(next(iter(qs.values())),
+                            {"answer": "", "citations": []})
+        if verbose:
+            print(f"  gold_eval compatibility     loads {len(qs)} questions "
+                  f"and scores one  [PASS]")
+        return True
+    except Exception as exc:
+        if verbose:
+            print("  gold_eval compatibility     FAILED: "
+                  f"{type(exc).__name__}: {exc}"[:110])
+        return False
+
+
+# -------------------------------------------------------------------- report
+
+def report(rep, strict=False):
+    todo_n = sum(len(v) for v in rep["todo_facts"].values())
+    print(f"\nquestions ........... {rep['n_questions']}")
+    print("answerable split .... "
+          + " / ".join(f"{k}:{v}" for k, v in sorted(rep["answerable"].items())))
+    print("\nfacts by kind ....... total / filled / TODO")
+    for k in KINDS:
+        tot = rep["kinds"][k]
+        fil = rep["kinds_filled"][k]
+        print(f"  {k:<8} {tot:>5} {fil:>9} {tot - fil:>7}")
+    print(f"  {'ALL':<8} {sum(rep['kinds'].values()):>5} "
+          f"{sum(rep['kinds_filled'].values()):>9} {todo_n:>7}")
+    print(f"\nCLAIM FACTS: {rep['kinds'][ 'claim']} total, "
+          f"{rep['kinds_filled']['claim']} filled.")
+    print("  These need --judge llm: one API call per fact per eval run.")
+    _cf, _ct = rep["kinds_filled"]["claim"], rep["kinds"]["claim"]
+    print(f"  LLM-judge cost per run = {_cf} call(s)"
+          + (f", rising to {_ct} once the claim TODOs are filled."
+             if _ct > _cf else "."))
+    if rep["claim_questions"]:
+        print(f"  in questions: {', '.join(rep['claim_questions'])}")
+
+    print("\nper type ............")
+    for t, n in sorted(rep["types"].items(), key=lambda x: -x[1]):
+        print(f"  {n:>3}  {t}")
+
+    print(f"\nTODO facts .......... {todo_n} across "
+          f"{len(rep['todo_facts'])} question(s)"
+          + ("   <-- --strict: these fail" if strict
+             else "   (reported, not a failure)"))
+    for qid in sorted(rep["todo_facts"]):
+        print(f"  {qid:<8} {len(rep['todo_facts'][qid])}  "
+              f"{'; '.join(rep['todo_facts'][qid])[:60]}")
+    if rep["todo_refs"]:
+        print(f"TODO source_refs .... {len(rep['todo_refs'])} "
+              f"(navigation not yet filled)")
+        for qid, c in rep["todo_refs"][:8]:
+            print(f"  {qid:<8} chunk_id={c!r}")
+
+    fails = 0
+    if rep["bad_kind"]:
+        fails += len(rep["bad_kind"])
+        print(f"\nFAIL unknown fact kind ({len(rep['bad_kind'])}) -- must be "
+              f"one of {KINDS}")
+        for qid, lit, k in rep["bad_kind"][:8]:
+            print(f"  {qid:<8} kind={k!r} {lit[:44]!r}")
+
+    if rep["bad_ref_clause"]:
+        fails += len(rep["bad_ref_clause"])
+        print(f"\nFAIL source_ref clause is unusable "
+              f"({len(rep['bad_ref_clause'])})")
+        print("     Clause is the reference in this corpus. `clause: null` "
+              "is allowed only for a\n     chunk with a heading_path to "
+              "navigate by -- front matter with no clause number.")
+        for qid, cid, why in rep["bad_ref_clause"][:8]:
+            print(f"  {qid:<8} {cid}: {why}")
+
+    if rep["absent_but_present"]:
+        fails += len(rep["absent_but_present"])
+        print(f"\nFAIL absent fact IS present in the corpus "
+              f"({len(rep['absent_but_present'])})")
+        print("     The fact asserts absence, so a chunk containing it makes "
+              "the fact FALSE.")
+        for qid, lit, cid in rep["absent_but_present"][:10]:
+            print(f"  {qid:<8} {lit[:52]!r}")
+            print(f"           found in: {cid}")
+
+    if rep["unresolved_ref"]:
+        fails += len(rep["unresolved_ref"])
+        print(f"\nFAIL literal fact whose ref cannot be resolved "
+              f"({len(rep['unresolved_ref'])})")
+        for qid, lit, why in rep["unresolved_ref"][:10]:
+            print(f"  {qid:<8} {why}")
+            print(f"           {lit[:62]!r}")
+
+    if rep["unknown_chunk"]:
+        fails += len(rep["unknown_chunk"])
+        print(f"\nFAIL ref names a chunk_id that does not exist "
+              f"({len(rep['unknown_chunk'])})")
+        for qid, lit, cid in rep["unknown_chunk"][:10]:
+            print(f"  {qid:<8} {cid!r} for {lit[:44]!r}")
+
+    if rep["bad_verbatim"]:
+        fails += len(rep["bad_verbatim"])
+        print(f"\nFAIL literal not verbatim in its cited chunk "
+              f"({len(rep['bad_verbatim'])})")
+        for qid, lit, cid, near, elsewhere in rep["bad_verbatim"][:10]:
+            print(f"  {qid:<8} {lit[:52]!r}")
+            print(f"           cited: {cid}")
+            print(f"           closest there: {(near or '-')[:58]!r}")
+            print(f"           found instead in: "
+                  f"{elsewhere or 'nowhere in the corpus'}")
+
+    if rep["missing_render"]:
+        fails += len(rep["missing_render"])
+        print(f"\nFAIL render paths not on disk ({len(rep['missing_render'])})")
+        for qid, lit, r in rep["missing_render"][:10]:
+            print(f"  {qid:<8} {r}")
+
+    if rep["unarmed_unanswerable"]:
+        fails += len(rep["unarmed_unanswerable"])
+        print(f"\nFAIL answerable:\"no\" with nothing to fail on "
+              f"({len(rep['unarmed_unanswerable'])})")
+        print("     Needs forbidden_numbers_from_clause or "
+              "must_not_contain_literals, or the")
+        print("     question cannot tell abstention from a lucky guess.")
+        for qid in rep["unarmed_unanswerable"]:
+            print(f"  {qid}")
+
+    if rep["exempt_used"]:
+        print(f"\nexemptions applied ({len(rep['exempt_used'])})")
+        for qid, why in rep["exempt_used"]:
+            print(f"  {qid}: {why}")
+
+    if rep["normalised_only"]:
+        print(f"\nADVISORY literal present only after normalisation "
+              f"({len(rep['normalised_only'])})")
+        print("  In the cited chunk, but not as a raw substring -- "
+              "whitespace or a zero-width")
+        print("  joiner differs. Anything comparing raw strings later will "
+              "miss it.")
+        for qid, lit, cid in rep["normalised_only"][:8]:
+            print(f"  {qid:<8} {cid:<22} {lit[:40]!r}")
+
+    return fails, todo_n
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--gold", default="gold/bootstrap.yaml")
+    ap.add_argument("--strict", action="store_true",
+                    help="also fail on remaining TODO markers")
+    ap.add_argument("--root", default=".")
+    args = ap.parse_args()
+
+    p = Path(args.gold)
+    if not p.exists():
+        print(f"FATAL: gold file not found: {args.gold}")
+        return 2
+    gold = yaml.safe_load(p.read_text(encoding="utf-8"))
+    corpus, heads, missing = load_corpus()
+
+    print("CANARY")
+    if not canary_selftest(gold, corpus):
+        print("FATAL: a canary did not fire. The checks are not reading what "
+              "they claim to\n       read; nothing in this report can be "
+              "trusted.")
+        return 2
+    gold_eval_loads(p)
+    if missing:
+        print(f"  [warn] corpus files missing, not searched: {missing}")
+    print(f"  corpus .................... {len(corpus)} chunks")
+
+    rep = validate(gold, corpus, heads, Path(args.root))
+    fails, todo_n = report(rep, args.strict)
+
+    print("\n" + "=" * 62)
+    print(f"{fails} problem(s) in filled-in material."
+          if fails else "filled-in material is consistent.")
+    if todo_n:
+        print(f"{todo_n} TODO fact(s) still to fill."
+              + ("  --strict: counted as failures." if args.strict
+                 else "  Not a failure without --strict."))
+    print("=" * 62)
+    return 1 if (fails or (args.strict and todo_n)) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

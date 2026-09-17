@@ -51,7 +51,11 @@ from pathlib import Path
 from bnnorm import canon
 
 P = Path("data/processed")
-CORPORA = ("progoti", "dabi_2025")
+CORPORA = ("progoti", "dabi_2025", "livestock_grow_2026")
+# livestock_grow_2026 added 2026-09-17. Dabi 5.4 and the livestock manual
+# cover the same insurance, so cross-manual duplicates are expected there.
+# Listed LAST so DOC_PRIORITY, and therefore dup_primary on every existing
+# group, is unchanged.
 # Bodies in a group are byte-identical, so which member is "primary" cannot
 # change any answer. Fixed only so runs are reproducible.
 DOC_PRIORITY = {tag: i for i, tag in enumerate(CORPORA)}
@@ -121,21 +125,54 @@ def annotate(corpora, groups):
                                 "heading": " > ".join(c["heading_path"])}])))
 
 
-def collapse(ranked, k=5):
-    """Query-time collapse: keep the best-scoring chunk per dup_group.
+def _manual_of(c):
+    return c.get("manual_id") or c.get("doc") or c.get("_doc")
+
+
+def collapse(ranked, k=5, prefer_manual=None):
+    """Query-time collapse: one chunk per dup_group, best-scoring position kept.
 
     `ranked` is [(score, chunk), ...] already sorted best-first. Returns at
     most k entries. The kept chunk carries dup_sources/dup_citations, so the
     answer can say "both manuals" or name the single one it came from.
+
+    WHY THIS IS NOT AN OPTIMISATION. Members of a 1.000 group have
+    byte-identical normalised bodies, so any scorer gives them the same score
+    and returns them adjacently. Measured on the dense side: progoti_0153 and
+    dabi_2025_0137 both score 0.3459, progoti_0211 and dabi_2025_0184 both
+    0.3697 -- two of every three top slots carried the same content twice, so
+    an apparent top-5 was 2-3 distinct chunks.
+
+    prefer_manual: when a group has several members in `ranked`, keep the one
+    from THIS manual instead of the best-scoring one. Safe precisely because
+    the bodies are identical at 1.000 -- the choice cannot change what the
+    answer says, only which manual it is cited from, which is what a
+    manual-scoped question needs. The emitted position is still the group's
+    best-scoring one, so ordering is unaffected.
     """
-    seen, out = set(), []
-    for score, c in ranked:
+    # Which member of each group to emit. Default: the first (best-scoring)
+    # one. With prefer_manual: the first member from that manual, if any.
+    chosen = {}
+    for pos, (_score, c) in enumerate(ranked):
         g = c.get("dup_group")
-        if g is not None:
+        if g is None:
+            continue
+        if g not in chosen:
+            chosen[g] = pos
+        elif prefer_manual and _manual_of(c) == prefer_manual                 and _manual_of(ranked[chosen[g]][1]) != prefer_manual:
+            chosen[g] = pos
+
+    seen, out = set(), []
+    for _pos, (score, c) in enumerate(ranked):
+        g = c.get("dup_group")
+        if g is None:
+            out.append((score, c))
+        else:
             if g in seen:
                 continue
             seen.add(g)
-        out.append((score, c))
+            # the group's best score, the chosen member's identity
+            out.append((score, ranked[chosen[g]][1]))
         if len(out) >= k:
             break
     return out
@@ -203,6 +240,61 @@ def main(write):
                                    ensure_ascii=False) + "\n")
         print(f"\n  -> {dst}  ({len(corpora[tag])} chunks)")
 
+    annotate_final(corpora)
+
+
+# ANNOTATION ONTO THE FINAL CORPUS.
+#
+# dup_group/dup_members are load-bearing for gold resolution:
+# embed.locate_gold_chunks expands a source_refs chunk_id to the duplicates
+# DECLARED here, and refuses to infer them by comparing text. So they have to
+# live on the chunk files that CORPUS_FILES actually loads.
+#
+# They used to exist only in chunks_<tag>_dedup.jsonl, which nothing loads,
+# and were silently absent from chunks_<tag>_final.jsonl once resplit.py
+# regenerated it -- the same failure shape as nest_depth being computed in
+# ex.py and dropped by add(). Writing them in the run that COMPUTES them is
+# what stops that recurring: resplit.py -> dedupe.py, with no separate step
+# left for someone to remember.
+#
+# Only dup_group and dup_members go onto the final chunk. The other three
+# (dup_sources, dup_primary, dup_citations) stay in the _dedup file: they are
+# for reporting and citation rendering, not for resolving a ref.
+#
+# All three corpora are in CORPORA as of 2026-09-17, so every final file
+# gets the fields; a chunk with no twin carries dup_group=None.
+FINAL_FIELDS = ('dup_group', 'dup_members')
+
+
+def annotate_final(corpora):
+    """Write dup_group/dup_members onto chunks_<tag>_final.jsonl, in place.
+
+    Rewrites through a temporary file so an interrupted run cannot leave a
+    half-written corpus behind. Re-running is idempotent.
+    """
+    for tag in CORPORA:
+        dst = P / f"chunks_{tag}_final.jsonl"
+        ann = {c["chunk_id"]: c for c in corpora[tag]}
+        rows, n_grouped = [], 0
+        for line in dst.open(encoding="utf-8"):
+            if not line.strip():
+                continue
+            c = json.loads(line)
+            src = ann.get(c["chunk_id"])
+            for k in FINAL_FIELDS:
+                c[k] = src.get(k) if src is not None else c.get(k)
+            if c.get("dup_group"):
+                n_grouped += 1
+            rows.append(c)
+        tmp = dst.with_suffix(".jsonl.tmp")
+        with tmp.open("w", encoding="utf-8") as f:
+            for c in rows:
+                print(json.dumps({k: v for k, v in c.items()
+                                  if not k.startswith("_")},
+                                 ensure_ascii=False), file=f)
+        tmp.replace(dst)
+        print(f"  -> {dst}  ({len(rows)} chunks, "
+              f"{n_grouped} with dup_group)")
 
 if __name__ == "__main__":
     main("--check" not in sys.argv)

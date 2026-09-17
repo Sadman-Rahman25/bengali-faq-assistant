@@ -280,6 +280,138 @@ but they do not block anything.
 
 ---
 
+## 6. Cross-manual duplication makes text-match gold location unusable
+
+Not a gap in the manuals — a measured property of the corpus that changes how
+a gold question can be scored. Recorded here because it is the reason a
+retrieval number can look fine and mean nothing.
+
+**516 of 867 chunks (60%) have byte-identical `index_text` across the two
+manuals, in 258 cross-manual duplicate groups.**
+
+| | |
+|---|---|
+| Measured on | corpus of 2026-09-17 (867 chunks; the 831 figure above is the 2026-09-10 build) |
+| Duplicate groups spanning >1 manual | 258 |
+| Chunks in such a group | 516 of 867 |
+| Worked example | `dabi_2025_0049` and `progoti_0056` — identical `index_text`, so identical dense and BM25 scores, always returned adjacently |
+
+### Why it matters for gold scoring
+
+A gold question that carries `manual_scope: progoti` and
+`must_cite: ["progoti_2025"]` names one manual on purpose. Locating its gold
+chunk by searching the corpus for the fact's text cannot honour that: for 60%
+of the corpus the Dabi twin matches the same string equally well, so a
+retrieval that returns the wrong manual scores as a hit. Text-match
+**structurally cannot resolve a manual-scoped question.**
+
+Two further consequences, both measured on `gold/bootstrap.yaml`:
+
+- The gold set inflates. Locating by text gave G-222 **153** candidate chunks
+  (18% of the corpus) and G-213/G-214 **53** each. Recall@5 against a set that
+  size is close to meaningless. Locating by `source_refs.chunk_id` gives 2, 1
+  and 1.
+- Recall becomes a function of chunking. Re-splitting the corpus changes how
+  many chunks contain a given string, so the number moves without retrieval
+  changing.
+
+It also cannot express a constraint the gold file already states. G-206's
+notes require its ref to be a nested-table chunk, "not a prose chunk that
+happens to mention the figure" — a distinction a text match cannot make and a
+`chunk_id` makes for free.
+
+### What was done
+
+`embed.locate_gold_chunks` now resolves a gold fact through
+`source_refs.chunk_id`, mirroring `validate_gold.py`, and expands a ref only
+to duplicates **explicitly declared** by `dedupe.py` (`dup_members`, threshold
+exactly 1.000). Nothing is inferred by comparing text.
+
+One follow-up remains: `dedupe.py`'s `dup_*` annotations are present in
+`chunks_<tag>_dedup.jsonl` but **not** in the `chunks_<tag>_final.jsonl` files
+that `CORPUS_FILES` actually loads — they were dropped when the final files
+were regenerated on 2026-09-16. Until `dedupe.py` is re-run over the final
+corpus, the duplicate expansion is inert and a ref resolves to exactly one
+chunk. That is safe (it under-counts rather than over-counts) but it means a
+legitimately duplicated citation currently reads as a miss.
+
+---
+
+## 7. §3.9.6 is asymmetric — the Progoti manual carries both programmes' rule
+
+A real gap in the manuals, not a pipeline artefact, and the only place in
+§3.9 where the programme divergence is stated at all.
+
+§3.9.6 (থানা পুলিশ, উকিল নোটিশ, মামলা দায়ের ও হাজিরা এবং মামলা পরিচালনা
+সংক্রান্ত খরচ) sets out who approves litigation costs. It does so at two
+levels, and the second level differs by programme:
+
+| Level | Approver | Same in both manuals? |
+|---|---|---|
+| Provisional expense (সাময়িক খরচ) | আঞ্চলিক ব্যবস্থাপক | yes |
+| Bill-voucher (বিল-ভাউচার) | **শাখা ব্যবস্থাপক** for দাবি, **এলাকা ব্যবস্থাপক** for প্রগতি | **no — see below** |
+
+### The asymmetry
+
+| | states the দাবি rule | states the প্রগতি rule |
+|---|---|---|
+| `progoti_0152` | yes | yes |
+| `dabi_2025_0136` | yes | **no** |
+
+`progoti_0152`:
+
+> আঞ্চলিক ব্যবস্থাপক কর্তৃক সাময়িক অনুমোদন প্রাপ্তি সাপেক্ষে দাবি কর্মসূচির
+> ক্ষেত্রে সংশ্লিষ্ট শাখা ব্যবস্থাপক **এবং প্রগতি কর্মসূচির ক্ষেত্রে সংশ্লিষ্ট
+> এলাকা ব্যবস্থাপক** এতদসংক্রান্ত বিল-ভাউচার অনুমোদন করবেন।
+
+`dabi_2025_0136`:
+
+> আঞ্চলিক ব্যবস্থাপক কর্তৃক সাময়িক অনুমোদন প্রাপ্তি সাপেক্ষে দাবি কর্মসূচির
+> ক্ষেত্রে সংশ্লিষ্ট শাখা ব্যবস্থাপক বিল-ভাউচার অনুমোদন করবেন।
+
+**A Dabi officer reading the Dabi manual cannot learn the Progoti rule. The
+reverse is not true** — the Progoti manual states both. The Dabi text also
+narrows the first sentence to "(দাবি)" where Progoti writes "(দাবি/প্রগতি)".
+
+### Why it matters beyond the two clauses
+
+**These are the only two chunks in §3.9 that are not a cross-manual twin.**
+Every other approval clause in the section is either byte-identical across
+the manuals or carries the same sentence in both:
+
+| clause | who approves | cross-manual twin? |
+|---|---|---|
+| §3.9.1(ক) staff | পরিচালক | no, but same sentence |
+| §3.9.1(খ) borrowers | ডিসিএমসি কমিটি | yes — `99b1bafd2ed1` |
+| §3.9.2 | ডিসিএমসি (delegated by ED circular, 7 June 2014) | yes — `2432ac1dd2b0` |
+| §3.9.5 withdrawal | no approver named | yes — `aaf3f5974199` |
+| **§3.9.6 costs** | **আঞ্চলিক ব্যবস্থাপক, then splits by programme** | **NO** |
+| §3.9.7 panel-lawyer bills | আঞ্চলিক ব্যবস্থাপক / জেলা ব্যবস্থাপক | yes — `4c1789d50677` |
+
+So the whole programme divergence in approval authority for administrative
+action lives in one clause, in one manual, in one sentence. Any answer about
+bill-voucher authority that does not name the programme is right half the
+time, and the officer cannot tell which half.
+
+### A related trap in the same chunk
+
+`dabi_2025_0136` **contains the string এলাকা ব্যবস্থাপক** — inside
+"সংশ্লিষ্ট শাখা/এলাকা ব্যবস্থাপক (দাবি)" in its first sentence, where it is
+part of a combined job title, not the bill-voucher approver. A system that
+retrieves the correct Dabi chunk and reads the wrong sentence will hand a Dabi
+officer the Progoti answer. G-212 carries `এলাকা ব্যবস্থাপক` in
+`must_not_contain_literals` for exactly this reason.
+
+### Suggested action
+
+Insurance/operations to decide whether the Dabi manual should state the
+Progoti rule too. Either is defensible — a manual may legitimately scope
+itself to its own programme — but the current state is not symmetric, and a
+reader cannot tell that a rule exists elsewhere. Anchored in the gold set by
+G-212, G-213 and G-214, all three on §3.9.6.
+
+---
+
 ## Summary of suggested actions
 
 | Priority | Item | Owner |
@@ -290,6 +422,8 @@ but they do not block anything.
 | Medium | Glossary for বিসিইউপি / সিডিপি / এনসিডিপি / এসসিডিপি | Product team |
 | Medium | Resolve the §5.1.8 / §5.1.9 duplicate passage | Insurance unit |
 | Medium | Confirm whether ক্রেডিট শিল্ড is ঋণ নিরাপত্তা বিমা | Insurance unit |
+| High | Re-run `dedupe.py` over `*_final.jsonl` so `dup_*` survives (see §6) | Pipeline |
+| Medium | Decide whether the Dabi manual should state the Progoti bill-voucher rule in §3.9.6 (see §7) | Operations |
 | Low | Fix শস্য নি**া**পত্তা in §5.3.1 | Copy-edit |
 | Low | Decide on অরগানোগ্রাম vs অর্গানোগ্রাম | Copy-edit |
 | Low | Introduce the underwriters where first named | Insurance unit |
@@ -303,6 +437,7 @@ python products.py        # -> products_catalogue.csv (defining_chunk_id blank =
 python dupscan.py         # cross-manual duplicates and clause divergence
 python dedupe.py --check  # duplicate groups, including the §5.1.8/§5.1.9 case
 python pattern_audit.py   # confirms the name matching behind these counts
+python -c "import sys;sys.path.insert(0,'.');from embed import index_text,load_corpus;from collections import defaultdict;g=defaultdict(list);[g[index_text(c)].append(c['chunk_id']) for c in load_corpus()];d=[v for v in g.values() if len(v)>1];print(f'{len(d)} groups, {sum(map(len,d))} chunks')"  # -> the 258 / 516 figures in section 6
 ```
 
 Counts in this document were taken from the corpus built on 2026-09-10.

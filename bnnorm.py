@@ -38,6 +38,17 @@ _TOKEN = re.compile(r"[০-৯0-9]+(?:[.,][০-৯0-9]+)*"   # numbers first
                     r"|[A-Za-z]+")                    # latin words
 _GROUPS = re.compile(r"(?<=\d),(?=\d)")
 
+# A THOUSANDS separator specifically, for the lexical index -- not the same
+# job as _GROUPS. _GROUPS strips any comma between two digits, which is right
+# for canon()'d TEXT but wrong for a token stream: `\d` matches ০-৯ too, so
+# _GROUPS would join the enumeration ১,২,৩ into ১২৩. This requires the comma
+# to be followed by exactly 2 or 3 digits and no further digit, which is what
+# a thousands group is in both Western (150,000) and lakh (১,৫০,০০০) grouping.
+# Measured on this corpus: fires on 170 of the 172 comma-bearing vocab
+# tokens, leaves 1,1.1 and ১,১.১ alone (_GROUPS mangles those to 11.1), and
+# produces 0 enumeration false positives.
+_THOUSANDS = re.compile(r"(?<=[০-৯0-9]),(?=[০-৯0-9]{2,3}(?![০-৯0-9]))")
+
 
 def fold_digits(s: str) -> str:
     """Bengali digits -> ASCII. Matches ex.py's fold() exactly."""
@@ -50,6 +61,17 @@ def strip_groups(s: str) -> str:
     Runs after fold_digits, so the lookarounds only need to know ASCII digits.
     """
     return _GROUPS.sub("", s or "")
+
+
+def strip_thousands(s: str) -> str:
+    """Remove thousands separators only: ১,৫০,০০০ -> ১৫০০০০, ১,২,৩ unchanged.
+
+    Digit-system preserving, unlike canon(): it does NOT fold ০-৯, so the
+    Bengali surface form survives. That is what makes it usable on the
+    embedding/BM25 path, which keeps both digit systems as separate tokens
+    on purpose (see embed.py's canary).
+    """
+    return _THOUSANDS.sub("", s or "")
 
 
 def nfc(s: str) -> str:
