@@ -42,21 +42,19 @@ SYSTEM_PROMPT = """You answer questions about BRAC microfinance operation manual
    use knowledge from outside the context.
 2. Name the MANUAL and the CLAUSE for every fact, e.g. "dabi_2025 §5.4".
 3. Any answer about a premium or an exclusion must name the INSURER.
-4. Two cases, and decide which you are in before answering.
+4. Before answering, for each figure in the context ask: is this figure's
+   own stated subject the same as the question's subject? Quote a figure only
+   if yes. If no figure passes, name the clauses you checked and what is
+   missing, and quote nothing.
 
-   (a) The context contains NOTHING responsive to the question. Name the
-       clauses you checked and what is missing, then stop. Do not mention,
-       quote, cite or describe any figure from the context -- not even to say
-       it does not apply. A figure and the question's subject in one sentence
-       is what the reader retains; the caveat is what they lose.
+   The subject is what the context says the figure is FOR, not what it is
+   near. "২,৫০,০০০ টাকা অফিস সরঞ্জাম ক্রয়ের সীমা" has the subject "office
+   equipment purchase", so it may not be quoted in answer to a question about
+   loan approval -- even though জিএম appears in both.
 
-   (b) The context answers PART of the question. Give the part it answers,
-       with its clause, then name the part that is missing. Withholding a
-       correct half is as wrong as inventing one.
-
-   The test for (a) versus (b): does any figure or statement in the context
-   answer any part of the question as asked? If yes, you are in (b). A figure
-   about a DIFFERENT subject is not a partial answer -- it is case (a).
+   A question with several parts is answered part by part under the same
+   test. Give every part that has a passing figure, with its clause; name
+   every part that does not.
 5. If a product's status is not active, lead with the status, then the terms.
    A status of "unknown" is NOT active; do not imply the product is available.
 6. If the question is ambiguous across manuals or programmes, ask which one
@@ -145,13 +143,36 @@ If you cannot answer, write CITATIONS: none
 #   test between them, and says outright that withholding a correct half is
 #   as wrong as inventing one.
 #
-#   *** THE NOT-SAFE-TO-SHIP WARNING STANDS. *** The condition for removing
-#   it is S-002 AND S-004 both passing on a model that previously LEAKED --
-#   gemini-2.5-flash or gemini-3-flash-preview. As of this edit all four
-#   previously-tested models are 429 quota-exhausted, so the scoped wording
-#   has not been tested on any of them. Anything measured on a model that
-#   never leaked cannot discharge this: the risk the scoped rule carries is
-#   that its (a)/(b) test reopens the door, and only a leaker can show that.
+#   WORDING 3, "SCOPED", 2026-09-17. Split into case (a) nothing responsive
+#   and case (b) partially responsive, with a test between them:
+#
+#     "The test for (a) versus (b): does any figure or statement in the
+#      context answer any part of the question as asked? If yes, you are in
+#      (b). A figure about a DIFFERENT subject is not a partial answer."
+#
+#   NEVER MEASURED ON ANY MODEL. Every Gemini chat model on the key went 429
+#   before it could be run, and gemma-4-* return 500 INTERNAL on a
+#   system_instruction prompt. Abandoned on inspection rather than on
+#   evidence, for a reason worth keeping: (a)/(b) asks the model to
+#   CATEGORISE ITS OWN SITUATION, which is the judgement the leakers were
+#   demonstrably bad at. A model that reads "জিএম ... ২,৫০,০০০ টাকা" as
+#   partially responsive to "জিএম কত টাকা পর্যন্ত ঋণ অনুমোদন করতে পারেন"
+#   lands in (b) and is then INSTRUCTED to give the figure with its clause --
+#   a wider door than the original "instead", not a narrower one.
+#
+#   WORDING 4, in force above. Replaces the situational judgement with a
+#   MECHANICAL PER-FIGURE TEST: compare each figure's own stated subject to
+#   the question's subject, quote only on a match, and handle multi-part
+#   questions part by part under the same test. The worked example is the
+#   exact S-002 trap, so the rule carries its own counter-example.
+#
+#   *** THE NOT-SAFE-TO-SHIP WARNING STANDS. *** Condition for removal:
+#   S-002 AND S-004 both passing on a model that previously LEAKED --
+#   gemini-2.5-flash or gemini-3-flash-preview. Nothing measured on a clean
+#   model discharges it. Established clean under wording 1, so useless for
+#   this purpose: gemini-flash-latest 1/1, gemini-3.5-flash 3/3,
+#   gemini-3.6-flash 3/3. Established leaking: gemini-2.5-flash 3/3,
+#   gemini-3-flash-preview 5/5.
 #
 # Rule 5 -- prevents: implying availability. products_catalogue.csv has 43
 #   rows and 0 populated status values, so every status lookup returns
@@ -225,6 +246,31 @@ SPECIALTY_MARKERS = ("image", "tts", "audio", "embedding", "deep-research",
                      "antigravity", "lyria", "nano-banana", "veo", "imagen",
                      "omni", "customtools", "robotics", "computer-use")
 
+# THE FREE-TIER BUDGET IS 20 REQUESTS PER DAY PER MODEL, and knowing that
+# changes how any experiment here must be planned. Measured 2026-09-17 from
+# the full 429 body, which the truncated log line hides:
+#
+#   quotaId:    GenerateRequestsPerDayPerProjectPerModel-FreeTier
+#   quotaValue: 20
+#   metric:     generativelanguage.googleapis.com/
+#               generate_content_free_tier_requests
+#   retryDelay: 58s          <- MISLEADING. It is a generic backoff hint, not
+#                               the time until a per-DAY quota resets.
+#
+# Consequences, all learned the hard way across one session:
+#   * One synthetic run is 4 questions = 4 calls. So FIVE runs per model per
+#     day, maximum. A 3-run before/after on one model is 24 calls and does
+#     not fit; it must be split across days or across models.
+#   * A run either fully succeeds or yields NOTHING. answer_one raises on the
+#     first provider failure, so a run starting with 2 calls left writes no
+#     answers at all. Partial budgets are wasted budgets.
+#   * Every probe costs 1 of the 20 -- a quarter of a run. quota_report over
+#     13 models spends 13 calls, i.e. three runs' worth. probe_model caches
+#     per process for exactly this reason, and a reachability probe should be
+#     run once per model per day, not per invocation.
+#   * models.list() is FREE and unlimited. Reachability is not.
+#
+# Budget an experiment before running it: (runs x 4) + 1 probe <= 20.
 RETRY_STATUS = (429, 503)      # rate limited, and transiently unavailable
 
 # TRANSPORT failures are retryable too, and they carry no HTTP status at all.
