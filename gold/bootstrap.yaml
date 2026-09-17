@@ -200,6 +200,9 @@ questions:
     - text: "পূর্ণরূপ কোন ম্যানুয়ালে উল্লেখ নেই"
       kind: absent
       verified_against: corpus
+    - text: "বিসিইউপি, সিডিপি, এনসিডিপি ও এসসিডিপি — চারটি কর্মসূচির সংক্ষিপ্ত রূপ ম্যানুয়ালে কোথাও সম্প্রসারিত করা হয়নি"
+      kind: claim
+      verified_against: corpus
   must_cite: []
   must_not_contain_literals: []
   # Nothing forbiddable yet: there are no numbers, and seeding invented
@@ -382,6 +385,14 @@ questions:
   manual_scope: ambiguous
   answerable: partial
   gold_facts:
+    - text: "সদস্যগণ সাধারণত একটি লক্ষ্য বা উদ্দেশ্যকে সামনে রেখে বিভিন্ন মেয়াদের সঞ্চয় প্রকল্প খুলে থাকেন।"
+      kind: literal
+      ref: dabi_2025_0014
+      verified_against: corpus
+    - text: "সদস্যগণ সাধারণত একটি লক্ষ্য বা উদ্দেশ্যকে সামনে রেখে বিভিন্ন মেয়াদের সঞ্চয় প্রকল্প খুলে থাকেন।"
+      kind: literal
+      ref: progoti_0021
+      verified_against: corpus
     - text: "দুই ম্যানুয়ালে একই বিষয় ভিন্ন নম্বরে"
       kind: claim
       verified_against: corpus
@@ -396,9 +407,28 @@ questions:
   verification_status: unverified
   difficulty: medium
   notes: >
-    Pair confirmed from divergence.md: 866 chars each, one character apart.
-    16 renumbered-identical pairs exist; alternatives are §5.2.7/§5.2.6 and
-    §4.4.4/§4.5.4 if this one reads poorly as a question.
+    Pair confirmed from divergence.md: 866 chars each, one character
+    apart. 16 renumbered-identical pairs exist; alternatives are
+    §5.2.7/§5.2.6 and §4.4.4/§4.5.4 if this one reads poorly as a
+    question.
+    THE ONE DIFFERING CHARACTER IS THE CLAUSE NUMBER ITSELF, and it is in
+    the heading, not the text: dabi_2025_0014 reads ১.১.২ and progoti_0021
+    reads ১.১.৩ at offset 53 of display_text. The 734-character BODIES are
+    byte-identical, so the renumbering is the entire difference between
+    the two chunks.
+    The two literal facts are THE SAME verbatim span, one per manual, so
+    the claim is demonstrated rather than asserted: an answer must show
+    the shared text under both numbers, not merely say they differ. The
+    span is the shortest substantive sentence in the shared body (96 chars)
+    that does not cross a newline. The raw display_text keeps each list label
+    on its own line -- "১. প্রত্যাশা লোন:" is a 17-character heading line --
+    so a span taken from a newline-flattened copy of the body glued that label
+    to the sentence and was then NOT byte-exact in the chunk. validate_gold
+    caught it. Quote spans from display_text as stored, never from a
+    whitespace-normalised copy.
+    These two chunks are NOT a dedupe dup_group, because dedupe compares
+    the body with its heading line peeled off -- identical bodies, so the
+    pair is caught by dupscan's clause-divergence report instead.
 
 - id: G-221
   type: comparative
@@ -476,13 +506,15 @@ questions:
   manual_scope: dabi
   answerable: "yes"
   gold_facts:
-    - text: TODO             # the ceiling figure, Bengali digits
+    - text: "২০ হাজার থেকে ৫ লক্ষ"
+      kind: literal
+      ref: dabi_2025_0011
       verified_against: corpus
-  must_cite: ["dabi_2025 §1.1"]
+  must_cite: ["dabi_2025 §1.1.1"]
   source_refs:
-    - chunk_id: TODO
+    - chunk_id: dabi_2025_0011
       manual_id: dabi_2025
-      clause: TODO
+      clause: "১.১.১"
   verification_status: unverified
   difficulty: easy
 
@@ -493,15 +525,19 @@ questions:
   manual_scope: progoti
   answerable: "yes"
   gold_facts:
-    - text: TODO             # the rate
+    - text: "২৪%"
+      kind: literal
+      ref: progoti_0016_p2
       verified_against: corpus
-    - text: TODO             # the basis: flat or declining, as stated
+    - text: "ক্রমহ্রাসমান"
+      kind: literal
+      ref: progoti_0016_p2
       verified_against: corpus
-  must_cite: ["progoti_2025 §1.1"]
+  must_cite: ["progoti_2025 §1.1.2"]
   source_refs:
-    - chunk_id: TODO
+    - chunk_id: progoti_0016_p2
       manual_id: progoti_2025
-      clause: TODO
+      clause: "১.১.২"
   verification_status: unverified
   difficulty: easy
 
@@ -512,13 +548,18 @@ questions:
   manual_scope: any
   answerable: "yes"
   gold_facts:
-    - text: TODO
+    - text: "বার্ষিক ৬% হারে মুনাফা"
+      kind: literal
+      ref: dabi_2025_0017
       verified_against: corpus
-  must_cite: [TODO]
+  must_cite: ["dabi_2025 §1.2.1", "progoti_2025 §1.2.1"]
   source_refs:
-    - chunk_id: TODO
-      manual_id: TODO
-      clause: TODO
+    - chunk_id: dabi_2025_0017
+      manual_id: dabi_2025
+      clause: "১.২.১"
+    - chunk_id: progoti_0024
+      manual_id: progoti_2025
+      clause: "১.২.১"
   verification_status: unverified
   difficulty: easy
   notes: "Check the corpus wording — মুনাফা or সুদ. Use whichever appears."
@@ -530,13 +571,19 @@ questions:
   manual_scope: progoti
   answerable: "yes"
   gold_facts:
-    - text: TODO
+    - text: "১২ ও ১৮ মাস"
+      kind: literal
+      ref: progoti_0016_p1
       verified_against: corpus
-  must_cite: ["progoti_2025"]
+    - text: "১২, ১৮, ২৪ মাস"
+      kind: literal
+      ref: progoti_0016_p1
+      verified_against: corpus
+  must_cite: ["progoti_2025 §1.1.2"]
   source_refs:
-    - chunk_id: TODO
+    - chunk_id: progoti_0016_p1
       manual_id: progoti_2025
-      clause: TODO
+      clause: "১.১.২"
   verification_status: unverified
   difficulty: easy
   notes: >
@@ -550,13 +597,26 @@ questions:
   manual_scope: any
   answerable: "yes"
   gold_facts:
-    - text: TODO
+    - text: "শাখা ব্যবস্থাপকের অনুমোদন সাপেক্ষে সঞ্চয় ফেরত দেওয়া যাবে।"
+      kind: literal
+      ref: dabi_2025_0033
       verified_against: corpus
-  must_cite: [TODO]
+    - text: "তবে প্রকৃত সদস্যের সঞ্চয় প্রাপ্যতা নিশ্চিত করার লক্ষ্যে সদস্যকে স্বশরীরে অফিসে উপস্থিত হতে হবে এবং সঞ্চয় ফেরতের মাষ্টাররোলে স্বাক্ষর করার পূর্বে জাতীয় পরিচয় পত্রের মূলকপি সঞ্চয় উত্তোলনের সময় প্রদর্শন করতে হবে।"
+      kind: literal
+      ref: dabi_2025_0033
+      verified_against: corpus
+    - text: "মেয়াদ পূর্তি হলে সংশ্লিষ্ট তত্ত্বাবধায়কের অনুমোদন সাপেক্ষে সঞ্চয় ফেরত দেয়া যাবে।"
+      kind: literal
+      ref: dabi_2025_0033
+      verified_against: corpus
+    - text: "সঞ্চিত অর্থ ফেরত বা উত্তোলনকে সঞ্চয় ফেরত সেবা বলে, সদস্যরা এই সেবা পাবেন"
+      kind: claim
+      verified_against: corpus
+  must_cite: ["dabi_2025 §1.2.3"]
   source_refs:
-    - chunk_id: TODO
-      manual_id: TODO
-      clause: TODO
+    - chunk_id: dabi_2025_0033
+      manual_id: dabi_2025
+      clause: "১.২.৩"
   verification_status: unverified
   difficulty: medium
 
@@ -567,13 +627,15 @@ questions:
   manual_scope: progoti
   answerable: "yes"
   gold_facts:
-    - text: TODO             # the approving authority for this band
+    - text: "নতুন ঋণ: ১০০০০১-১৫০০০০ — আরএম"
+      kind: literal
+      ref: progoti_0056
       verified_against: corpus
-  must_cite: ["progoti_2025"]
+  must_cite: ["progoti_2025 §2.1.1(চ)"]
   source_refs:
-    - chunk_id: TODO          # must be a table_depth_1 or depth_2 chunk
+    - chunk_id: progoti_0056
       manual_id: progoti_2025
-      clause: TODO
+      clause: "২.১.১(চ)"
   verification_status: unverified
   difficulty: medium
   notes: >
@@ -589,13 +651,15 @@ questions:
   manual_scope: progoti
   answerable: "yes"
   gold_facts:
-    - text: TODO
+    - text: "নতুন ঋণ: ২০০০০-৭০০০০ — বিএম"
+      kind: literal
+      ref: progoti_0056
       verified_against: corpus
-  must_cite: ["progoti_2025"]
+  must_cite: ["progoti_2025 §2.1.1(চ)"]
   source_refs:
-    - chunk_id: TODO
+    - chunk_id: progoti_0056
       manual_id: progoti_2025
-      clause: TODO
+      clause: "২.১.১(চ)"
   verification_status: unverified
   difficulty: medium
 
@@ -606,20 +670,32 @@ questions:
   manual_scope: progoti
   answerable: "yes"
   gold_facts:
-    - text: TODO             # the top band
+    - text: "৪০,০০,০০১ থেকে উপরে — সহকারী এলাকা ব্যবস্থাপক (ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে): কর্মসূচি প্রধান"
+      kind: literal
+      ref: progoti_0062
       verified_against: corpus
-    - text: TODO             # the authority for it
-      verified_against: corpus
-  must_cite: ["progoti_2025"]
+  must_cite: ["progoti_2025 §2.1.2(গ)"]
   source_refs:
-    - chunk_id: TODO
+    - chunk_id: progoti_0062
       manual_id: progoti_2025
-      clause: TODO
+      clause: "২.১.২(গ)"
   verification_status: unverified
   difficulty: hard
   notes: >
     Tests that the whole ceiling table was recovered, not just the first
     rows. If resplit.py dropped a part, the top band goes missing.
+    DO NOT ADD এলাকা ব্যবস্থাপক TO must_not_contain_literals. The fact's
+    span contains it, so the question would contradict its own gold fact.
+    The span cannot avoid it: progoti_0062 serialises a TWO-COLUMN table
+    as `<band> — <column-1 approver>: <column-2 approver>`, so the
+    shortest contiguous span holding both ৪০,০০,০০১ থেকে উপরে and
+    কর্মসূচি প্রধান necessarily carries the column-1 approver
+    (সহকারী এলাকা ব্যবস্থাপক) between them.
+    That serialisation is STILL UNFIXED. The left column header
+    (৬,০০,০০০ টাকা পর্যন্ত) repeats on every row and the two approver
+    cells are separated only by a colon, so band-to-approver pairing is
+    recoverable by eye but not structurally. If the table extraction is
+    ever corrected, this fact's span changes and must be re-quoted.
 
 - id: G-219
   type: alias_robustness
@@ -628,7 +704,9 @@ questions:
   manual_scope: dabi
   answerable: "yes"
   gold_facts:
-    - text: TODO             # content of §5.3.1
+    - text: "আর্থিক নিরাপত্তা: প্রাকৃতিক কারণে ফসলের ক্ষতি হলে বিমাকৃত কৃষকগণ ক্ষতিপূরণ পেয়ে থাকে, যা কৃষক সদস্যদের আপদকালীন সময় কাটিয়ে উঠতে সহায়তা করে এবং পুনরায় ঘুরে দাঁড়াতে সাহায্য করে।"
+      kind: literal
+      ref: dabi_2025_0236
       verified_against: corpus
   must_cite: ["dabi_2025 §5.3.1"]
   source_refs:
@@ -693,23 +771,66 @@ questions:
   manual_scope: any
   answerable: "yes"
   gold_facts:
-    - text: TODO             # step 1
+    - text: "১ম-ধাপ: ইনসিডেন্ট নোটিফিকেশন ও সেটআপ"
+      kind: literal
+      ref: dabi_2025_0198
       verified_against: corpus
-    - text: TODO             # step 2
+    - text: "২য়-ধাপ: বিমাদাবি পাবার যোগ্যতা যাচাই এবং তাৎক্ষনিক আর্থিক সুবিধা প্রদান"
+      kind: literal
+      ref: dabi_2025_0199
       verified_against: corpus
-    - text: TODO             # step 3
+    - text: "৩য়-ধাপ: সিস্টেমে ইনপুট ও বিমাদাবি ফর্ম ডাউনলোড"
+      kind: literal
+      ref: dabi_2025_0201
+      verified_against: corpus
+    - text: "৪র্থ-ধাপ: বিমাদাবির ডকুমেন্টস প্রাপ্তি ও সংরক্ষণ"
+      kind: literal
+      ref: dabi_2025_0202
+      verified_against: corpus
+    - text: "৫ম-ধাপ: বিমাদাবির ডকুমেন্টস ক্লেইম পোর্টালে আপলোড"
+      kind: literal
+      ref: dabi_2025_0204
+      verified_against: corpus
+    - text: "৬ষ্ঠ-ধাপ: বিমাদাবি নিস্পত্তি প্রক্রিয়া"
+      kind: literal
+      ref: dabi_2025_0205
       verified_against: corpus
   must_cite: ["dabi_2025 §5.1.8"]
   source_refs:
-    - chunk_id: TODO          # §5.1.8 is 14 prose chunks per manual; name
-                              # the one carrying the step you are recording
+    - chunk_id: dabi_2025_0198
+      manual_id: dabi_2025
+      clause: "৫.১.৮"
+    - chunk_id: dabi_2025_0199
+      manual_id: dabi_2025
+      clause: "৫.১.৮"
+    - chunk_id: dabi_2025_0201
+      manual_id: dabi_2025
+      clause: "৫.১.৮"
+    - chunk_id: dabi_2025_0202
+      manual_id: dabi_2025
+      clause: "৫.১.৮"
+    - chunk_id: dabi_2025_0204
+      manual_id: dabi_2025
+      clause: "৫.১.৮"
+    - chunk_id: dabi_2025_0205
       manual_id: dabi_2025
       clause: "৫.১.৮"
   verification_status: unverified
   difficulty: hard
   notes: >
-    Order matters. A reordered answer is wrong even when every step is
-    present, so score sequence separately from content. One fact per step.
+    SIX steps, not three. §5.1.8 prints ১ম- through ৬ষ্ঠ-ধাপ; the first
+    version of this question carried only steps 1-3, so it could not tell
+    a complete answer from one that stops halfway. Each header is quoted
+    verbatim and carries its own ref, because the six headers live in six
+    different chunks.
+    Chunk boundaries fall MID-LIST here, which is why a header and its own
+    content are not in the same chunk: dabi_2025_0199 opens with two
+    step-1 bullets before the ২য়-ধাপ header at offset 196, and
+    dabi_2025_0202 opens with a step-3 bullet before ৪র্থ-ধাপ at offset 64.
+    dabi_2025_0200, 0203, 0206 and 0207 are markerless continuations. So
+    retrieving a step header does NOT get you its steps, and retrieving a
+    continuation chunk does not tell you which step it belongs to. See
+    PROJECT_JOURNAL.md Phase 12.
 
 - id: G-224
   type: procedural
@@ -720,13 +841,14 @@ questions:
   gold_facts:
     - text: "দুই ধারার বিষয়বস্তু একই"
       kind: claim
+      ref: dabi_2025_0198
       verified_against: corpus
   must_cite: ["dabi_2025 §5.1.8", "dabi_2025 §5.1.9"]
   source_refs:
-    - chunk_id: TODO
+    - chunk_id: dabi_2025_0198
       manual_id: dabi_2025
       clause: "৫.১.৮"
-    - chunk_id: TODO
+    - chunk_id: dabi_2025_0212
       manual_id: dabi_2025
       clause: "৫.১.৯"
   verification_status: unverified
