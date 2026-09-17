@@ -43,6 +43,7 @@ Usage:
 
 import argparse
 import difflib
+import hashlib
 import json
 import re
 import sys
@@ -185,6 +186,77 @@ def load_corpus(files=CORPUS_FILES):
     return by_id, heads, missing
 
 
+# ------------------------------------------------------- manifest drift
+# data/processed/ is not in git; gold/ is. So a clone can read a
+# source_refs.chunk_id but not the chunk, and cannot tell whether the text
+# the fact was quoted from is still the text on disk.
+#
+# The verbatim check CANNOT catch this. It runs against the CURRENT chunk, so
+# a fact quoted from an older version of that chunk either still matches --
+# and passes while citing text that has moved -- or stops matching and looks
+# like an authoring error rather than a corpus change. Those are different
+# problems with different fixes and the verbatim result does not separate
+# them.
+#
+# data/processed/chunk_manifest.json is committed and holds a sha256 of each
+# chunk's display_text (plus id, manual, clause, heading, length -- no body).
+# Comparing it to the corpus on disk says which of the two happened.
+MANIFEST_PATH = Path("data/processed/chunk_manifest.json")
+
+
+def load_manifest(path=MANIFEST_PATH):
+    """-> ({chunk_id: row}, error_or_None)."""
+    p = Path(path)
+    if not p.exists():
+        return {}, f"manifest not found at {p} -- run dedupe.py to write it"
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except (ValueError, OSError) as e:
+        return {}, f"manifest unreadable: {type(e).__name__}: {e}"
+    return {r["chunk_id"]: r for r in doc.get("chunks") or []}, None
+
+
+def chunk_sha(display_text):
+    """Must match dedupe.manifest_sha exactly: sha256 of the stored text."""
+    return hashlib.sha256((display_text or "").encode("utf-8")).hexdigest()
+
+
+def check_manifest_drift(refs, corpus, manifest):
+    """-> list of (chunk_id, outcome, detail) for each ref'd chunk.
+
+    outcome is "ok" | "drift" | "unknown". `refs` is the set of chunk_ids
+    cited anywhere in the gold file; `corpus` is {chunk_id: display_text}.
+    """
+    out = []
+    for cid in sorted(refs):
+        row = manifest.get(cid)
+        if row is None:
+            out.append((cid, "unknown",
+                        "not in the manifest -- the ref names a chunk the "
+                        "manifest has never seen"))
+            continue
+        if cid not in corpus:
+            out.append((cid, "drift",
+                        f"in the manifest but NOT in the corpus on disk "
+                        f"(manifest sha {row['sha256'][:12]})"))
+            continue
+        now = chunk_sha(corpus[cid])
+        if now != row["sha256"]:
+            out.append((cid, "drift",
+                        f"manifest {row['sha256'][:12]} != corpus "
+                        f"{now[:12]} -- the chunk changed since the fact was "
+                        f"quoted from it, so the fact may be stale even "
+                        f"though its verbatim check passes"))
+        else:
+            out.append((cid, "ok", row["sha256"][:12]))
+    return out
+
+
+def manifest_orphans(corpus, manifest):
+    """Chunk ids the manifest has and the corpus no longer does."""
+    return sorted(set(manifest) - set(corpus))
+
+
 def verbatim_in(literal, text):
     """(hit, how). Exact substring first, then display_norm on both sides.
 
@@ -244,6 +316,11 @@ def validate(gold, corpus, heads=None, root=Path(".")):
         "types": Counter(),
         "bad_kind": [],
         "bad_ref_clause": [],
+        "manifest_error": None,
+        "manifest_drift": [],
+        "manifest_unknown": [],
+        "manifest_orphans": [],
+        "manifest_ok": 0,
     }
     for q in qs:
         qid = q.get("id", "?")
@@ -314,6 +391,29 @@ def validate(gold, corpus, heads=None, root=Path(".")):
                     rep["exempt_used"].append((qid, UNANSWERABLE_EXEMPT[qid]))
                 else:
                     rep["unarmed_unanswerable"].append(qid)
+    # MANIFEST DRIFT, over every chunk_id the gold file cites anywhere --
+    # source_refs and per-fact refs alike, since either can go stale.
+    cited = set()
+    for q in qs:
+        for c, _r in source_refs(q):
+            if c and not is_todo(c):
+                cited.add(c)
+        for f in q.get("gold_facts") or []:
+            r = f.get("ref") if isinstance(f, dict) else None
+            if r and not is_todo(str(r)):
+                cited.add(str(r))
+    manifest, mf_err = load_manifest()
+    rep["manifest_error"] = mf_err
+    if not mf_err:
+        for cid, outcome, detail in check_manifest_drift(cited, corpus, manifest):
+            if outcome == "ok":
+                rep["manifest_ok"] += 1
+            elif outcome == "drift":
+                rep["manifest_drift"].append((cid, detail))
+            else:
+                rep["manifest_unknown"].append((cid, detail))
+        rep["manifest_orphans"] = manifest_orphans(corpus, manifest)
+
     return rep
 
 
@@ -468,7 +568,7 @@ def canary_forbidden_not_overbroad(gold, verbose=True):
 
 
 def canary_selftest(gold, corpus, verbose=True):
-    """Convention 3. Two canaries, both built from REAL facts in the file.
+    """Convention 3. Three canaries, all built from REAL facts in the file.
 
     1. MISPOINTED LITERAL. Take a filled literal fact that verifies against
        its own chunk -- G-213's আরএম at progoti_0133 -- and point it at a
@@ -481,6 +581,14 @@ def canary_selftest(gold, corpus, verbose=True):
        this, an absent check that never finds anything is indistinguishable
        from one that never looks -- and absent facts are exactly the ones
        whose evidence nobody can see.
+
+    3. MANIFEST DRIFT. Take a chunk a committed gold fact actually cites,
+       mutate its sha in a COPY of the manifest, and require the drift check
+       to fire. A drift check that never fires is worse than none: it prints
+       "N chunks match" every run and reports clean while the corpus moves
+       under the citations. Nothing is invented here -- the chunk, the ref
+       and the true sha are all real; only the recorded sha is flipped, in
+       memory, and the file on disk is never touched.
     """
     ok = True
 
@@ -529,6 +637,37 @@ def canary_selftest(gold, corpus, verbose=True):
         ok &= ok2
 
     ok &= canary_forbidden_not_overbroad(gold, verbose)
+    # 3. MANIFEST DRIFT, from a real cited chunk.
+    manifest, mf_err = load_manifest()
+    cited = []
+    for q in gold.get("questions") or []:
+        for c, _r in source_refs(q):
+            if c and not is_todo(c) and c in manifest and c in corpus:
+                cited.append(c)
+    if mf_err or not cited:
+        if verbose:
+            why = mf_err or "no cited chunk is in both the manifest and corpus"
+            print(f"  canary manifest_drift       NOT BUILDABLE: {why}")
+            print("        -> will not invent a chunk; arms itself as soon as "
+                  "one ref resolves.")
+    else:
+        cid = sorted(cited)[0]
+        true_sha = manifest[cid]["sha256"]
+        clean = check_manifest_drift({cid}, corpus, manifest)
+        mutated = dict(manifest)
+        mutated[cid] = dict(manifest[cid], sha256="0" * 64)
+        fired = check_manifest_drift({cid}, corpus, mutated)
+        missing = check_manifest_drift({cid}, corpus, {})
+        ok3 = (clean and clean[0][1] == "ok"
+               and fired and fired[0][1] == "drift"
+               and missing and missing[0][1] == "unknown")
+        if verbose:
+            print(f"  canary manifest_drift       {cid} sha "
+                  f"{true_sha[:12]}: true={clean[0][1]}, "
+                  f"mutated={fired[0][1]}, absent={missing[0][1]}  "
+                  f"[{'DETECTED' if ok3 else 'MISSED'}]")
+        ok &= ok3
+
     return ok
 
 
@@ -633,6 +772,41 @@ def report(rep, strict=False):
               f"({len(rep['unknown_chunk'])})")
         for qid, lit, cid in rep["unknown_chunk"][:10]:
             print(f"  {qid:<8} {cid!r} for {lit[:44]!r}")
+
+    if rep["manifest_error"]:
+        print(f"\n[warn] chunk manifest: {rep['manifest_error']}")
+        print("Refs cannot be checked for drift without it. Not counted as a "
+              "failure, because\na fresh clone has no corpus to compare against "
+              "either.")
+    else:
+        print(f"\nmanifest ............ {rep['manifest_ok']} ref'd chunk(s) "
+              f"match their recorded sha")
+
+    if rep["manifest_drift"]:
+        fails += len(rep["manifest_drift"])
+        print(f"\nFAIL chunk changed since the gold fact was quoted from it "
+              f"({len(rep['manifest_drift'])})")
+        print("The verbatim check cannot see this: it runs against the CURRENT "
+              "text.\nRe-read the clause and re-quote the fact, or re-run "
+              "dedupe.py if the\nchange was intended.")
+        for cid, detail in rep["manifest_drift"][:10]:
+            print(f"  {cid:<22} {detail}")
+
+    if rep["manifest_unknown"]:
+        fails += len(rep["manifest_unknown"])
+        print(f"\nFAIL ref names a chunk the manifest has never seen "
+              f"({len(rep['manifest_unknown'])})")
+        for cid, detail in rep["manifest_unknown"][:10]:
+            print(f"  {cid:<22} {detail}")
+
+    if rep["manifest_orphans"]:
+        print(f"\n[warn] manifest has {len(rep['manifest_orphans'])} chunk(s) "
+              f"the corpus no longer does")
+        print("Not a failure on its own -- re-chunking drops ids. It IS a "
+              "failure if a gold\nref points at one; that shows above as "
+              "drift.")
+        for cid in rep["manifest_orphans"][:10]:
+            print(f"  {cid}")
 
     if rep["bad_verbatim"]:
         fails += len(rep["bad_verbatim"])

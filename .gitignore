@@ -10,7 +10,11 @@ data/raw/
 
 # generated artefacts: all regenerable from data/raw + the scripts, and they
 # change on every pipeline run. ~15MB if tracked.
-data/processed/
+data/processed/*
+# ...except the chunk manifest. gold/ cites chunk_ids and data/processed is
+# not tracked, so without this a clone cannot verify a single source_ref.
+# It carries ids, shas and headings only -- no body, so the manuals stay out.
+!data/processed/chunk_manifest.json
 out/
 check_*.html
 headings_*.md

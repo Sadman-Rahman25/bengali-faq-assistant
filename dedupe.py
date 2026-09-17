@@ -241,6 +241,77 @@ def main(write):
         print(f"\n  -> {dst}  ({len(corpora[tag])} chunks)")
 
     annotate_final(corpora)
+    write_manifest()
+
+
+# THE CHUNK MANIFEST.
+#
+# gold/ is in git; data/processed/ is not, and data/raw/ is not either -- the
+# manuals are BRAC internal documents and stay out. So every
+# source_refs.chunk_id in the gold file names a chunk that cannot be checked
+# from a clone: the id might not exist, or the chunk's text might have changed
+# since the fact was quoted out of it. The verbatim check still passes in that
+# second case, because it runs against the CURRENT text. A stale fact and a
+# correct one are indistinguishable.
+#
+# The manifest closes that without shipping the manuals: chunk_id, a sha256 of
+# display_text, and the navigation needed to find the clause by eye. No body,
+# no display_text, nothing from which the source could be reconstructed.
+#
+# WRITTEN HERE, in the run that last writes the final chunk files, for the
+# dup_* reason: an artefact computed by one step and persisted by a step
+# someone has to remember gets lost. resplit.py -> dedupe.py is the order, and
+# dedupe is the end of it. If someone re-runs resplit and forgets dedupe, the
+# final files change and the manifest does not -- which validate_gold then
+# reports as drift rather than passing silently. That failure is the point.
+MANIFEST = P / "chunk_manifest.json"
+
+
+def manifest_sha(display_text):
+    """sha256 of display_text AS STORED, utf-8, nothing normalised."""
+    return hashlib.sha256((display_text or "").encode("utf-8")).hexdigest()
+
+
+def write_manifest():
+    """Write data/processed/chunk_manifest.json from the FINAL files on disk.
+
+    Reads them back rather than using the in-memory corpora, so the recorded
+    sha is of the bytes that were actually written. n_chars is len of the same
+    display_text the sha covers -- not the chunk's own n_chars field, which
+    counts the body.
+    """
+    rows = []
+    for tag in CORPORA:
+        src = P / f"chunks_{tag}_final.jsonl"
+        for line in src.open(encoding="utf-8"):
+            if not line.strip():
+                continue
+            c = json.loads(line)
+            dt = c.get("display_text") or ""
+            rows.append({
+                "chunk_id": c["chunk_id"],
+                "sha256": manifest_sha(dt),
+                "manual_id": tag,
+                "clause": clause_of(c),
+                "heading_path": list(c.get("heading_path") or []),
+                "n_chars": len(dt),
+            })
+    rows.sort(key=lambda r: r["chunk_id"])
+    MANIFEST.write_text(
+        json.dumps({"version": 1, "n_chunks": len(rows), "chunks": rows},
+                   ensure_ascii=False, indent=1) + "\n",
+        encoding="utf-8")
+    print(f"  -> {MANIFEST}  ({len(rows)} chunks)")
+    return len(rows)
+
+
+def load_manifest(path=MANIFEST):
+    """-> {chunk_id: row} or {} when the manifest is absent."""
+    p = Path(path)
+    if not p.exists():
+        return {}
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    return {r["chunk_id"]: r for r in doc.get("chunks") or []}
 
 
 # ANNOTATION ONTO THE FINAL CORPUS.
