@@ -42,12 +42,21 @@ SYSTEM_PROMPT = """You answer questions about BRAC microfinance operation manual
    use knowledge from outside the context.
 2. Name the MANUAL and the CLAUSE for every fact, e.g. "dabi_2025 §5.4".
 3. Any answer about a premium or an exclusion must name the INSURER.
-4. If the context does not contain the answer, name what is missing and
-   stop. Do not mention, quote, cite or describe any other figure from the
-   context -- not even to say it does not apply. A figure and the question's
-   subject in one sentence is what the reader retains; the caveat is what
-   they lose. State only which clause you checked and what it does not
-   contain. Never state what it does contain.
+4. Two cases, and decide which you are in before answering.
+
+   (a) The context contains NOTHING responsive to the question. Name the
+       clauses you checked and what is missing, then stop. Do not mention,
+       quote, cite or describe any figure from the context -- not even to say
+       it does not apply. A figure and the question's subject in one sentence
+       is what the reader retains; the caveat is what they lose.
+
+   (b) The context answers PART of the question. Give the part it answers,
+       with its clause, then name the part that is missing. Withholding a
+       correct half is as wrong as inventing one.
+
+   The test for (a) versus (b): does any figure or statement in the context
+   answer any part of the question as asked? If yes, you are in (b). A figure
+   about a DIFFERENT subject is not a partial answer -- it is case (a).
 5. If a product's status is not active, lead with the status, then the terms.
    A status of "unknown" is NOT active; do not imply the product is available.
 6. If the question is ambiguous across manuals or programmes, ask which one
@@ -104,36 +113,46 @@ If you cannot answer, write CITATIONS: none
 #   it charitably is not a rule; two of the four models tested read the
 #   literal text and were entitled to.
 #
-#   The replacement removes the loophole by removing the exception: no other
-#   figure at all, not even to disclaim it. Cost to watch: S-004 exists to
-#   detect this rule OVER-suppressing a legitimate partial answer.
+#   WORDING 2, "STRICT", 2026-09-17. Removed the loophole by removing the
+#   exception: no other figure at all, not even to disclaim it.
 #
-#   AND IT DOES. *** THIS RULE IS NOT SAFE TO SHIP AS WRITTEN. ***
-#   Measured on gemini-3.5-flash, same context, n=1 after (quota):
+#     "4. If the context does not contain the answer, name what is missing
+#         and stop. Do not mention, quote, cite or describe any other figure
+#         from the context -- not even to say it does not apply. [...] State
+#         only which clause you checked and what it does not contain. Never
+#         state what it does contain."
 #
-#     S-002 (unanswerable) is now exemplary -- names the clauses checked and
-#       quotes nothing:
+#   It closed S-002 and BROKE S-004. Measured on gemini-3.5-flash, n=1
+#   (quota), same context:
+#
+#     S-002 became exemplary -- clauses checked named, nothing quoted:
 #       "আমি synthetic_a §9.2.1 এবং synthetic_a §9.1.1 যাচাই করেছি। এই
 #        ক্লজগুলোতে জিএম কত টাকা পর্যন্ত ঋণ অনুমোদন করতে পারেন তা উল্লেখ নেই।"
 #
-#     S-004 (PARTIAL) is now WRONG. Before:
-#       "নীলকমল ঋণের সর্বোচ্চ সীমা ৩ লক্ষ টাকা (synthetic_a §9.1.1)। তবে
-#        নীলকমল ঋণের মেয়াদ কত, তা প্রদত্ত তথ্যে উল্লেখ নেই।"
-#     After:
-#       "synthetic_a ম্যানুয়ালের 9.1.1 এবং 9.2.1 অনুচ্ছেদে নীলকমল ঋণের মেয়াদ
-#        উল্লেখ নেই."
-#     The ceiling -- which IS in the context and IS half the answer -- is
-#     gone, and so is the citation. fact recall 3/7 -> 2/7, citation 2/2 ->
-#     1/2, violations 0/4 -> 0/4, abstention 1/1 -> 1/1.
+#     S-004 (PARTIAL) regressed. Before: "নীলকমল ঋণের সর্বোচ্চ সীমা ৩ লক্ষ
+#       টাকা (synthetic_a §9.1.1)। তবে ... মেয়াদ কত, তা প্রদত্ত তথ্যে উল্লেখ
+#       নেই।"  After: "synthetic_a ম্যানুয়ালের 9.1.1 এবং 9.2.1 অনুচ্ছেদে
+#       নীলকমল ঋণের মেয়াদ উল্লেখ নেই."
+#     The ceiling -- in the context, and half the answer -- and its citation
+#     both vanished. recall 3/7 -> 2/7, citation 2/2 -> 1/2, violations
+#     0/4 -> 0/4, abstention 1/1 -> 1/1.
 #
-#   The final sentence, "Never state what it does contain", does not
-#   distinguish "the context lacks the answer" from "the context lacks PART
-#   of the answer". The model obeyed it and silenced a correct answer.
-#   RULE 4 NEEDS A PARTIAL-CASE EXCEPTION before any real run: the
-#   prohibition must be scoped to the case where the context contains
-#   NOTHING responsive, and a partial answer must still give the half it
-#   has. Not written here -- it is a prompt change and needs its own
-#   before/after, with S-004 as the guard.
+#   Cause: "Never state what it does contain" does not distinguish "the
+#   context lacks the answer" from "the context lacks PART of the answer".
+#
+#   WORDING 3, "SCOPED", in force above. Splits the rule into case (a)
+#   nothing responsive and case (b) partially responsive, with an explicit
+#   test between them, and says outright that withholding a correct half is
+#   as wrong as inventing one.
+#
+#   *** THE NOT-SAFE-TO-SHIP WARNING STANDS. *** The condition for removing
+#   it is S-002 AND S-004 both passing on a model that previously LEAKED --
+#   gemini-2.5-flash or gemini-3-flash-preview. As of this edit all four
+#   previously-tested models are 429 quota-exhausted, so the scoped wording
+#   has not been tested on any of them. Anything measured on a model that
+#   never leaked cannot discharge this: the risk the scoped rule carries is
+#   that its (a)/(b) test reopens the door, and only a leaker can show that.
+#
 # Rule 5 -- prevents: implying availability. products_catalogue.csv has 43
 #   rows and 0 populated status values, so every status lookup returns
 #   "unknown" today. Unknown is not active, and an answer that quotes terms
@@ -755,24 +774,49 @@ JUDGE_SYSTEM = ("Does the ANSWER assert the CLAIM? The answer may be in "
                 "consistent with the claim without asserting it.")
 
 
-def probe_model(name, provider=None):
-    """-> (reachable, why). One minimal call. Costs a request, which is the
-    only honest way to tell a listed model from a usable one."""
+_PROBE_CACHE = {}
+
+
+def probe_model(name, provider=None, use_cache=True):
+    """-> (reachable, why). One minimal call, CACHED per process.
+
+    Costs a request, which is the only honest way to tell a listed model from
+    a usable one -- models.list() reports gemini-flash-latest as available
+    while it returns 429, and gemma-4-31b-it as available while it returns
+    500 INTERNAL on a system_instruction prompt.
+
+    Cached because the probe competes with the measurement for the same
+    quota. Measured 2026-09-17: repeated quota_report and make_judge calls
+    spent enough of the daily allowance on probing to leave the actual
+    before/after unrunnable. Pass use_cache=False only when re-probing after
+    a known reset.
+    """
+    if use_cache and name in _PROBE_CACHE:
+        return _PROBE_CACHE[name]
     saved_pin, saved_attempts = _STATE.get("pin"), globals()["MAX_ATTEMPTS"]
     try:
         _STATE["pin"] = name
         globals()["MAX_ATTEMPTS"] = 1          # a probe must not burn backoff
         complete("Reply with exactly OK.", "OK?", cache_system=False)
-        return True, "ok"
+        _PROBE_CACHE[name] = (True, "ok")
+        return _PROBE_CACHE[name]
     except ProviderError as e:
         t = str(e)
         if "429" in t or "RESOURCE_EXHAUSTED" in t.upper():
-            return False, "429-quota"
-        if "404" in t:
-            return False, "404"
-        return False, (type(e).__name__ if len(t) > 90 else t[:60])
+            why = "429-quota"
+        elif "404" in t:
+            why = "404"
+        elif "500" in t or "INTERNAL" in t.upper():
+            # gemma-4-* answer models.list() but 500 on a system_instruction
+            # prompt. Listed, not usable.
+            why = "500-internal"
+        else:
+            why = (type(e).__name__ if len(t) > 90 else t[:60])
+        _PROBE_CACHE[name] = (False, why)
+        return _PROBE_CACHE[name]
     except Exception as e:                                       # noqa: BLE001
-        return False, type(e).__name__
+        _PROBE_CACHE[name] = (False, type(e).__name__)
+        return _PROBE_CACHE[name]
     finally:
         _STATE["pin"] = saved_pin
         globals()["MAX_ATTEMPTS"] = saved_attempts
