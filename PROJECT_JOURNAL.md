@@ -704,6 +704,54 @@ because three was what the first three chunks happened to expose, and a
 complete answer was indistinguishable from one that stopped at step 3. It now
 carries all six headers, each with its own ref.
 
+**The fused score does not separate a retrieval hit from a miss, so it is not
+a confidence signal anywhere.** Measured 2026-09-17 over the 23 answerable,
+recall-scoreable questions in both gold files, top fused score at k=5,
+split by whether the gold chunk is anywhere in the top 5:
+
+| | n | min | p25 | median | p75 | max | mean |
+|---|---|---|---|---|---|---|---|
+| gold **retrieved** | 14 | 0.4044 | 0.5124 | 0.5567 | 0.6111 | 0.7873 | 0.5697 |
+| gold **NOT** retrieved | 9 | 0.4181 | 0.5338 | **0.5698** | 0.7199 | 0.7686 | **0.6055** |
+
+The misses score **higher** than the hits, on both median and mean. The lowest
+score with a hit is 0.4044; the highest score with a miss is 0.7686. The two
+distributions do not merely overlap, they are inverted.
+
+At every candidate threshold the answerable questions discarded exceed the
+bad retrievals caught:
+
+```
+floor 0.5371 ->  5 good lost, 3 bad caught
+floor 0.5698 ->  9 good lost, 5 bad caught
+floor 0.7199 -> 12 good lost, 6 bad caught
+```
+
+**Consequences, all three of which matter:**
+
+- **The score floor cannot do its job.** `generate.SCORE_FLOOR` is set to
+  0.4044, the lowest score at which a gold chunk was actually retrieved, so it
+  fires on nothing in this sample. That is deliberate: it guards only the
+  degenerate case -- an empty retrieval, or scores collapsing toward zero --
+  because that is the only case the data supports guarding.
+- **It cannot be answer confidence.** A high fused score is, if anything,
+  weak evidence AGAINST the gold chunk being present. Gating an answer on it,
+  or ranking answers by it, would be worse than not gating at all.
+- **It cannot be a UI indicator.** Showing a user "confidence 0.77" on a
+  question whose gold chunk was never retrieved is the project's core failure
+  mode with a number attached to make it persuasive.
+
+Why it is inverted is a separate question and Phase 12's other two findings
+are the likely cause: section-head chunks lose to their own children, and a
+step header sits in a different chunk from its content. A query that lands
+confidently in the right *neighbourhood* and misses the right *chunk* scores
+high and retrieves nothing useful -- which is exactly the shape of a
+high-scoring miss.
+
+n=14/9 is small. Re-derive both the distribution and the floor when the
+corpus, the chunking or the weighting changes; the floor is a measured
+constant, not a tuned one, and it is the first thing that becomes wrong.
+
 ### Phase 12 — Retrieval filters
 
 `retrieve.py` offers three combinable filters, each justified by a measured

@@ -380,29 +380,53 @@ def looks_legacy_ansi(text: str) -> bool:
 # resolving, the two collapse to the same number and every caller goes quiet.
 # The canary is the real historical case: সিডিপি inside এনসিডিপি / এসসিডিপি,
 # measured 17 Sep 2026 as 22 guarded against 180 naive over the built corpus.
-_CANARY_CDP = ("এনসিডিপি ও এসসিডিপি দুটি কর্মসূচি, সিডিপি আলাদা একটি কর্মসূচি")
+# CONVENTION 2: the fixture and the probe literal come FROM productmatch,
+# never typed here. A canary that types the product name it is guarding holds
+# a product literal in a matching context, which is the rule 2 violation --
+# and it would also stop following the registry if the name were ever
+# corrected. Built at call time, so nothing runs at import.
+def _canary_fixture():
+    """-> (fixture_text, cdp_literal, role_literal) from the owning registries."""
+    import productmatch as pm
+    import role_exclusions as rex
+    cdp = pm.PROGRAMME_NAMES["cdp"][0]
+    ncdp = pm.PROGRAMME_NAMES["ncdp"][0]
+    scdp = pm.PROGRAMME_NAMES["scdp"][0]
+    role = next(iter(rex.EXCLUSIONS))
+    # ncdp and scdp both END with cdp, which is the whole collision.
+    text = f"{ncdp} {scdp} {cdp}"
+    return text, cdp, role
 
 
 def canary_selftest(verbose=True):
     """-> True if count_literal still suppresses a known collision."""
     ok = True
-    guarded, _ = count_literal("সিডিপি", [_CANARY_CDP])
-    naive = len(canon_pattern("সিডিপি").findall(canon(_CANARY_CDP)))
+    try:
+        fixture, cdp, role = _canary_fixture()
+    except ImportError as e:
+        if verbose:
+            print(f"  canary cdp_collision     NOT BUILDABLE: {e}")
+        return False
+    guarded, _ = count_literal(cdp, [fixture])
+    naive = len(canon_pattern(cdp).findall(canon(fixture)))
     hit = guarded == 1 and naive == 3
     ok &= hit
     if verbose:
         print(f"  canary cdp_collision     guarded={guarded} naive={naive} "
               f"(expect 1 vs 3)  [{'PASS' if hit else 'FAIL'}]")
-    owned = literal_owner("সিডিপি") == "programme" and literal_owner("পিএ") == "role"
+    owned = (literal_owner(cdp) == "programme"
+             and literal_owner(role) == "role")
     ok &= owned
     if verbose:
-        print(f"  canary owner_resolution  সিডিপি->{literal_owner('সিডিপি')} "
-              f"পিএ->{literal_owner('পিএ')}  [{'PASS' if owned else 'FAIL'}]")
-    unowned = literal_owner("কলা") is None
+        print(f"  canary owner_resolution  {cdp}->{literal_owner(cdp)} "
+              f"{role}->{literal_owner(role)}  [{'PASS' if owned else 'FAIL'}]")
+    # an unowned probe: ASCII, so it cannot be a product literal here
+    unowned = literal_owner("zzz-not-a-product") is None
     ok &= unowned
     if verbose:
-        print(f"  canary unowned_is_visible  literal_owner('কলা')="
-              f"{literal_owner('কলা')}  [{'PASS' if unowned else 'FAIL'}]")
+        print(f"  canary unowned_is_visible  unowned probe -> "
+              f"{literal_owner('zzz-not-a-product')}  "
+              f"[{'PASS' if unowned else 'FAIL'}]")
     return bool(ok)
 
 

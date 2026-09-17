@@ -51,7 +51,7 @@ import sys
 from pathlib import Path
 
 import embed
-from dedupe import collapse
+from dedupe import clause_of, collapse
 from embed import (BM25, expand_banglish, index_text, is_figure_query,
                    query_text, rank_hybrid)
 
@@ -148,6 +148,15 @@ class Index:
             keep.append(i)
         return keep
 
+    @property
+    def _row(self):
+        """{chunk_id: row index}, built once. The component scores are indexed
+        by corpus position, the results by chunk_id."""
+        if getattr(self, "_row_cache", None) is None:
+            self._row_cache = {m["chunk_id"]: i
+                               for i, m in enumerate(self.meta)}
+        return self._row_cache
+
     def search(self, query, k=10, manual_id=None, insurer=None,
                programme=None, prefer_manual=None):
         """prefer_manual is NOT a filter. `manual_id` restricts the candidate
@@ -163,7 +172,13 @@ class Index:
         qt = query_text(expand_banglish(query))
         qv = embed._encode(self.model, [qt], "query")[0]
         fig = is_figure_query(query)
-        scores = rank_hybrid(qv, self.D, self.bm25.scores(qt), fig)
+        sparse_raw = self.bm25.scores(qt)
+        scores = rank_hybrid(qv, self.D, sparse_raw, fig)
+        # The two sides, kept separately. A fused score alone cannot say
+        # WHICH component found a chunk, and that is the first question asked
+        # of every miss. rank_hybrid stays the single owner of the weighting;
+        # this only re-derives the parts that go into it.
+        dense_raw = self.D @ qv
         mask = np.full(len(self.meta), -np.inf, dtype="float32")
         mask[allowed] = scores[allowed]
         order = np.argsort(-mask)[:max(k * 4, k + 20)]
@@ -188,11 +203,16 @@ class Index:
         out = []
         for score, m in kept:
             named = products_named(m["index_text"])
+            i = self._row.get(m["chunk_id"])
             out.append({
                 "chunk_id": m["chunk_id"],
                 "manual_id": m["manual_id"],
                 "score": score,
+                "fused_score": score,
+                "dense_score": (float(dense_raw[i]) if i is not None else None),
+                "sparse_score": (float(sparse_raw[i]) if i is not None else None),
                 "weighting": "figure" if fig else "topic",
+                "clause": clause_of(m),
                 "heading_path": m["heading_path"],
                 "products": named,
                 # Joined at query time, never stored in the chunk.
@@ -200,7 +220,10 @@ class Index:
                                    for p in named},
                 "status_registry_populated": populated,
                 "status_registry_rows": total,
-                "display_text": m["display_text"][:400],
+                # FULL text. Truncating here would silently shorten the
+                # context every downstream caller sees; the CLI truncates at
+                # print time instead, which is where the limit belongs.
+                "display_text": m["display_text"],
             })
         return out
 
@@ -264,6 +287,31 @@ def canary_selftest(verbose=True):
     return ok
 
 
+DUMP_FIELDS = ("chunk_id", "manual_id", "clause", "heading_path",
+               "display_text", "dense_score", "sparse_score", "fused_score")
+
+
+def dump_retrieved(ix, questions, k, out_path):
+    """Write one row per gold question to `out_path` as JSONL.
+
+    WHY THIS EXISTS AS A FILE. generate.py reads this and never calls the
+    retriever. Context must be byte-identical between runs: when a prompt rule
+    changes and a score moves, the cause has to be the rule, not a context
+    that drifted because the index or the model was reloaded in between.
+    """
+    n = 0
+    with Path(out_path).open("w", encoding="utf-8") as f:
+        for q in questions:
+            qid, qbn = q["id"], q["question_bn"]
+            hits = ix.search(qbn, k=k)
+            row = {"question_id": qid, "question_bn": qbn,
+                   "chunks": [{key: h[key] for key in DUMP_FIELDS}
+                              for h in hits]}
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+            n += 1
+    return n
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("query", nargs="?")
@@ -272,12 +320,35 @@ def main():
     ap.add_argument("--insurer")
     ap.add_argument("--programme")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--dump", metavar="PATH",
+                    help="write one row per gold question to PATH as JSONL "
+                         "and exit; generate.py reads this instead of "
+                         "calling the retriever")
+    ap.add_argument("--gold", nargs="*",
+                    default=["gold/bootstrap.yaml",
+                             "gold/bootstrap_livestock_grow.yaml"],
+                    help="gold files the --dump rows come from")
     args = ap.parse_args()
 
     print("CANARY")
     if not canary_selftest():
         print("FATAL: retrieve failed its own canary.")
         return 2
+    if args.dump:
+        if not (INDEX_DIR / "model.json").exists():
+            print(f"\nno index at {INDEX_DIR}. "
+                  f"Run:  python embed.py --build MODEL")
+            return 1
+        from embed import load_questions
+        qs = load_questions(args.gold)
+        if not qs:
+            print(f"\nno gold questions in {args.gold}")
+            return 1
+        ix = Index()
+        n = dump_retrieved(ix, qs, args.k, args.dump)
+        print(f"\n-> {args.dump}  ({n} questions, k={args.k})")
+        return 0
+
     if args.selftest or not args.query:
         print("\nself-test only; no query given")
         print("  insurers available: " + ", ".join(sorted(insurers())))
@@ -300,6 +371,9 @@ def main():
         if h["products"]:
             print(f"    products: {h['product_status']}")
         print(f"    {h['display_text'][:150]!r}")
+        print(f"    dense={h['dense_score']:.4f} "
+              f"sparse={h['sparse_score']:.3f} fused={h['fused_score']:.4f}"
+              f"  clause={h['clause'] or '-'}")
     if hits and hits[0]["status_registry_populated"] == 0:
         print(f"\n[warn] product status registry has "
               f"{hits[0]['status_registry_rows']} rows and 0 statuses set. "

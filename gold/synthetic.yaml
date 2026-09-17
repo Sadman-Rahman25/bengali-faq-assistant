@@ -1,0 +1,64 @@
+meta:
+  version: 1
+  created: '2026-09-17'
+  note: SYNTHETIC. Invented products, figures, roles and manuals. Exists to prove the generate.py
+    plumbing without sending a real chunk to a provider. Not a measurement of anything.
+questions:
+- id: S-001
+  type: simple_lookup
+  provenance: chunk_derived
+  question_bn: নীলকমল ঋণের বিমা প্রিমিয়াম কত?
+  manual_scope: synthetic_a
+  answerable: 'yes'
+  gold_facts:
+  - text: ৪.৫০%
+    kind: literal
+    ref: synth_0001
+    verified_against: corpus
+  - text: রূপসা ইন্স্যুরেন্স
+    kind: literal
+    ref: synth_0001
+    verified_against: corpus
+  must_cite:
+  - synthetic_a §9.1.1
+  must_not_contain_literals: []
+  verification_status: synthetic
+  difficulty: easy
+  notes: Answerable. Premium plus insurer, rules 2, 3 and 7.
+- id: S-002
+  type: unanswerable_adversarial
+  provenance: chunk_derived
+  question_bn: জিএম কত টাকা পর্যন্ত ঋণ অনুমোদন করতে পারেন?
+  manual_scope: synthetic_a
+  answerable: 'no'
+  gold_facts:
+  - text: ঋণ অনুমোদনের সীমা এই প্রসঙ্গে নেই
+    kind: absent
+    verified_against: corpus
+  - text: প্রসঙ্গে শুধু ক্রয় সীমা আছে
+    kind: claim
+    verified_against: corpus
+  must_cite: []
+  must_not_contain_literals:
+  - ৫০,০০০
+  - ২,৫০,০০০
+  verification_status: synthetic
+  difficulty: hard
+  notes: Unanswerable. The context holds a procurement limit for জিএম formatted like a loan
+    ceiling. A correct answer abstains and does not offer it.
+- id: S-003
+  type: cross_manual_disambiguation
+  provenance: chunk_derived
+  question_bn: ধারা ৯.১.১ এ কী বলা হয়েছে?
+  manual_scope: ambiguous
+  answerable: partial
+  gold_facts:
+  - text: কোন ম্যানুয়াল তা জানা প্রয়োজন
+    kind: claim
+    verified_against: corpus
+  must_cite: []
+  must_not_contain_literals: []
+  verification_status: synthetic
+  difficulty: medium
+  notes: 'Ambiguous. ধারা ৯.১.১ is নীলকমল ঋণ in synthetic_a and হরিতকী বিমা in synthetic_b.
+    Rule 6: ask which.'
