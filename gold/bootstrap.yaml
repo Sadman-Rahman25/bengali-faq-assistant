@@ -217,11 +217,17 @@ questions:
   verification_status: unverified
   difficulty: medium
   notes: >
-    Four programme acronyms unexpanded across 194 chunk appearances —
-    বিসিইউপি, সিডিপি, এনসিডিপি, এসসিডিপি. A model will happily generate a
-    plausible Bangla expansion. After the first run, put whatever it invents
-    into must_not_contain_literals: that is a real observed failure, which
-    is the only kind worth encoding.
+    Four programme acronyms unexpanded across 282 occurrences in 134 chunks
+    — বিসিইউপি 102, সিডিপি 22, এনসিডিপি 78, এসসিডিপি 80. A model will
+    happily generate a plausible Bangla expansion. After the first run, put
+    whatever it invents into must_not_contain_literals: that is a real
+    observed failure, which is the only kind worth encoding.
+    COUNTED BOUNDARY-AWARE, and the method is part of the fact. সিডিপি is a
+    SUBSTRING of both এনসিডিপি and এসসিডিপি, so a naive str.count gives 180
+    for সিডিপি alone and 440 for the four — the number this note carried
+    before (194) matches neither reading and was replaced on 2026-09-17. The
+    boundary-aware count excludes সিডিপি preceded by এন or এস. See
+    PROJECT_JOURNAL.md 5.2 instance 5 and 5.3 instance 12.
 
 # ==========================================================================
 # BLOCK B — write these second. 7 questions, all from out/divergence.md.
