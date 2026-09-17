@@ -1,0 +1,510 @@
+# Bootstrap gold set -- Livestock Grow ("গবাদিপ্রাণি সুরক্ষা বিমা" অপারেশন
+# ম্যানুয়াল), 15 questions.
+#
+# PROVENANCE MATTERS AND IS RECORDED PER QUESTION.
+#   chunk_derived : written while looking at a chunk, copying corpus spelling.
+#                   Tests retrieval mechanics. Shares assumptions with the
+#                   code, so it measures agreement, not correctness.
+#   field_sourced : an officer's own wording and spelling, unedited.
+#                   Tests vocabulary coverage.
+# NEVER report a merged score across the two. The digit-fold classifier
+# scored 7/7 against self-written sentences using বীমা where the corpus says
+# বিমা -- that is what a merged score hides.
+#
+# gold_facts are written as the checkable Bengali literal or the figure, per
+# PDF_INGEST.md. English prose facts cannot be matched by the deterministic
+# matcher and are reported separately; the explanation goes in notes.
+
+meta:
+  version: 2
+  created: 2026-09-13
+  manuals: [dabi_2025, progoti_2025, livestock_grow_2026]
+  new_manual: livestock_grow_2026
+
+  source_status: >
+    INGESTED FROM A TRANSCRIPTION, NOT FROM THE PDF.
+    data/raw/Operational Manual_Livestock (2026).pdf has an unrecoverable
+    text layer: all six extraction routes return identical corruption
+    (coverage 25.0%, 56.3 malformed/1000) and the embedded Kalpurush subsets
+    name 497 of 586 glyphs `glyph000NN` with GSUB stripped, so the conjuncts
+    cannot be repaired from the font. No .docx exists -- it was requested.
+    The 8 pages were therefore transcribed from 200dpi renders into
+    data/raw/livestock_grow_2026_transcribed.md and chunked by ex_text.py.
+    source_type = "ocr", extraction_confidence = "unverified".
+    Every figure below was read off the render, but a second human should
+    confirm them against out/livestock_grow_2026/figure_worklist.html before
+    these scores are quoted anywhere.
+
+  document_shape: >
+    NOT a clause-numbered manual. 8 pages of narrative with bold headings;
+    its only numbered lines are exclusion lists and ধাপ ১-৬ procedures.
+    There is no §-style spine, so must_cite carries the manual_id and, where
+    it helps, the heading -- never a § number. pdf_structure.py correctly
+    fails this document at a 21.9% orphan rate; that is why ex_text.py
+    exists.
+
+  product_identity: >
+    RESOLVED. "লাইভস্টক গ্রো" is a PROJECT of ব্র্যাক মাইক্রোফাইন্যান্স কর্মসূচি
+    with four pillars -- আর্থিক সহায়তা (স্বাধীন ঋণ for গরু পালন / গরু
+    মোটাতাজাকরণ), স্বাস্থ্য ও পুষ্টি, গবাদিপ্রাণি সুরক্ষা বিমা, and মার্কেটিং.
+    THIS MANUAL covers only the third pillar, the insurance. So
+    productmatch's alias লাইভস্টক গ্রো -> livestock_insurance is right for
+    this manual's scope, and the loan pillar is a separate product
+    (shadhin_loan) that this manual names once, in the overview diagram.
+    Two things for reconcile.py:
+      * the registry flattens a project/product/sub-product hierarchy --
+        Livestock Grow (project) > গবাদিপ্রাণি সুরক্ষা বিমা (product) >
+        দুগ্ধজাত গাভী + গরু মোটাতাজাকরণ (already separate NAMED keys).
+      * this manual serves BOTH programmes (দাবি and প্রগতি appear 2 and 1
+        times), so programmes_in tags only 2 of 36 chunks. A
+        programme-scoped retrieval filter would exclude almost all of it.
+
+  new_vocabulary: >
+    Absent from the registries and worth a decision before embedding:
+      roles   -- সিএসএ (CSA, p6) and উপজেলা হিসাব ব্যবস্থাপক (p7) are not in
+                 roles.py's ROLES table.
+      codes   -- UPG / IDP / CCP / AI / WVB / SS lead appear as referrer
+                 codes on the enrolment form (p6) and none are in
+                 productmatch.PROGRAMME_NAMES.
+      note    -- roles.py overcounts programme_assistant here: পিএ matches
+                 inside পিএলসি, and this manual names two insurance পিএলসি.
+
+  note: >
+    3 of 15 unanswerable (20%). It will feel high and it is correct,
+    because every corpus gap is a question an officer will actually ask and
+    the failure mode is confident invention, not silence.
+
+questions:
+
+# ---------------------------------------------- what the product actually is
+- id: G-101
+  type: product_identity
+  provenance: field_sourced
+  question_bn: "লাইভস্টক গ্রো কী? এটা কি ঋণ না বিমা?"
+  manual_scope: livestock_grow
+  answerable: "yes"
+  gold_facts:
+    - "প্রকল্প"
+    - "গবাদিপ্রাণি সুরক্ষা বিমা"
+    - "স্বাধীন ঋণ"
+  must_cite: ["livestock_grow_2026"]
+  source_refs:
+    - chunk_id: livestock_grow_2026_0003
+      manual_id: livestock_grow_2026
+      clause: null            # narrative manual, no section numbers
+      # resolved from the fact(s) unique to this chunk; every other
+      # fact of this question also occurs here verbatim, but is not
+      # unique to it -- 'প্রকল্প'=35 chunks, 'গবাদিপ্রাণি সুরক্ষা বিমা'=20 chunks
+  must_not_contain_literals: []
+  difficulty: hard
+  notes: >
+    A project, not a single product. The correct answer says the project has
+    four pillars and that THIS manual covers the insurance one; naming only
+    the insurance is incomplete, and calling Livestock Grow a loan is wrong.
+    The loan pillar is স্বাধীন ঋণ, which is a separate registry product.
+
+# ------------------------------------- the figures, and the insurer trap
+- id: G-102
+  type: multi_hop
+  provenance: field_sourced
+  question_bn: "দুগ্ধজাত গাভীর বিমার প্রিমিয়াম কত?"
+  manual_scope: livestock_grow
+  answerable: "partial"
+  gold_facts:
+    - text: "২.৩৫%"
+      ref: livestock_grow_2026_0007
+    - text: "২.৪০%"
+      # ref: unresolved -- matches 2 chunks, not picked
+    - text: "গ্রীন ডেল্টা"
+      # ref: unresolved -- matches 6 chunks, not picked
+    - text: "সেনা ইন্স্যুরেন্স"
+      # ref: unresolved -- matches 6 chunks, not picked
+  must_cite: ["livestock_grow_2026"]
+  source_refs:
+    - chunk_id: livestock_grow_2026_0007
+      manual_id: livestock_grow_2026
+      clause: null            # narrative manual, no section numbers
+    - chunk_id: TODO
+      manual_id: livestock_grow_2026
+      clause: TODO
+      # NOT RESOLVED. These facts match several chunks and were left
+      # for a human rather than picked: '২.৪০%'=2, 'গ্রীন ডেল্টা'=6, 'সেনা ইন্স্যুরেন্স'=6
+  must_not_contain_literals: []
+  difficulty: hard
+  notes: >
+    THE HIGHEST-VALUE QUESTION IN THIS SET. The same product carries a
+    different premium depending on which insurer holds the policy: ২.৩৫% of
+    current market value at গ্রীন ডেল্টা, ২.৪০% at সেনা. A fluent answer
+    giving one rate, correctly cited, is WRONG -- it is right half the time
+    and an officer cannot tell which half. Same shape as the Dabi §5.4.5
+    underwriter question. Both rates and both insurers are required.
+
+- id: G-103
+  type: multi_hop
+  provenance: field_sourced
+  question_bn: "গরু মোটাতাজাকরণ বিমার প্রিমিয়াম কত?"
+  manual_scope: livestock_grow
+  answerable: "partial"
+  gold_facts:
+    - text: "১.৮০%"
+      ref: livestock_grow_2026_0007
+    - text: "১.৯০%"
+      ref: livestock_grow_2026_0011
+    - text: "১.৬০%"
+      ref: livestock_grow_2026_0011
+    - text: "৮০,০০০"
+      ref: livestock_grow_2026_0011
+  must_cite: ["livestock_grow_2026"]
+  source_refs:
+    - chunk_id: livestock_grow_2026_0007
+      manual_id: livestock_grow_2026
+      clause: null            # narrative manual, no section numbers
+    - chunk_id: livestock_grow_2026_0011
+      manual_id: livestock_grow_2026
+      clause: null            # narrative manual, no section numbers
+  difficulty: hard
+  notes: >
+    Harder than G-102 because the structure differs per insurer, not just
+    the rate. গ্রীন ডেল্টা charges a flat ১.৮০%. সেনা is TIERED on the
+    animal's market value: ১.৯০% below ৮০,০০০ টাকা, ১.৬০% at ৮০,০০০ or
+    above. An answer that reports a single rate, or that reports the tiers
+    without the ৮০,০০০ threshold, is unusable at the point of sale.
+
+- id: G-104
+  type: simple_lookup
+  provenance: chunk_derived
+  question_bn: "বিমার মেয়াদকাল কত?"
+  manual_scope: livestock_grow
+  answerable: "yes"
+  gold_facts:
+    - "১২ মাস"
+    - "৬ মাস"
+    - "দুগ্ধজাত গাভী"
+    - "গরু মোটাতাজাকরণ"
+  must_cite: ["livestock_grow_2026"]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: livestock_grow_2026
+      clause: TODO
+      # NOT RESOLVED. No fact of this question is unique to one chunk,
+      # so no ref can be named without picking. Candidate counts:
+      #   '১২ মাস' -> 3 chunk(s)
+      #   '৬ মাস' -> 6 chunk(s)
+      #   'দুগ্ধজাত গাভী' -> 6 chunk(s)
+      #   'গরু মোটাতাজাকরণ' -> 5 chunk(s)
+  difficulty: easy
+  notes: >
+    Term is set by product, not by insurer: ১২ মাস for দুগ্ধজাত গাভী and ৬ মাস
+    for গরু মোটাতাজাকরণ, stated identically for both insurers and repeated in
+    the form-filling instructions. A single figure is half an answer.
+
+- id: G-105
+  type: table_figure_pdf
+  provenance: chunk_derived
+  question_bn: "গবাদিপ্রাণির মৃত্যু হলে কত শতাংশ ক্ষতিপূরণ পাওয়া যায়?"
+  manual_scope: livestock_grow
+  answerable: "yes"
+  gold_facts:
+    - "৯০%"
+    - "৭৫%"
+    - "৪০%"
+  must_cite: ["livestock_grow_2026"]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: livestock_grow_2026
+      clause: TODO
+      # NOT RESOLVED. No fact of this question is unique to one chunk,
+      # so no ref can be named without picking. Candidate counts:
+      #   '৯০%' -> 5 chunk(s)
+      #   '৭৫%' -> 5 chunk(s)
+      #   '৪০%' -> 3 chunk(s)
+  difficulty: medium
+  notes: >
+    ৯০% on death, ৭৫% on permanent disability. The ৪০% is the one that gets
+    missed: গ্রীন ডেল্টা pays it when an ongoing policy sees breeding
+    capacity reduced by pregnancy-related complications. Verify all three
+    against the render -- this is the figure-dense passage where a
+    transcription error would be most costly.
+
+- id: G-106
+  type: lifecycle_status
+  provenance: field_sourced
+  question_bn: "বিমার মেয়াদকাল শুরুর পর কত দিন অপেক্ষা করতে হবে?"
+  manual_scope: livestock_grow
+  answerable: "yes"
+  gold_facts:
+    - "১৫ দিন"
+    - "রোগ"
+  must_cite: ["livestock_grow_2026"]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: livestock_grow_2026
+      clause: TODO
+      # NOT RESOLVED. No fact of this question is unique to one chunk,
+      # so no ref can be named without picking. Candidate counts:
+      #   '১৫ দিন' -> 4 chunk(s)
+      #   'রোগ' -> 11 chunk(s)
+  difficulty: medium
+  notes: >
+    ১৫ দিন, and the qualifier matters: the waiting period applies to
+    DISEASE-caused death only. Death by accident is covered from day one.
+    An answer that states the waiting period without that distinction will
+    make an officer turn away a valid accident claim.
+
+- id: G-107
+  type: simple_lookup
+  provenance: chunk_derived
+  question_bn: "বিমার জন্য গবাদিপ্রাণির বয়সসীমা কত?"
+  manual_scope: livestock_grow
+  answerable: "yes"
+  gold_facts:
+    - "৬ মাস"
+    - "৭ বছর"
+  must_cite: ["livestock_grow_2026"]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: livestock_grow_2026
+      clause: TODO
+      # NOT RESOLVED. No fact of this question is unique to one chunk,
+      # so no ref can be named without picking. Candidate counts:
+      #   '৬ মাস' -> 6 chunk(s)
+      #   '৭ বছর' -> 3 chunk(s)
+  difficulty: easy
+  notes: >
+    ৬ মাস to ৭ বছর. Stated twice -- once as an exclusion in both insurers'
+    lists and once in the claim rules -- so a retrieval miss here means the
+    chunking dropped a section.
+
+- id: G-108
+  type: role_scoped
+  provenance: field_sourced
+  question_bn: "গবাদিপ্রাণি সুরক্ষা বিমার সদস্য অন্তর্ভুক্তিকরন ফর্ম কে স্বাক্ষর করবেন?"
+  role_context: cdo
+  manual_scope: livestock_grow
+  answerable: "yes"
+  gold_facts:
+    - "শাখা ব্যবস্থাপক"
+    - "এলাকা ব্যবস্থাপক"
+    - "দাবি"
+    - "প্রগতি"
+  must_cite: ["livestock_grow_2026"]
+  source_refs:
+    - chunk_id: livestock_grow_2026_0017
+      manual_id: livestock_grow_2026
+      clause: null            # narrative manual, no section numbers
+      # resolved from the fact(s) unique to this chunk; every other
+      # fact of this question also occurs here verbatim, but is not
+      # unique to it -- 'এলাকা ব্যবস্থাপক'=3 chunks, 'দাবি'=20 chunks
+  must_not_contain_literals: []
+  difficulty: hard
+  notes: >
+    ধাপ ৩: শাখা ব্যবস্থাপক signs in the দাবি case, এলাকা ব্যবস্থাপক in the
+    প্রগতি case. This is the roles.py pattern again -- the same step has a
+    different authority depending on which programme the officer works
+    under, with no numeric difference to catch the error by. An answer
+    naming one of them is wrong half the time. Note this manual uses the
+    Dabi term সিডিও (14 occurrences) and never পিও, so a পিও-phrased
+    question must still reach it.
+
+- id: G-109
+  type: simple_lookup
+  provenance: chunk_derived
+  question_bn: "পোস্টমর্টেমের জন্য কত টাকা পাওয়া যায়?"
+  manual_scope: livestock_grow
+  answerable: "partial"
+  gold_facts:
+    - "২৫০০"
+    - "গ্রীন ডেল্টা"
+  must_cite: ["livestock_grow_2026"]
+  source_refs:
+    - chunk_id: livestock_grow_2026_0029
+      manual_id: livestock_grow_2026
+      clause: null            # narrative manual, no section numbers
+      # resolved from the fact(s) unique to this chunk; every other
+      # fact of this question also occurs here verbatim, but is not
+      # unique to it -- 'গ্রীন ডেল্টা'=6 chunks
+  difficulty: medium
+  notes: >
+    সর্বোচ্চ ২৫০০ টাকা, and the manual attributes it to গ্রীন ডেল্টা only.
+    It says nothing about whether সেনা pays for a postmortem. The correct
+    answer gives the figure AND says the manual is silent for the other
+    insurer -- inventing parity is the failure mode here.
+
+- id: G-110
+  type: simple_lookup
+  provenance: chunk_derived
+  question_bn: "প্রিমিয়ামের টাকায় ভগ্নাংশ থাকলে কী করতে হবে?"
+  manual_scope: livestock_grow
+  answerable: "yes"
+  gold_facts:
+    - "১০২"
+    - "১০৩"
+    - "৫০"
+  must_cite: ["livestock_grow_2026"]
+  source_refs:
+    - chunk_id: livestock_grow_2026_0021
+      manual_id: livestock_grow_2026
+      clause: null            # narrative manual, no section numbers
+      # resolved from the fact(s) unique to this chunk; every other
+      # fact of this question also occurs here verbatim, but is not
+      # unique to it -- '৫০'=4 chunks
+  difficulty: medium
+  notes: >
+    The rounding rule, with the manual's own worked example: গ্রস প্রিমিয়াম
+    ১০২ টাকা ৫০ পয়সা is collected as ১০৩ টাকা. Below .৫০ the fraction is
+    dropped; at .৫০ or above it rounds up. A high-frequency operational
+    question and the kind of small figure a transcription could corrupt
+    without looking wrong.
+
+- id: G-111
+  type: gap_undefined_product
+  provenance: field_sourced
+  question_bn: "এই বিমা নিতে কি ঋণ নেওয়া বাধ্যতামূলক?"
+  manual_scope: livestock_grow
+  answerable: "yes"
+  gold_facts:
+    - "বাধ্যতামূলক নয়"
+    - "সঞ্চয়"
+  must_cite: ["livestock_grow_2026"]
+  source_refs:
+    - chunk_id: livestock_grow_2026_0014
+      manual_id: livestock_grow_2026
+      clause: null            # narrative manual, no section numbers
+      # resolved from the fact(s) unique to this chunk; every other
+      # fact of this question also occurs here verbatim, but is not
+      # unique to it -- 'সঞ্চয়'=7 chunks
+  difficulty: medium
+  notes: >
+    Neither a loan nor savings is required -- any person can enrol by
+    completing the membership and insurance forms. Worth testing because the
+    project's other pillar IS a loan, so the plausible wrong answer is that
+    the insurance rides on স্বাধীন ঋণ.
+
+# ---------------------------------------------- three-manual disambiguation
+- id: G-112
+  type: cross_manual_overlap
+  provenance: field_sourced
+  question_bn: "গবাদিপ্রাণি সুরক্ষা বিমার শর্ত কী?"
+  manual_scope: [dabi, livestock_grow]
+  answerable: "partial"
+  gold_facts:
+    - "livestock_grow_2026"
+    - "গবাদিপ্রাণি সুরক্ষা বিমা"
+  must_cite: ["livestock_grow_2026", "dabi_2025 §5.4"]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: livestock_grow_2026
+      clause: TODO
+      # NOT RESOLVED. No fact of this question is unique to one chunk,
+      # so no ref can be named without picking. Candidate counts:
+      #   'livestock_grow_2026' -> 0 chunk(s) -- matches NOTHING
+      #   'গবাদিপ্রাণি সুরক্ষা বিমা' -> 36 chunk(s)
+  difficulty: hard
+  notes: >
+    Dabi §5.4 also covers গবাদিপ্রাণি সুরক্ষা বিমা, and this manual is the
+    fuller source. Tests that dedupe neither dropped the Livestock Grow
+    version nor merged two passages that differ -- hold the collapse
+    threshold at exactly 1.000. Note the sources are NOT interchangeable:
+    retrieval should prefer the dedicated manual, and source_type is there
+    so it can (docx beats ocr in a duplicate group, but here the only
+    Livestock Grow text is ocr).
+
+# ---------------------------------------------- unanswerable / adversarial
+- id: G-131
+  type: unanswerable_adversarial
+  provenance: field_sourced
+  question_bn: "ছাগলের বিমা করা যাবে কি? প্রিমিয়াম কত?"
+  question_variants:
+    - "ভেড়া বা ছাগলের জন্য গবাদিপ্রাণি সুরক্ষা বিমা আছে?"
+    - "chagol er bima hoy?"
+  manual_scope: livestock_grow
+  answerable: "no"
+  gold_facts:
+    - "দুগ্ধজাত গাভী"
+    - "গরু মোটাতাজাকরণ"
+  must_cite: []
+  source_refs:
+    - chunk_id: TODO
+      manual_id: livestock_grow_2026
+      clause: TODO
+      # NOT RESOLVED. No fact of this question is unique to one chunk,
+      # so no ref can be named without picking. Candidate counts:
+      #   'দুগ্ধজাত গাভী' -> 6 chunk(s)
+      #   'গরু মোটাতাজাকরণ' -> 5 chunk(s)
+  # Every premium rate in the manual. Quoting any of them in answer to a
+  # question about goats is the violation this question exists to catch --
+  # it is how a cattle rate gets applied to an uncovered animal. Mechanised
+  # here rather than left as prose in notes, because the abstention check
+  # alone would pass an answer that hedged and still quoted a rate.
+  must_not_contain_literals: ["১.৮০%", "১.৯০%", "১.৬০%", "২.৩৫%", "২.৪০%"]
+  difficulty: hard
+  notes: >
+    HIGHEST-RISK QUESTION IN THE SET, and a real field question -- ছাগল
+    occurs ZERO times in this manual. It covers exactly two products, both
+    cattle: দুগ্ধজাত গাভী (গাভী গরু only) and গরু মোটাতাজাকরণ (ষাঁড় only).
+    The plausible wrong answer is a premium rate lifted from one of those
+    and applied to a goat, formatted exactly like a right answer. Any
+    percentage in the response is a violation. The correct answer names what
+    IS covered and says goats are not.
+
+- id: G-132
+  type: acronym
+  provenance: field_sourced
+  question_bn: "ফর্মের রেফারকারী ঘরে UPG, IDP, CCP এর পূর্ণরূপ কী?"
+  manual_scope: livestock_grow
+  answerable: "no"
+  gold_facts:
+    - "UPG"
+    - "IDP"
+    - "CCP"
+  must_cite: []
+  source_refs:
+    - chunk_id: TODO
+      manual_id: livestock_grow_2026
+      clause: TODO
+      # NOT RESOLVED. No fact of this question is unique to one chunk,
+      # so no ref can be named without picking. Candidate counts:
+      #   'UPG' -> 2 chunk(s)
+      #   'IDP' -> 2 chunk(s)
+      #   'CCP' -> 2 chunk(s)
+  must_not_contain_literals: []
+  difficulty: medium
+  notes: >
+    These appear twice -- in the pillar diagram and as referrer codes on the
+    enrolment form -- and are never expanded, here or in either other
+    manual, and none is in productmatch.PROGRAMME_NAMES. Models will
+    happily generate a plausible expansion; score any expansion as a
+    violation. Same treatment as বিসিইউপি / সিডিপি / এনসিডিপি / এসসিডিপি.
+    Repeat for AI / WVB / SS lead from the same form field.
+
+- id: G-133
+  type: unanswerable_adversarial
+  provenance: field_sourced
+  question_bn: "একজন সিডিও কত টাকা পর্যন্ত বিমাদাবি অনুমোদন করতে পারেন?"
+  role_context: cdo
+  manual_scope: livestock_grow
+  answerable: "no"
+  gold_facts:
+    - "ইন্স্যুরেন্স কোম্পানি"
+  must_cite: []
+  source_refs:
+    - chunk_id: TODO
+      manual_id: livestock_grow_2026
+      clause: TODO
+      # NOT RESOLVED. No fact of this question is unique to one chunk,
+      # so no ref can be named without picking. Candidate counts:
+      #   'ইন্স্যুরেন্স কোম্পানি' -> 6 chunk(s)
+  must_not_contain_literals: []
+  forbidden_numbers_from_clause:
+    - "dabi_2025 §7.1"
+    - "progoti_2025 §7.1"
+  difficulty: hard
+  notes: >
+    No approval ceiling exists for a সিডিও anywhere in this manual, and the
+    premise is wrong in a second way: the সিডিও does not approve claims at
+    all -- the insurance company verifies and decides, and the সিডিও's role
+    is to collect the premium, pass the form up, and hand over the receipt.
+    The plausible wrong answer sits in the OTHER manuals' §7.1
+    প্রাধিকারসূচি, which is full of taka figures formatted exactly like a
+    right answer. Build forbidden.json from those clauses' chunks; any of
+    those figures appearing here is a violation.

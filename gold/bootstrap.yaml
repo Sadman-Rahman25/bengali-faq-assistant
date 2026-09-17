@@ -1,0 +1,738 @@
+# gold/bootstrap.yaml — Dabi 2025 + Progoti 2025
+#
+# 24 questions. question_bn is written; gold_facts, source_refs and the
+# figures are yours to fill while reading the chunk and the page image.
+#
+# WRITE IN THE ORDER THIS FILE IS ARRANGED, not by id. Blocks A and B need no
+# figures at all — they come off forbidden.json and divergence.md, which
+# Claude Code has already built. Block C is the slow part.
+#
+# EVERY QUESTION HERE IS chunk_derived. These test retrieval mechanics. They
+# do not cover officer vocabulary and do not substitute for the 50 field
+# questions.
+#
+# FILL RULES
+#   - gold_facts: the Bengali literal or the figure. English goes in notes.
+#     Prose facts need --judge llm, which is an API call per fact and a
+#     second thing that can be wrong.
+#   - one atomic fact per entry. Never bundle three into a sentence.
+#   - verified_against: corpus  until the page has been read.
+#   - verification_status: unverified  until you and your colleague have
+#     checked it against the printed manual.
+#   - TODO markers are deliberate. validate_gold.py should fail on any
+#     remaining TODO only under --strict, so nothing half-written scores.
+#
+# FACT KINDS (added 2026-09-15, after validate_gold.py flagged 22 facts)
+#   kind: literal   occurs verbatim in the chunk named by its ref.
+#                   Figures, role names, product names. Verbatim-checkable.
+#   kind: absent    must NOT occur anywhere in the corpus. Its evidence is
+#                   absence — no chunk can contain it, and if one did the
+#                   fact would be false. ref points at the clause that
+#                   SHOULD have carried it, for navigation only.
+#   kind: claim     a paraphrase with no literal to quote, e.g. "§7.1 covers
+#                   only procurement limits". Needs --judge llm to score.
+#   default is literal. Block A is mostly absent/claim; Block C is mostly
+#   literal.
+#
+#   ref: <chunk_id>  optional, per fact, resolving against the question's
+#                    source_refs list. Required where a question's facts
+#                    span more than one chunk or manual (G-214, G-215).
+#
+# SOURCE REFERENCE SCHEMA (revised 2026-09-15)
+#   CLAUSE is the reference, not page. A .docx has no pagination until it is
+#   rendered, so 831 of 867 chunks carry no page number, and rendering the
+#   docx through LibreOffice would produce page numbers that do NOT match
+#   the printed manual a colleague is holding — worse than having none.
+#   Verification instruction is "look up §5.3.1", which is how the manual is
+#   navigated anyway and is stable across renderings.
+#     required: chunk_id, manual_id, clause
+#     optional: page, render  — only for chunks that genuinely carry a page
+#               (the 36 livestock_grow_2026 chunks)
+
+meta:
+  version: 1
+  created: 2026-09-15
+  manuals: [dabi_2025, progoti_2025]
+  provenance: chunk_derived
+  note: >
+    Answerable/unanswerable split is 19/5, about 21% unanswerable. Every
+    unanswerable question here is a documented gap an officer will actually
+    ask about, and the failure mode is confident invention, not silence.
+  pending_verification: >
+    All facts enter as verified_against: corpus and
+    verification_status: unverified. Do not pass --require-render until the
+    page checks are done with a colleague against the source manuals.
+
+questions:
+
+# ==========================================================================
+# BLOCK A — write these first. 5 questions, no figures needed.
+# Everything comes from out/forbidden.json and the documented gaps.
+# ==========================================================================
+
+- id: G-209
+  type: unanswerable_adversarial
+  provenance: chunk_derived
+  question_bn: "একজন সিডিও কত টাকা পর্যন্ত ঋণ অনুমোদন করতে পারেন?"
+  question_variants:
+    - "সিডিও এর ঋণ অনুমোদনের সিলিং কত?"
+    - "PO koto taka loan approve korte pare?"
+  role_context: cdo
+  manual_scope: dabi
+  answerable: "no"
+  gold_facts:
+    - text: "ঋণ অনুমোদনের সিলিং ম্যানুয়ালে উল্লেখ নেই"
+      kind: absent
+      verified_against: corpus
+    - text: "প্রাধিকারসূচিতে শুধু ক্রয় ও প্রশাসনিক ব্যয়ের সীমা"
+      kind: claim
+      verified_against: corpus
+  must_cite: []
+  forbidden_numbers_from_clause: ["dabi_2025 §7.1", "progoti_2025 §7.1"]
+  source_refs:
+    - chunk_id: TODO          # the §7.1 প্রাধিকারসূচি chunk
+      manual_id: dabi_2025
+      clause: "৭.১"
+  verification_status: unverified
+  difficulty: hard
+  notes: >
+    Highest-risk question in the set. The plausible wrong answer is already
+    in the corpus, formatted exactly like a right answer. Any taka figure in
+    the response is a violation regardless of how the rest scores.
+
+- id: G-210
+  type: unanswerable_adversarial
+  provenance: chunk_derived
+  question_bn: "ধারা ২.১.১(ট) অনুযায়ী ঋণ অনুমোদনের সিলিং কত?"
+  manual_scope: dabi
+  answerable: "no"
+  gold_facts:
+    - text: "২.১.১ ধারায় (ট) উপধারা নেই"
+      kind: absent
+      verified_against: corpus
+    - text: "পরিবর্তন সমূহে এই ধারার উল্লেখ আছে কিন্তু ধারাটি নেই"
+      kind: claim
+      verified_against: corpus
+  must_cite: []
+  forbidden_numbers_from_clause: ["dabi_2025 §7.1"]
+  source_refs:
+    - chunk_id: TODO          # §2.1.1, runs ক to ছ
+      manual_id: dabi_2025
+      clause: "২.১.১"
+    - chunk_id: TODO          # the changelog row citing ২.১.১(ট)
+      manual_id: dabi_2025
+      clause: TODO
+  verification_status: unverified
+  difficulty: hard
+  notes: >
+    The document cites its own clause that is not there. Two source_refs
+    because the correct answer needs both: the clause that stops at ছ, and
+    the changelog entry that references ট.
+
+- id: G-211
+  type: unanswerable_adversarial
+  provenance: chunk_derived
+  question_bn: "শাখা পর্যায়ে অনুমোদনের সর্বোচ্চ সীমা কত?"
+  manual_scope: any
+  answerable: "no"
+  gold_facts:
+    - text: "প্রশ্নটি স্পষ্ট নয় — ক্রয় অনুমোদন ও ঋণ অনুমোদন আলাদা"
+      kind: claim
+      verified_against: corpus
+    - text: "ঋণ অনুমোদনের কোন শাখা পর্যায়ের সীমা ম্যানুয়ালে নেই"
+      kind: absent
+      verified_against: corpus
+  must_cite: []
+  forbidden_numbers_from_clause: ["dabi_2025 §7.1", "progoti_2025 §7.1"]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: dabi_2025
+      clause: "৭.১"
+  verification_status: unverified
+  difficulty: hard
+  notes: >
+    Deliberately ambiguous between procurement and lending. The §7.1
+    procurement figures are the trap and they will look like a clean answer.
+    Correct behaviour is to distinguish the two, then state that no lending
+    limit exists.
+
+- id: G-217
+  type: unanswerable_undefined
+  provenance: chunk_derived
+  question_bn: "আরোগ্য ঋণের ঋণসীমা, মেয়াদ ও সার্ভিস চার্জ কত?"
+  manual_scope: any
+  answerable: "no"
+  gold_facts:
+    - text: "আরোগ্য ঋণের ঋণসীমা বা মেয়াদ ম্যানুয়ালে নেই"
+      kind: absent
+      verified_against: corpus
+    - text: "আরোগ্য ঋণের গ্রাহক এই বিমা সুবিধার আওতায় আসবেনা"
+      kind: literal          # quoted from §5.1.2 — check it matches exactly
+      ref: dabi_2025_0186
+      verified_against: corpus
+  must_cite: ["dabi_2025 §5.1.2", "progoti_2025 §5.1.2"]
+  forbidden_numbers_from_clause: ["dabi_2025 §1.1"]
+  source_refs:
+    - chunk_id: dabi_2025_0186   # §5.1.2, the exclusion rule
+      manual_id: dabi_2025
+      clause: "৫.১.২"
+    - chunk_id: dabi_2025_0003   # সূচনা — the intro listing it as an offering
+      manual_id: dabi_2025
+      clause: null               # front matter: this chunk has no clause
+                                 # number. heading_path is "সূচনা".
+  verification_status: unverified
+  difficulty: hard
+  notes: >
+    Named as an offering, carries an operational rule, and Chapter 1 never
+    gives it a ceiling, term or conditions. A correct answer states BOTH
+    what exists and what is missing — an officer can otherwise learn their
+    client is excluded from cover without learning what the product is.
+
+- id: G-218
+  type: unanswerable_undefined
+  provenance: chunk_derived
+  question_bn: "বিসিইউপি এর পূর্ণরূপ কী?"
+  question_variants:
+    - "সিডিপি মানে কী?"
+  manual_scope: any
+  answerable: "no"
+  gold_facts:
+    - text: "পূর্ণরূপ কোন ম্যানুয়ালে উল্লেখ নেই"
+      kind: absent
+      verified_against: corpus
+  must_cite: []
+  must_not_contain_literals: []
+  # Nothing forbiddable yet: there are no numbers, and seeding invented
+  # expansions would be a synthetic trap. Abstention accuracy still scores
+  # this question. Backfill must_not_contain_literals with whatever the
+  # first real run invents — a real observed failure is the only kind worth
+  # encoding.
+  source_refs:
+    - chunk_id: TODO          # any chunk using the acronym undefined
+      manual_id: dabi_2025
+      clause: TODO
+  verification_status: unverified
+  difficulty: medium
+  notes: >
+    Four programme acronyms unexpanded across 194 chunk appearances —
+    বিসিইউপি, সিডিপি, এনসিডিপি, এসসিডিপি. A model will happily generate a
+    plausible Bangla expansion. After the first run, put whatever it invents
+    into must_not_contain_literals: that is a real observed failure, which
+    is the only kind worth encoding.
+
+# ==========================================================================
+# BLOCK B — write these second. 7 questions, all from out/divergence.md.
+# The analysis is done; you are transcribing it into YAML.
+# ==========================================================================
+
+- id: G-212
+  type: role_scoped_authority
+  provenance: chunk_derived
+  question_bn: "দাবি কর্মসূচিতে মামলা সংক্রান্ত বিল-ভাউচার কে অনুমোদন করবেন?"
+  role_context: cdo
+  manual_scope: dabi
+  answerable: "yes"
+  gold_facts:
+    - text: "আঞ্চলিক ব্যবস্থাপক কর্তৃক সাময়িক অনুমোদন প্রাপ্তি সাপেক্ষে দাবি কর্মসূচির ক্ষেত্রে সংশ্লিষ্ট শাখা ব্যবস্থাপক বিল-ভাউচার অনুমোদন করবেন।"
+      kind: literal
+      ref: dabi_2025_0136
+      verified_against: corpus
+  must_cite: ["dabi_2025 §3.9.6"]
+  must_not_contain_literals: ["এলাকা ব্যবস্থাপক"]
+  source_refs:
+    - chunk_id: dabi_2025_0136
+      manual_id: dabi_2025
+      clause: "৩.৯.৬"
+  verification_status: unverified
+  difficulty: hard
+  notes: >
+    REWRITTEN 2026-09-17, off §3.9.1/§3.9.2 and onto §3.9.6. The old ref
+    (dabi_2025_0121, §3.9.1) carries no approval sentence in its body at
+    all -- it is the preamble listing what to check BEFORE acting -- and the
+    old fact was the bare token আরএম, which appears in §3.9 as applicant and
+    as assistant, never as the bill-voucher approver. §3.9.6 is the only
+    clause in §3.9 that names one.
+    The fact is the chunk own sentence, quoted verbatim, not a role token;
+    on a one-token fact "the string is present" and "the chunk answers the
+    question" come apart badly.
+    must_not_contain এলাকা ব্যবস্থাপক is the real trap. That is the PROGOTI
+    approver, and dabi_2025_0136 contains the string inside
+    "শাখা/এলাকা ব্যবস্থাপক (দাবি)" in its first sentence -- so a system that
+    retrieves the right chunk and reads the wrong sentence hands a Dabi
+    officer the Progoti answer. Mirror of G-213; both must pass.
+
+- id: G-213
+  type: role_scoped_authority
+  provenance: chunk_derived
+  question_bn: "প্রগতি কর্মসূচিতে মামলা সংক্রান্ত বিল-ভাউচার কে অনুমোদন করবেন?"
+  role_context: po
+  manual_scope: progoti
+  answerable: "yes"
+  gold_facts:
+    - text: "প্রগতি কর্মসূচির ক্ষেত্রে সংশ্লিষ্ট এলাকা ব্যবস্থাপক এতদসংক্রান্ত বিল-ভাউচার অনুমোদন করবেন।"
+      kind: literal
+      ref: progoti_0152
+      verified_against: corpus
+  must_cite: ["progoti_2025 §3.9.6"]
+  must_not_contain_literals: ["শাখা ব্যবস্থাপক"]
+  source_refs:
+    - chunk_id: progoti_0152
+      manual_id: progoti_2025
+      clause: "৩.৯.৬"
+  verification_status: unverified
+  difficulty: hard
+  notes: >
+    REWRITTEN 2026-09-17, off §3.9.1 and onto §3.9.6. The old ref
+    (progoti_0133) contains আরএম but no approval statement; see G-212.
+    THE FACT IS A TRIMMED SPAN, not the whole sentence. The bill-voucher
+    sentence in progoti_0152 names BOTH programmes in one sentence, so
+    quoting it whole would put শাখা ব্যবস্থাপক -- this question own
+    forbidden literal -- inside its own gold fact. The span kept runs from
+    "প্রগতি কর্মসূচির ক্ষেত্রে" to the full stop: the shortest contiguous
+    substring holding both the role and অনুমোদন করবেন.
+    Mirror of G-212. One passing alone means the system picked a programme
+    and got lucky.
+
+- id: G-214
+  type: role_scoped_authority
+  provenance: chunk_derived
+  question_bn: "মামলা সংক্রান্ত সাময়িক খরচ ও বিল-ভাউচার কে অনুমোদন করবেন?"
+  manual_scope: ambiguous
+  answerable: partial
+  gold_facts:
+    - text: "আঞ্চলিক ব্যবস্থাপক"
+      kind: literal
+      ref: progoti_0152
+      verified_against: corpus
+    - text: "আঞ্চলিক ব্যবস্থাপক কর্তৃক সাময়িক অনুমোদন প্রাপ্তি সাপেক্ষে দাবি কর্মসূচির ক্ষেত্রে সংশ্লিষ্ট শাখা ব্যবস্থাপক এবং প্রগতি কর্মসূচির ক্ষেত্রে সংশ্লিষ্ট এলাকা ব্যবস্থাপক এতদসংক্রান্ত বিল-ভাউচার অনুমোদন করবেন।"
+      kind: literal
+      ref: progoti_0152
+      verified_against: corpus
+    - text: "কর্মসূচি অনুযায়ী বিল-ভাউচার অনুমোদনকারী ভিন্ন"
+      kind: claim
+      verified_against: corpus
+  must_cite: ["progoti_2025 §3.9.6", "dabi_2025 §3.9.6"]
+  must_not_contain_literals: []
+  source_refs:
+    - chunk_id: progoti_0152
+      manual_id: progoti_2025
+      clause: "৩.৯.৬"
+    - chunk_id: dabi_2025_0136
+      manual_id: dabi_2025
+      clause: "৩.৯.৬"
+  verification_status: unverified
+  difficulty: hard
+  notes: >
+    REWRITTEN 2026-09-17, off §3.9.2 and onto §3.9.6. No programme given,
+    so the correct answer names both, or asks which programme.
+    TWO LEVELS, and they differ. The PROVISIONAL EXPENSE is approved by
+    আঞ্চলিক ব্যবস্থাপক in both programmes. The BILL-VOUCHER approver splits:
+    শাখা ব্যবস্থাপক for দাবি, এলাকা ব্যবস্থাপক for প্রগতি. An answer that
+    gives one level in place of the other is wrong.
+    Fact 1 is a bare role token, which §3.9 otherwise shows to be unsafe --
+    আঞ্চলিক ব্যবস্থাপক occurs in many chunks. It is acceptable HERE only
+    because it carries an explicit per-fact ref: the chunk was chosen by
+    the clause, not found by searching for the token, which is exactly the
+    failure that produced the previous version of this question.
+    Fact 3 is a claim and carries no ref, so with two source_refs it
+    reports as ambiguous provenance rather than resolving. That is correct:
+    the divergence is a property of the PAIR, not of either chunk.
+    ASYMMETRY, and it is the point of the question: only progoti_0152
+    states both programmes rule. dabi_2025_0136 states Dabi alone, so a
+    Dabi-only retrieval cannot produce the Progoti half. Recorded in
+    data/corpus_gaps.md section 7.
+
+- id: G-215
+  type: cross_manual_disambiguation
+  provenance: chunk_derived
+  question_bn: "ধারা ৫.৪ অনুযায়ী কোন বিমা প্রযোজ্য?"
+  manual_scope: ambiguous
+  answerable: partial
+  gold_facts:
+    - text: "ম্যানুয়ালের নাম ছাড়া ধারা নম্বরটি স্পষ্ট নয়"
+      kind: claim
+      verified_against: corpus
+    - text: "ফায়ার সেফটি ইন্স্যুরেন্স"
+      kind: literal
+      ref: progoti_0275      # the Progoti §5.4 chunk
+      verified_against: corpus
+    - text: "গবাদিপ্রাণি সুরক্ষা বিমা"
+      kind: literal
+      ref: dabi_2025_0247    # the Dabi §5.4 chunk
+      verified_against: corpus
+  must_cite: ["progoti_2025 §5.4", "dabi_2025 §5.4"]
+  source_refs:
+    - chunk_id: progoti_0275
+      manual_id: progoti_2025
+      clause: "৫.৪"
+    - chunk_id: dabi_2025_0247
+      manual_id: dabi_2025
+      clause: "৫.৪"
+  verification_status: unverified
+  difficulty: hard
+  notes: >
+    Same clause number, different product. Correct behaviour is to ask which
+    manual, or answer for both with labels. This is why manual_id must be
+    mandatory in the answer template.
+
+- id: G-216
+  type: cross_manual_disambiguation
+  provenance: chunk_derived
+  question_bn: "ধারা ১.১.২ এ কী বলা হয়েছে?"
+  manual_scope: ambiguous
+  answerable: partial
+  gold_facts:
+    - text: "দুই ম্যানুয়ালে একই বিষয় ভিন্ন নম্বরে"
+      kind: claim
+      verified_against: corpus
+  must_cite: ["dabi_2025 §1.1.2", "progoti_2025 §1.1.3"]
+  source_refs:
+    - chunk_id: dabi_2025_0014
+      manual_id: dabi_2025
+      clause: "১.১.২"
+    - chunk_id: progoti_0021
+      manual_id: progoti_2025
+      clause: "১.১.৩"
+  verification_status: unverified
+  difficulty: medium
+  notes: >
+    Pair confirmed from divergence.md: 866 chars each, one character apart.
+    16 renumbered-identical pairs exist; alternatives are §5.2.7/§5.2.6 and
+    §4.4.4/§4.5.4 if this one reads poorly as a question.
+
+- id: G-221
+  type: comparative
+  provenance: chunk_derived
+  question_bn: "দাবি আর প্রগতি ম্যানুয়ালে ঋণের হার বা সিলিং এ কোন পার্থক্য আছে কি?"
+  manual_scope: both
+  answerable: "yes"
+  gold_facts:
+    - text: "কোন হার, সিলিং বা যোগ্যতার তথ্যে পার্থক্য নেই"
+      kind: claim
+      verified_against: corpus
+    - text: "পার্থক্য শুধু পদবি ও পরিধির ক্ষেত্রে"
+      kind: claim
+      verified_against: corpus
+  must_cite: ["dabi_2025", "progoti_2025"]
+  source_refs:
+    - chunk_id: dabi_2025_0014
+      manual_id: dabi_2025
+      clause: "১.১.২"
+    - chunk_id: progoti_0021
+      manual_id: progoti_2025
+      clause: "১.১.৩"
+  verification_status: unverified
+  difficulty: hard
+  notes: >
+    The honest answer is "none", and this is now corroborated
+    independently: dupscan reports 0 pairs differing in any number across
+    351 pairs at Jaccard >= 0.90. Every divergence is lexical. A model will
+    want to invent a difference because the question presupposes one —
+    watch for a fabricated rate.
+
+- id: G-222
+  type: comparative
+  provenance: chunk_derived
+  question_bn: "সিডিও আর পিও — এই দুটি পদ কি আলাদা?"
+  manual_scope: both
+  answerable: "yes"
+  gold_facts:
+    - text: "একই পদ, ভিন্ন কর্মসূচিতে ভিন্ন নাম"
+      kind: claim
+      verified_against: corpus
+    - text: "সিডিও"
+      kind: literal
+      ref: dabi_2025_0037    # Dabi §2.1.1(খ), names সিডিও in the heading
+      verified_against: corpus
+    - text: "পিও"
+      kind: literal
+      ref: progoti_0044      # the mirrored Progoti §2.1.1(খ), names পিও
+      verified_against: corpus
+  must_cite: ["dabi_2025", "progoti_2025"]
+  source_refs:
+    - chunk_id: dabi_2025_0037
+      manual_id: dabi_2025
+      clause: "২.১.১(খ)"
+    - chunk_id: progoti_0044
+      manual_id: progoti_2025
+      clause: "২.১.১(খ)"
+  verification_status: unverified
+  difficulty: medium
+  notes: >
+    সিডিও appears 127 times in Dabi and 0 in Progoti; পিও 0 and 142.
+    Perfectly complementary. Tests that the role registry surfaces the
+    equivalence in the answer rather than erasing it from the query —
+    expand_in_query is NO for a reason.
+
+# ==========================================================================
+# BLOCK C — write these last. 12 questions needing figures from the chunks.
+# Slowest block. If you run out of time, you still have a usable set.
+# ==========================================================================
+
+- id: G-201
+  type: simple_lookup
+  provenance: chunk_derived
+  question_bn: "দাবি লোনের সর্বোচ্চ ঋণসীমা কত?"
+  manual_scope: dabi
+  answerable: "yes"
+  gold_facts:
+    - text: TODO             # the ceiling figure, Bengali digits
+      verified_against: corpus
+  must_cite: ["dabi_2025 §1.1"]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: dabi_2025
+      clause: TODO
+  verification_status: unverified
+  difficulty: easy
+
+- id: G-202
+  type: simple_lookup
+  provenance: chunk_derived
+  question_bn: "প্রগতি লোনের সার্ভিস চার্জ কত?"
+  manual_scope: progoti
+  answerable: "yes"
+  gold_facts:
+    - text: TODO             # the rate
+      verified_against: corpus
+    - text: TODO             # the basis: flat or declining, as stated
+      verified_against: corpus
+  must_cite: ["progoti_2025 §1.1"]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: progoti_2025
+      clause: TODO
+  verification_status: unverified
+  difficulty: easy
+
+- id: G-203
+  type: simple_lookup
+  provenance: chunk_derived
+  question_bn: "সাধারণ সঞ্চয়ের উপর মুনাফার হার কত?"
+  manual_scope: any
+  answerable: "yes"
+  gold_facts:
+    - text: TODO
+      verified_against: corpus
+  must_cite: [TODO]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: TODO
+      clause: TODO
+  verification_status: unverified
+  difficulty: easy
+  notes: "Check the corpus wording — মুনাফা or সুদ. Use whichever appears."
+
+- id: G-204
+  type: simple_lookup
+  provenance: chunk_derived
+  question_bn: "প্রগতি লোনের মেয়াদ কত মাস?"
+  manual_scope: progoti
+  answerable: "yes"
+  gold_facts:
+    - text: TODO
+      verified_against: corpus
+  must_cite: ["progoti_2025"]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: progoti_2025
+      clause: TODO
+  verification_status: unverified
+  difficulty: easy
+  notes: >
+    If the manual gives several term options, list each as a separate
+    atomic fact rather than one bundled entry.
+
+- id: G-205
+  type: simple_lookup
+  provenance: chunk_derived
+  question_bn: "সঞ্চয় ফেরত সেবা কী এবং কারা এই সেবা পাবেন?"
+  manual_scope: any
+  answerable: "yes"
+  gold_facts:
+    - text: TODO
+      verified_against: corpus
+  must_cite: [TODO]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: TODO
+      clause: TODO
+  verification_status: unverified
+  difficulty: medium
+
+- id: G-206
+  type: table_figure_nested
+  provenance: chunk_derived
+  question_bn: "১,০০,০০১ থেকে ১,৫০,০০০ টাকা ঋণের অনুমোদন কে দেবেন?"
+  manual_scope: progoti
+  answerable: "yes"
+  gold_facts:
+    - text: TODO             # the approving authority for this band
+      verified_against: corpus
+  must_cite: ["progoti_2025"]
+  source_refs:
+    - chunk_id: TODO          # must be a table_depth_1 or depth_2 chunk
+      manual_id: progoti_2025
+      clause: TODO
+  verification_status: unverified
+  difficulty: medium
+  notes: >
+    Canary for nested-table recovery. python-docx does not recurse into
+    tables nested in cells of other tables; if extraction regresses this
+    returns nothing. Confirm source_refs points at a nested-table chunk, not
+    a prose chunk that happens to mention the figure.
+
+- id: G-207
+  type: table_figure_nested
+  provenance: chunk_derived
+  question_bn: "৭০,০০০ টাকা পর্যন্ত ঋণ অনুমোদনের ক্ষমতা কার?"
+  manual_scope: progoti
+  answerable: "yes"
+  gold_facts:
+    - text: TODO
+      verified_against: corpus
+  must_cite: ["progoti_2025"]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: progoti_2025
+      clause: TODO
+  verification_status: unverified
+  difficulty: medium
+
+- id: G-208
+  type: table_figure_nested
+  provenance: chunk_derived
+  question_bn: "ঋণ অনুমোদনের সর্বোচ্চ স্তর কোনটি এবং কে অনুমোদন করেন?"
+  manual_scope: progoti
+  answerable: "yes"
+  gold_facts:
+    - text: TODO             # the top band
+      verified_against: corpus
+    - text: TODO             # the authority for it
+      verified_against: corpus
+  must_cite: ["progoti_2025"]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: progoti_2025
+      clause: TODO
+  verification_status: unverified
+  difficulty: hard
+  notes: >
+    Tests that the whole ceiling table was recovered, not just the first
+    rows. If resplit.py dropped a part, the top band goes missing.
+
+- id: G-219
+  type: alias_robustness
+  provenance: chunk_derived
+  question_bn: "শস্য নিরাপত্তা বিষয়ে ধারা ৫.৩.১ এ কী বলা হয়েছে?"
+  manual_scope: dabi
+  answerable: "yes"
+  gold_facts:
+    - text: TODO             # content of §5.3.1
+      verified_against: corpus
+  must_cite: ["dabi_2025 §5.3.1"]
+  source_refs:
+    - chunk_id: dabi_2025_0236
+      manual_id: dabi_2025
+      clause: "৫.৩.১"
+  verification_status: unverified
+  difficulty: medium
+  notes: >
+    §5.3 spells it correctly; §5.3.1 carries the source typo নিাপত্তা. 158
+    chunks correct against 4 with the typo, so without the retrieval alias
+    the subsection is unreachable by correct spelling. The question uses the
+    CORRECT spelling deliberately — that is the test.
+
+- id: G-220
+  type: alias_robustness
+  provenance: chunk_derived
+  question_bn: "অর্গানোগ্রামে শাখা পর্যায়ের কোন কোন পদ তালিকাভুক্ত আছে?"
+  manual_scope: any
+  answerable: "no"
+  gold_facts:
+    - text: "অর্গানোগ্রামে শাখা পর্যায়ের কোন পদ তালিকাভুক্ত নেই"
+      kind: absent
+      verified_against: corpus
+    - text: "শাখা পর্যায়ের পদসমূহ অন্য ধারায় আছে, অর্গানোগ্রামে নয়"
+      kind: claim
+      verified_against: corpus
+  must_cite: ["dabi_2025 §10"]
+  must_not_contain_literals: []
+  # Deliberately unarmed, same reasoning as G-218. The wrong answer here
+  # NAMES branch posts, and those literals belong to roles.py — but the
+  # second gold fact says branch posts exist elsewhere, so a CORRECT answer
+  # may name them too while pointing at §2.1.1(খ)/§7.1. Seeding role names
+  # would rebuild exactly the false-positive class that forbidden.json was
+  # just filtered to remove. Backfill from the first real run instead.
+  source_refs:
+    - chunk_id: dabi_2025_0326   # §10.1 — the chapter's own §10 heading
+      manual_id: dabi_2025       # carries no chunk of its own
+      clause: "১০.১"
+  verification_status: unverified
+  difficulty: medium
+  notes: >
+    REWRITTEN 2026-09-16, from answerable:yes. Two separate problems were
+    measured, and the question now tests the second rather than assuming it
+    away.
+    (1) Spelling: the corpus spells it অরগানোগ্রাম 66 times and the correct
+    spelling zero times — a house spelling, not a slip. The question keeps
+    the CORRECT spelling; that is the alias test, handled as a retrieval
+    alias and not a source correction.
+    (2) Scope: the অরগানোগ্রাম chapter is 64 chunks under 26 headings and
+    every one is a head-office unit or team, §১০.১ through §১০.১৪. It never
+    enumerates branch-level posts. Only 8 of the 64 even mention শাখা, in
+    passing. Branch posts are named in §২.১.১(খ) and in the §৭.১ allowance
+    table (সিডিও ১০০০ টাকা, বিএম/এবিএম ১৫০০, এএম/এএএম ২০০০, আরএম ৩৫০০).
+    So the correct answer abstains on the organogram and redirects. A model
+    that lists posts from §১০ has invented them.
+
+- id: G-223
+  type: procedural
+  provenance: chunk_derived
+  question_bn: "বিমাদাবি দাখিলের ধাপগুলো কী কী?"
+  manual_scope: any
+  answerable: "yes"
+  gold_facts:
+    - text: TODO             # step 1
+      verified_against: corpus
+    - text: TODO             # step 2
+      verified_against: corpus
+    - text: TODO             # step 3
+      verified_against: corpus
+  must_cite: ["dabi_2025 §5.1.8"]
+  source_refs:
+    - chunk_id: TODO          # §5.1.8 is 14 prose chunks per manual; name
+                              # the one carrying the step you are recording
+      manual_id: dabi_2025
+      clause: "৫.১.৮"
+  verification_status: unverified
+  difficulty: hard
+  notes: >
+    Order matters. A reordered answer is wrong even when every step is
+    present, so score sequence separately from content. One fact per step.
+
+- id: G-224
+  type: procedural
+  provenance: chunk_derived
+  question_bn: "ইনসিডেন্ট নোটিফিকেশন আর বিমাদাবি পদ্ধতি — এই দুই ধারায় পার্থক্য কী?"
+  manual_scope: any
+  answerable: partial
+  gold_facts:
+    - text: "দুই ধারার বিষয়বস্তু একই"
+      kind: claim
+      verified_against: corpus
+  must_cite: ["dabi_2025 §5.1.8", "dabi_2025 §5.1.9"]
+  source_refs:
+    - chunk_id: TODO
+      manual_id: dabi_2025
+      clause: "৫.১.৮"
+    - chunk_id: TODO
+      manual_id: dabi_2025
+      clause: "৫.১.৯"
+  verification_status: unverified
+  difficulty: hard
+  notes: >
+    A passage printed twice under two clause numbers in each manual. FLAGGED
+    FOR CONFIRMATION, not assumed to be an error — check the pages with your
+    colleague before fixing the gold fact. If they turn out to differ, the
+    fact changes and so does the expected answer.
