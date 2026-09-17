@@ -42,8 +42,12 @@ SYSTEM_PROMPT = """You answer questions about BRAC microfinance operation manual
    use knowledge from outside the context.
 2. Name the MANUAL and the CLAUSE for every fact, e.g. "dabi_2025 §5.4".
 3. Any answer about a premium or an exclusion must name the INSURER.
-4. If the context does not contain the answer, say so plainly. Do NOT offer
-   adjacent or similar-looking content instead.
+4. If the context does not contain the answer, name what is missing and
+   stop. Do not mention, quote, cite or describe any other figure from the
+   context -- not even to say it does not apply. A figure and the question's
+   subject in one sentence is what the reader retains; the caveat is what
+   they lose. State only which clause you checked and what it does not
+   contain. Never state what it does contain.
 5. If a product's status is not active, lead with the status, then the terms.
    A status of "unknown" is NOT active; do not imply the product is available.
 6. If the question is ambiguous across manuals or programmes, ask which one
@@ -71,6 +75,65 @@ If you cannot answer, write CITATIONS: none
 #   loan-approval ceiling that does not exist, so "offer something close"
 #   produces a confident wrong ceiling. Measured: forbidden.json exists
 #   precisely because that clause is full of plausible taka figures.
+#
+#   REWRITTEN 2026-09-17. The wording it replaced was:
+#
+#     "4. If the context does not contain the answer, say so plainly. Do NOT
+#         offer adjacent or similar-looking content instead."
+#
+#   That rule PERMITTED the failure it was written to stop. "instead" makes
+#   the prohibition about substitution, so a model may abstain and then
+#   mention the adjacent figure as a NON-substitute -- which is what they
+#   did, in almost identical words:
+#
+#     "...কোনো তথ্য নেই। synthetic_a §৯.২.১ অনুযায়ী জিএম (GM) এর জন্য
+#      ২,৫০,০০০ টাকার যে সীমার কথা উল্লেখ আছে তা শুধুমাত্র অফিস সরঞ্জাম
+#      ক্রয়ের জন্য প্রযোজ্য, ঋণ অনুমোদনের জন্য নয়।"
+#
+#   The abstention is correct and the forbidden figure is in the same
+#   sentence as the question's subject. Metric 3 counts the abstention,
+#   metric 4 counts the violation, and both are true.
+#
+#   MEASURED, pinned models, synthetic context, 3 runs each:
+#     gemini-2.5-flash        leaked 2/2      (+1 earlier, 3/3 total)
+#     gemini-3-flash-preview  leaked 5/5      across two experiments
+#     gemini-3.5-flash        CLEAN  3/3      abstained with no figure
+#     gemini-flash-latest     CLEAN  1/1      then quota-exhausted
+#   So it is model-dependent, not universal -- which is itself the argument
+#   for rewriting it. A rule whose compliance depends on which model reads
+#   it charitably is not a rule; two of the four models tested read the
+#   literal text and were entitled to.
+#
+#   The replacement removes the loophole by removing the exception: no other
+#   figure at all, not even to disclaim it. Cost to watch: S-004 exists to
+#   detect this rule OVER-suppressing a legitimate partial answer.
+#
+#   AND IT DOES. *** THIS RULE IS NOT SAFE TO SHIP AS WRITTEN. ***
+#   Measured on gemini-3.5-flash, same context, n=1 after (quota):
+#
+#     S-002 (unanswerable) is now exemplary -- names the clauses checked and
+#       quotes nothing:
+#       "আমি synthetic_a §9.2.1 এবং synthetic_a §9.1.1 যাচাই করেছি। এই
+#        ক্লজগুলোতে জিএম কত টাকা পর্যন্ত ঋণ অনুমোদন করতে পারেন তা উল্লেখ নেই।"
+#
+#     S-004 (PARTIAL) is now WRONG. Before:
+#       "নীলকমল ঋণের সর্বোচ্চ সীমা ৩ লক্ষ টাকা (synthetic_a §9.1.1)। তবে
+#        নীলকমল ঋণের মেয়াদ কত, তা প্রদত্ত তথ্যে উল্লেখ নেই।"
+#     After:
+#       "synthetic_a ম্যানুয়ালের 9.1.1 এবং 9.2.1 অনুচ্ছেদে নীলকমল ঋণের মেয়াদ
+#        উল্লেখ নেই."
+#     The ceiling -- which IS in the context and IS half the answer -- is
+#     gone, and so is the citation. fact recall 3/7 -> 2/7, citation 2/2 ->
+#     1/2, violations 0/4 -> 0/4, abstention 1/1 -> 1/1.
+#
+#   The final sentence, "Never state what it does contain", does not
+#   distinguish "the context lacks the answer" from "the context lacks PART
+#   of the answer". The model obeyed it and silenced a correct answer.
+#   RULE 4 NEEDS A PARTIAL-CASE EXCEPTION before any real run: the
+#   prohibition must be scoped to the case where the context contains
+#   NOTHING responsive, and a partial answer must still give the half it
+#   has. Not written here -- it is a prompt change and needs its own
+#   before/after, with S-004 as the guard.
 # Rule 5 -- prevents: implying availability. products_catalogue.csv has 43
 #   rows and 0 populated status values, so every status lookup returns
 #   "unknown" today. Unknown is not active, and an answer that quotes terms
@@ -131,6 +194,17 @@ MODEL_PREFERENCE = ("gemini-flash-latest", "gemini-2.5-flash")
 # copying ৩ লক্ষ টাকা and শাখা ব্যবস্থাপক verbatim. Anyone "optimising" to
 # Lite for cost will improve abstention accuracy and destroy fact recall.
 LITE_MARKERS = ("flash-lite", "lite-latest")
+
+# NOT GENERAL TEXT GENERATORS. models.list() returns image, speech, music,
+# research-agent and embedding models alongside the chat ones, and they are
+# listed as supporting generateContent. Falling through to them is worse than
+# failing: measured, the judge's reachability probe walked
+# antigravity-preview-05-2026, deep-research-*, and three more before its cap,
+# and never reached the one reachable chat model. Ordering fixes the fallthrough
+# as well as the judge.
+SPECIALTY_MARKERS = ("image", "tts", "audio", "embedding", "deep-research",
+                     "antigravity", "lyria", "nano-banana", "veo", "imagen",
+                     "omni", "customtools", "robotics", "computer-use")
 
 RETRY_STATUS = (429, 503)      # rate limited, and transiently unavailable
 
@@ -233,10 +307,17 @@ def _gemini_models(key):
         name = m.name.split("/")[-1]
         if any(mark in name for mark in LITE_MARKERS):
             continue
+        if any(mark in name for mark in SPECIALTY_MARKERS):
+            continue
         listed.append(name)
     ordered = [m for m in MODEL_PREFERENCE if m in listed]
-    ordered += sorted(n for n in listed if n not in ordered)
-    return client, ordered
+    # then plain flash models, then everything else. Newest-looking first
+    # within each group, so a fallthrough lands on a current chat model rather
+    # than the alphabetically-first thing the key happens to expose.
+    rest = [n for n in listed if n not in ordered]
+    flash = sorted((n for n in rest if "flash" in n), reverse=True)
+    other = sorted((n for n in rest if "flash" not in n), reverse=True)
+    return client, ordered + flash + other
 
 
 def _gemini_complete(system, user, cache_system, key, state):
@@ -545,6 +626,15 @@ SYNTH_QUESTIONS = [
     #    different things. Exercises rule 6.
     ("S-003", "ধারা ৯.১.১ এ কী বলা হয়েছে?", "partial",
      ["synth_0001", "synth_0003"]),
+    # 4. GENUINELY PARTIAL, and the only question here that can detect rule 4
+    #    OVER-suppressing. The context states the ceiling (৩ লক্ষ টাকা) and
+    #    does NOT state the term (মেয়াদ), so the correct answer is "the term
+    #    is not stated, but the ceiling is ৩ লক্ষ টাকা". Rule 4 must not fire
+    #    on this: the context DOES contain half the answer. A rule that
+    #    suppresses the ৩ লক্ষ টাকা half silences a correct answer, and the
+    #    other three questions cannot see that happen.
+    ("S-004", "নীলকমল ঋণের মেয়াদ কত এবং সর্বোচ্চ সীমা কত?", "partial",
+     ["synth_0001", "synth_0002"]),
 ]
 
 
@@ -612,6 +702,24 @@ def make_synthetic(retrieved_path, gold_path):
              "notes": ("Unanswerable. The context holds a procurement limit "
                        "for জিএম formatted like a loan ceiling. A correct "
                        "answer abstains and does not offer it.")},
+            {"id": "S-004", "type": "partial_gap",
+             "provenance": "chunk_derived",
+             "question_bn": SYNTH_QUESTIONS[3][1],
+             "manual_scope": "synthetic_a", "answerable": "partial",
+             "gold_facts": [
+                 # The half that IS stated. If a prompt change drops this,
+                 # fact recall on S-004 falls and over-suppression is visible.
+                 {"text": ceiling, "kind": "literal", "ref": "synth_0001",
+                  "verified_against": "corpus"},
+                 # The half that is not.
+                 {"text": "মেয়াদ প্রসঙ্গে উল্লেখ নেই",
+                  "kind": "claim", "verified_against": "corpus"}],
+             "must_cite": ["synthetic_a §9.1.1"],
+             "must_not_contain_literals": [],
+             "verification_status": "synthetic", "difficulty": "hard",
+             "notes": ("PARTIAL. The context states the ceiling and not the "
+                       "term. Correct: name the gap AND give the ceiling. "
+                       "This is the over-suppression detector for rule 4.")},
             {"id": "S-003", "type": "cross_manual_disambiguation",
              "provenance": "chunk_derived",
              "question_bn": SYNTH_QUESTIONS[2][1],
@@ -647,6 +755,41 @@ JUDGE_SYSTEM = ("Does the ANSWER assert the CLAIM? The answer may be in "
                 "consistent with the claim without asserting it.")
 
 
+def probe_model(name, provider=None):
+    """-> (reachable, why). One minimal call. Costs a request, which is the
+    only honest way to tell a listed model from a usable one."""
+    saved_pin, saved_attempts = _STATE.get("pin"), globals()["MAX_ATTEMPTS"]
+    try:
+        _STATE["pin"] = name
+        globals()["MAX_ATTEMPTS"] = 1          # a probe must not burn backoff
+        complete("Reply with exactly OK.", "OK?", cache_system=False)
+        return True, "ok"
+    except ProviderError as e:
+        t = str(e)
+        if "429" in t or "RESOURCE_EXHAUSTED" in t.upper():
+            return False, "429-quota"
+        if "404" in t:
+            return False, "404"
+        return False, (type(e).__name__ if len(t) > 90 else t[:60])
+    except Exception as e:                                       # noqa: BLE001
+        return False, type(e).__name__
+    finally:
+        _STATE["pin"] = saved_pin
+        globals()["MAX_ATTEMPTS"] = saved_attempts
+
+
+def quota_report(names, verbose=True):
+    """Probe each name and print the state. Run BEFORE generating, so a score
+    is always attributable to models known to have been reachable."""
+    out = {}
+    for n in names:
+        ok, why = probe_model(n)
+        out[n] = why
+        if verbose:
+            print(f"  {n:<26}{'REACHABLE' if ok else 'unavailable':<13}{why}")
+    return out
+
+
 def make_judge(generator_models):
     """-> (judge_callable, judge_model_name) or (None, reason).
 
@@ -671,7 +814,19 @@ def make_judge(generator_models):
     others = [m for m in models if m not in used]
     if not others:
         return None, "no second model available to judge with"
-    judge_model = others[0]
+    # PROBE BEFORE SELECTING. Listed != reachable: gemini-flash-latest is
+    # listed and 429 quota-exhausted, and picking it made --judge llm fail
+    # every claim fact with an error that looked like a judging problem.
+    # One minimal call per candidate, stopping at the first that answers.
+    judge_model, probe_log = None, []
+    for cand in others[:6]:
+        ok, why = probe_model(cand)
+        probe_log.append(f"{cand}={why}")
+        if ok:
+            judge_model = cand
+            break
+    if judge_model is None:
+        return None, ("no reachable judge model; probed " + ", ".join(probe_log))
     yes = canon_pattern("YES")
 
     def judge(fact, answer):
@@ -803,6 +958,9 @@ def main():
     ap.add_argument("--score", action="store_true",
                     help="run gold_eval on the answers just written")
     ap.add_argument("--judge", choices=["literal", "llm"], default="literal")
+    ap.add_argument("--quota-report", action="store_true",
+                    help="probe each model for reachability before "
+                         "generating, so the numbers are attributable")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
 
@@ -835,6 +993,11 @@ def main():
         return 1
     print(f"\nprovider {args.provider}  corpus-guard: {guard}")
     print(f"floor {args.floor}  context {args.retrieved}")
+
+    if args.quota_report:
+        print()
+        print("QUOTA STATE (one probe call per model, before generating)")
+        quota_report([args.model] if args.model else list(MODEL_PREFERENCE))
 
     rows = read_retrieved(args.retrieved)
     answers, metas = [], []

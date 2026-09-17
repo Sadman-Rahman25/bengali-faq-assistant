@@ -46,6 +46,27 @@ questions:
   difficulty: hard
   notes: Unanswerable. The context holds a procurement limit for জিএম formatted like a loan
     ceiling. A correct answer abstains and does not offer it.
+- id: S-004
+  type: partial_gap
+  provenance: chunk_derived
+  question_bn: নীলকমল ঋণের মেয়াদ কত এবং সর্বোচ্চ সীমা কত?
+  manual_scope: synthetic_a
+  answerable: partial
+  gold_facts:
+  - text: ৩ লক্ষ টাকা
+    kind: literal
+    ref: synth_0001
+    verified_against: corpus
+  - text: মেয়াদ প্রসঙ্গে উল্লেখ নেই
+    kind: claim
+    verified_against: corpus
+  must_cite:
+  - synthetic_a §9.1.1
+  must_not_contain_literals: []
+  verification_status: synthetic
+  difficulty: hard
+  notes: 'PARTIAL. The context states the ceiling and not the term. Correct: name the gap
+    AND give the ceiling. This is the over-suppression detector for rule 4.'
 - id: S-003
   type: cross_manual_disambiguation
   provenance: chunk_derived
