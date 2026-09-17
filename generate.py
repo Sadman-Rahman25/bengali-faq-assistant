@@ -138,17 +138,20 @@ If you cannot answer, write CITATIONS: none
 #   Cause: "Never state what it does contain" does not distinguish "the
 #   context lacks the answer" from "the context lacks PART of the answer".
 #
-#   WORDING 3, "SCOPED", in force above. Splits the rule into case (a)
-#   nothing responsive and case (b) partially responsive, with an explicit
-#   test between them, and says outright that withholding a correct half is
-#   as wrong as inventing one.
+#   WORDING 3, "SCOPED", 2026-09-17:
 #
-#   WORDING 3, "SCOPED", 2026-09-17. Split into case (a) nothing responsive
-#   and case (b) partially responsive, with a test between them:
-#
-#     "The test for (a) versus (b): does any figure or statement in the
-#      context answer any part of the question as asked? If yes, you are in
-#      (b). A figure about a DIFFERENT subject is not a partial answer."
+#     "4. Two cases, and decide which you are in before answering.
+#       (a) The context contains NOTHING responsive to the question. Name
+#           the clauses you checked and what is missing, then stop. Do not
+#           mention, quote, cite or describe any figure from the context --
+#           not even to say it does not apply. [...]
+#       (b) The context answers PART of the question. Give the part it
+#           answers, with its clause, then name the part that is missing.
+#           Withholding a correct half is as wrong as inventing one.
+#       The test for (a) versus (b): does any figure or statement in the
+#       context answer any part of the question as asked? If yes, you are in
+#       (b). A figure about a DIFFERENT subject is not a partial answer --
+#       it is case (a)."
 #
 #   NEVER MEASURED ON ANY MODEL. Every Gemini chat model on the key went 429
 #   before it could be run, and gemma-4-* return 500 INTERNAL on a
