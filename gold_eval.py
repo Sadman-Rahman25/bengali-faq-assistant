@@ -488,6 +488,75 @@ def gold_chunk_ids(q):
     return ids
 
 
+def ref_in_context(ref, ctx_ids, twins):
+    """Was this chunk, or a declared twin of it, in the context?
+    -> True / False / None
+
+    THE ONE IMPLEMENTATION. Metric 1 and metric 2 both ask this question and
+    a second copy would drift -- the same reason the post-filter shares its
+    matcher with the violation metric. Keyed on dup_group via `twins`, NOT on
+    the manifest sha: the sha covers display_text, which carries the heading,
+    so the passage printed at 1.1.2 in Dabi and 1.1.3 in Progoti has two shas
+    and one dup_group.
+
+    None when there is nothing to judge by -- no ref, a TODO ref, or no
+    context supplied -- so the fact stays out of both buckets rather than
+    silently into one.
+    """
+    if not ref or ctx_ids is None:
+        return None
+    r = str(ref).strip()
+    if not r or r.upper().startswith("TODO"):
+        return None
+    return bool(({r} | twins.get(r, set())) & set(ctx_ids))
+
+
+def fact_kind_of(f):
+    """A fact's kind. Plain strings are literals."""
+    return (f.get("kind", "literal") if isinstance(f, dict) else "literal")
+
+
+def fact_ref(f):
+    """A fact's declared chunk ref, or None."""
+    if not isinstance(f, dict):
+        return None
+    r = f.get("ref")
+    return str(r) if r else None
+
+
+def collapse_twin_facts(facts, twins):
+    """Collapse facts that are the same text in a declared duplicate group.
+    -> (kept, collapsed)
+
+    G-216 carries one 96-character passage twice, once with ref
+    dabi_2025_0014 and once with ref progoti_0021 -- a single dup_group. It
+    counted as two facts and, when missed, as two misses, so one passage
+    moved the metric twice as far as any other. The twin refs are navigation:
+    they say where the passage can be cited from, not that there are two
+    things to say.
+
+    Collapsed ONLY when the texts match and the refs are twins of each other.
+    The same sentence appearing in two genuinely different places stays two
+    facts, because then there really are two chunks to retrieve.
+    """
+    kept, collapsed = [], []
+    for f in facts:
+        text = canon(fact_text(f))
+        ref = fact_ref(f)
+        merged = False
+        for k in kept:
+            if canon(fact_text(k)) != text:
+                continue
+            kref = fact_ref(k)
+            if ref and kref and (ref == kref or ref in twins.get(kref, set())):
+                collapsed.append(f)
+                merged = True
+                break
+        if not merged:
+            kept.append(f)
+    return kept, collapsed
+
+
 def citation_achievable(q, ctx_ids, twins):
     """Could a correct citation have been produced from this context?
     -> True / False / None
@@ -501,10 +570,7 @@ def citation_achievable(q, ctx_ids, twins):
     gold = gold_chunk_ids(q)
     if not gold or ctx_ids is None:
         return None
-    acceptable = set(gold)
-    for cid in gold:
-        acceptable |= twins.get(cid, set())
-    return bool(acceptable & set(ctx_ids))
+    return any(ref_in_context(c, ctx_ids, twins) for c in gold)
 
 
 CITE_MODES = ("all", "any")
@@ -610,14 +676,47 @@ def norm_answerable(v):
 def score_one(q, ans, forbidden_numbers=None, judge=None,
               ctx_ids=None, twins=None):
     answer = ans.get("answer", "")
-    facts = q.get("gold_facts", []) or []
-    hit = [f for f in facts
+    twins = twins or {}
+    raw_facts = q.get("gold_facts", []) or []
+
+    # THREE BUCKETS, and only the first is a recall denominator. Measured on
+    # the 17-question real run: of 43 literal misses across two models, 22
+    # were facts whose gold chunk was never retrieved and 12 were claim facts
+    # no literal matcher can evaluate. Recall was reporting a number that
+    # could not improve without retrieval changing, exactly as citation was.
+    #
+    # ONE PASSAGE, ONE FACT. Twin refs collapse first: G-216 carried the same
+    # 96-character passage under two refs in one dup_group, so it counted
+    # twice and missed twice.
+    facts, collapsed = collapse_twin_facts(raw_facts, twins)
+
+    # unjudged: a claim fact with no judge to evaluate it. Not missed -- it
+    # was never assessed, and leaving it in the denominator charged every
+    # model for the judge being absent.
+    # CLAIM *AND* ABSENT. An absent fact asserts that something is NOT in the
+    # manual -- G-217's "আরোগ্য ঋণের ঋণসীমা বা মেয়াদ ম্যানুয়ালে নেই" -- so it
+    # has no ref by construction and there is no span for a literal matcher
+    # to find. It was sitting in the denominator and scoring 0 on every model
+    # forever, which is the same category error as the claim facts.
+    UNJUDGEABLE_KINDS = ("claim", "absent")
+    unjudged = [f for f in facts
+                if fact_kind_of(f) in UNJUDGEABLE_KINDS and judge is None]
+    judged = [f for f in facts if f not in unjudged]
+
+    # unachievable: the gold chunk, and every declared twin of it, absent
+    # from the context. None (no ref, or no context given) counts as
+    # achievable so that a run without --retrieved reports as before.
+    unachievable = [f for f in judged
+                    if ref_in_context(fact_ref(f), ctx_ids, twins) is False]
+    scoreable = [f for f in judged if f not in unachievable]
+
+    hit = [f for f in scoreable
            if fact_present(fact_text(f), answer)
            or (judge and judge(fact_text(f), answer))]
     # Facts checked only against a self-written transcription cannot detect a
     # transcription error. They are scored, but reported separately so the
     # headline number never rests on them.
-    unrendered = [f for f in facts if fact_verified(f) != "render"]
+    unrendered = [f for f in scoreable if fact_verified(f) != "render"]
 
     violations = answer_violations(q, answer, forbidden_numbers)
 
@@ -644,13 +743,19 @@ def score_one(q, ans, forbidden_numbers=None, judge=None,
         "type": q.get("type"),
         "provenance": q.get("provenance", "unknown"),
         "answerable": answerable,
-        "facts_total": len(facts),
+        # DENOMINATOR IS `scoreable`: judged, and its chunk was reachable.
+        "facts_total": len(scoreable),
         "facts_hit": len(hit),
-        "facts_missed": [fact_text(f) for f in facts if f not in hit],
+        "facts_missed": [fact_text(f) for f in scoreable if f not in hit],
+        # Reported beside recall, never inside it.
+        "facts_unachievable": [(fact_text(f), fact_ref(f))
+                               for f in unachievable],
+        "facts_unjudged": [fact_text(f) for f in unjudged],
+        "facts_collapsed": [(fact_text(f), fact_ref(f)) for f in collapsed],
         "facts_unrendered": len(unrendered),
         "facts_hit_rendered": len([f for f in hit
                                    if fact_verified(f) == "render"]),
-        "facts_total_rendered": len([f for f in facts
+        "facts_total_rendered": len([f for f in scoreable
                                      if fact_verified(f) == "render"]),
         "citation": cite_ok(q.get("must_cite"), ans.get("citations", []),
                             q.get("must_cite_mode", "all")),
@@ -778,6 +883,58 @@ def canary_selftest(verbose=True):
            "gold_facts": [{"text": _role, "kind": "literal"}]}
     _tr = language_match(_qr, "The Branch Manager approves it.")
     _kept = language_match(_qr, f"{_role} অনুমোদন করবেন।")
+    # ---- fact recall must not be charged for a retrieval miss either -----
+    # A REAL CASE, AND ONE I GOT WRONG. G-223's six step headers were
+    # reported as a length artefact -- the suspicion was that a 36-to-72
+    # character span cannot be reproduced verbatim. It was not that at all:
+    # on the 2026-09-18 run the gold chunks dabi_2025_0198 and _0199 were
+    # never retrieved, so the steps could not have been answered from the
+    # context at any length. Overlap with the answer was 0.00 on gpt-oss for
+    # all six. Shortening them would have changed nothing.
+    #
+    # The canary asserts a step header with its ref out of context counts
+    # unachievable, and that the same fact with the ref present does not --
+    # so the bucket cannot swallow everything.
+    _step = {"text": "\u09e7\u09ae-\u09a7\u09be\u09aa: "
+                     "\u0987\u09a8\u09b8\u09bf\u09a1\u09c7\u09a8\u09cd"
+                     "\u099f \u09a8\u09cb\u099f\u09bf\u09ab\u09bf"
+                     "\u0995\u09c7\u09b6\u09a8 \u0993 "
+                     "\u09b8\u09c7\u099f\u0986\u09aa",
+             "kind": "literal", "ref": "dabi_2025_0198"}
+    _out = ref_in_context("dabi_2025_0198", ["progoti_0306", "dabi_2025_0284"],
+                          {})
+    _in = ref_in_context("dabi_2025_0198", ["dabi_2025_0198"], {})
+    _via_twin = ref_in_context("dabi_2025_0198", ["progoti_0229"],
+                               {"dabi_2025_0198": {"dabi_2025_0198",
+                                                   "progoti_0229"}})
+    _nc = ref_in_context("dabi_2025_0198", None, {})
+
+    # and the G-216 double-count: one passage, two refs, one dup_group
+    _same = "\u09b8\u09a6\u09b8\u09cd\u09af\u0997\u09a3"
+    _twin_facts = [{"text": _same, "kind": "literal", "ref": "dabi_2025_0014"},
+                   {"text": _same, "kind": "literal", "ref": "progoti_0021"}]
+    _tw = {"dabi_2025_0014": {"dabi_2025_0014", "progoti_0021"},
+           "progoti_0021": {"dabi_2025_0014", "progoti_0021"}}
+    _tkeep, _tcoll = collapse_twin_facts(_twin_facts, _tw)
+    # the same text in two UNRELATED chunks must NOT collapse
+    _far = [{"text": _same, "kind": "literal", "ref": "dabi_2025_0014"},
+            {"text": _same, "kind": "literal", "ref": "dabi_2025_0300"}]
+    _tkeep2, _tcoll2 = collapse_twin_facts(_far, _tw)
+
+    ok7 = (_out is False and _in is True and _via_twin is True and _nc is None
+           and len(_tkeep) == 1 and len(_tcoll) == 1
+           and len(_tkeep2) == 2 and len(_tcoll2) == 0)
+    if verbose:
+        print(f"  canary fact_achievable      G-223 step ref out of context "
+              f"-> {_out} (want False); present -> {_in}; via twin -> "
+              f"{_via_twin}; no context -> {_nc}"
+              f"  [{'DETECTED' if ok7 else 'MISSED'}]")
+        print(f"  canary twin_facts_collapse  twin refs {len(_twin_facts)}->"
+              f"{len(_tkeep)} fact(s); unrelated refs {len(_far)}->"
+              f"{len(_tkeep2)} (must stay 2)"
+              f"  [{'PASS' if ok7 else 'FAIL'}]")
+    ok = ok and ok7
+
     # ---- citation must not be charged for a retrieval miss ---------------
     # A REAL CASE: G-216. The gold chunk is progoti_0021, the same passage as
     # dabi_2025_0014 (one dup_group, printed at 1.1.3 in Progoti and 1.1.2 in
@@ -870,8 +1027,36 @@ def report(rows):
         abst = [r for r in rs if r["answerable"] == "no"]
         viol = [r for r in rs if r["violations"]]
         print(f"\n[{name}]  n={len(rs)}")
+        unach_f = [(r["id"], t, ref) for r in rs
+                   for t, ref in (r.get("facts_unachievable") or [])]
+        unj_f = [(r["id"], t) for r in rs
+                 for t in (r.get("facts_unjudged") or [])]
+        coll_f = [(r["id"], t, ref) for r in rs
+                  for t, ref in (r.get("facts_collapsed") or [])]
         print(f"  1. fact recall ........ {fh}/{ft} = "
-              f"{(fh / ft if ft else 0):.1%}")
+              f"{(fh / ft if ft else 0):.1%}"
+              + ("   (gold chunk was in context)" if unach_f else ""))
+        if unach_f:
+            print(f"  1b. facts unachievable .. {len(unach_f)}"
+                  f"   (NOT in the denominator: the gold chunk and every "
+                  f"declared\n      twin of it were absent from the context "
+                  f"-- a retrieval miss)")
+            for qid, t, ref in unach_f:
+                print(f"       {qid:<8} ref {str(ref):<20} {t[:52]}")
+        if unj_f:
+            print(f"  1c. facts unjudged ...... {len(unj_f)}"
+                  f"   (NOT in the denominator: kind claim or absent, with "
+                  f"no llm judge,\n      so never assessed rather than "
+                  f"missed. "
+                  f"Run --judge llm to score these)")
+            for qid, t in unj_f:
+                print(f"       {qid:<8} {t[:60]}")
+        if coll_f:
+            print(f"  1d. twin refs collapsed . {len(coll_f)}"
+                  f"   (one passage in a declared dup_group counted once; "
+                  f"the\n      duplicate refs are navigation)")
+            for qid, t, ref in coll_f:
+                print(f"       {qid:<8} ref {str(ref):<20} {t[:52]}")
         # TWO NUMBERS, NEVER MERGED. Accuracy is over the questions where a
         # correct citation was POSSIBLE from the context; the unachievable
         # ones are counted and listed, not scored. See citation_achievable.
