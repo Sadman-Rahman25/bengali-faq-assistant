@@ -309,6 +309,39 @@ DUMP_FIELDS = ("chunk_id", "manual_id", "clause", "heading_path",
                "display_text", "dense_score", "sparse_score", "fused_score")
 
 
+# manual_scope values that name no single manual. These questions TEST
+# disambiguation -- G-203 and G-216 exist to see whether the answer asks which
+# manual -- so forcing a preferred manual would defeat the question rather
+# than help it. A list of manuals is in the same position: more than one.
+SCOPE_NOT_SINGLE = frozenset({"ambiguous", "both", "any", "", "none"})
+
+
+def scope_to_manual_id(scope, known):
+    """manual_scope -> a corpus manual_id, or None.
+
+    The gold files write short names -- dabi, progoti, livestock_grow -- and
+    the corpus writes dabi_2025, progoti, livestock_grow_2026. Resolved by
+    prefix against the ids the corpus actually uses, the same way the
+    must_cite repair was, so nothing here hardcodes a manual name. Ambiguous
+    or absent scope -> None, and a scope matching several ids -> None rather
+    than a guess.
+    """
+    if not isinstance(scope, str):
+        return None                       # a list names more than one manual
+    sc = scope.strip().lower()
+    if sc in SCOPE_NOT_SINGLE:
+        return None
+    if sc in known:
+        return sc
+    cands = [k for k in known if k.startswith(sc)]
+    return cands[0] if len(cands) == 1 else None
+
+
+def corpus_manual_ids(ix):
+    """The manual ids present in the index. -> set"""
+    return {m.get("manual_id") for m in ix.meta if m.get("manual_id")}
+
+
 def dump_retrieved(ix, questions, k, out_path):
     """Write one row per gold question to `out_path` as JSONL.
 
@@ -318,10 +351,19 @@ def dump_retrieved(ix, questions, k, out_path):
     that drifted because the index or the model was reloaded in between.
     """
     n = 0
+    known = corpus_manual_ids(ix)
     with Path(out_path).open("w", encoding="utf-8") as f:
         for q in questions:
             qid, qbn = q["id"], q["question_bn"]
-            hits = ix.search(qbn, k=k)
+            # PREFER THE QUESTION'S OWN MANUAL when it names one. This is not
+            # a filter: prefer_manual only decides which member of a 1.000
+            # duplicate group survives the collapse. Without it the surviving
+            # twin is whichever scored higher, which is arbitrary with respect
+            # to the question -- G-201 asks about Dabi and was handed the
+            # byte-identical Progoti chunk, so the citation was wrong while
+            # the content was right.
+            prefer = scope_to_manual_id(q.get("manual_scope"), known)
+            hits = ix.search(qbn, k=k, prefer_manual=prefer)
             row = {"question_id": qid, "question_bn": qbn,
                    "chunks": [{key: h[key] for key in DUMP_FIELDS}
                               for h in hits]}
