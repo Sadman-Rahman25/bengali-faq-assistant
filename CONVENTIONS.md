@@ -208,6 +208,145 @@ Use a **real** historical failure, not an invented one. The গার্ডি�
 is the exact pattern that was in the repo. A synthetic canary tests what you
 imagined the bug was; a real one tests what actually happened.
 
+### A Bengali canary fixture must be sliced from a stored artefact
+
+Never hand-type it. Read it out of the saved run, the chunk file, or the gold
+file, and assert it is a substring of that artefact in the same breath:
+
+```python
+# yes -- generated from the saved answer, and checked against it
+_MIRROR = _slice_of(SAVED_ANSWER)
+assert SAVED_ANSWER.startswith(_MIRROR)
+
+# no -- typed from looking at the glyphs
+_MIRROR = "সিনথেটিক_এ ম্যানুয়ালের §৯.১.১ অনুযায়ী"
+```
+
+**Because the two things that decide whether a Bengali fixture is the real
+failure are both invisible in the rendered glyph.** The measured case is
+`gold_eval.language_match_ids`, 2026-09-18. Its fixture was hand-typed from
+qwen's answer and carried two errors that no amount of re-reading would have
+shown:
+
+| Typed | Should have been | Renders as |
+|---|---|---|
+| `\u0938` — Devanagari `स` | `\u09b8` — Bengali `স` | স, identically |
+| `\u09df` — composed `য়` | `\u09af\u09bc` — decomposed, as the model emits it | য়, identically |
+
+The canary went **green**, on a string no model ever produced. It satisfied
+this convention's letter — a real observed failure, a check watched going red
+— and broke its intent, because the thing being watched was not the failure.
+It surfaced only because a reported hit read `িনথেটিক_এ` with the leading স
+missing: the Devanagari character fell outside the Bengali range the check
+scans, so the token silently started one character late.
+
+This is the same asymmetry as Convention 4, one level up. Convention 4 keeps a
+*pattern* and the text it matches in agreement about nukta form; this keeps a
+*fixture* and the artefact it claims to come from in agreement about
+everything. A fixture you cannot diff against a stored artefact is a
+transcription, and transcriptions of Bengali are exactly what this repo has
+learned not to trust.
+
+---
+
+## 4. A Bengali literal and the text it matches must agree on nukta form.
+
+Preference order:
+
+1. **`canon()` the text.** Where the text side is yours to normalise, do
+   that and match plainly. It is the cheapest correct answer and it is
+   sufficient — see *Why* below.
+2. **`canon_pattern()` the literal.** Where the text side is not yours —
+   raw extractor output, a model's answer, anything you did not normalise —
+   build the pattern so it matches either form.
+
+Never a bare Bengali literal against un-normalised text. That is the one
+case the lint fails on.
+
+```python
+# yes
+from bn_shared import canon_pattern
+CHAPTER_WORD_RX = canon_pattern("অধ্যায়")
+
+# yes -- splice the built pattern into a larger regex
+_ADHYAY = canon_pattern("অধ্যায়").pattern
+CHAPTER_RX = re.compile(rf"^\s*(\S+)\s*{_ADHYAY}\s*[:ঃ：]?\s*(.*)$")
+```
+
+```python
+# no
+CHAPTER_WORD_RX = re.compile(r"অধ্যায়")      # nukta-blind
+if "অধ্যায়" in text:                         # same failure, no regex
+n = text.count("অধ্যায়")                      # same failure again
+```
+
+### Why
+
+য় (U+09DF), ড় (U+09DC) and ঢ় (U+09DD) are on the Unicode **composition
+exclusion** list. Composition *into* them is excluded, so NFC **does** unify
+the two spellings — by decomposing the precomposed form:
+
+```
+NFC(U+09DF)        -> U+09AF U+09BC
+NFC(U+09AF U+09BC) -> U+09AF U+09BC     # already there, unchanged
+```
+
+Both forms converge on the decomposed one. **`canon()` on both sides is
+therefore sufficient**, and a plain substring test works afterwards.
+
+The failure is the *asymmetric* case: a literal in one form matched against
+text nobody normalised. Then the two never meet, and **nothing throws** — it
+matches fewer occurrences, or none.
+
+Three instances, none caught by the checks around it:
+
+| # | Where | How it looked |
+|---|---|---|
+| 1 | `গার্ডিয়ান লাইফ` | matched 2 of 12 chunks. Found because 2-of-12 looked implausible, not because anything flagged it |
+| 2 | `gold_eval` fact matcher | caught only because that canary was built from explicit codepoints |
+| 3 | `CHAPTER_WORD_RX` / `CHAPTER_RX` | both carried decomposed য় and matched **raw** PDF lines, which emit precomposed U+09DF. Found 0 where a canon'd comparison finds 29 |
+
+All three matched text that had not been through `canon()`. Patterns matched
+against canon'd *chunks* were never broken: measured 14 Sep 2026, the corpus
+is 100% decomposed on both ingestion paths (10,017 / 0 docx, 296 / 0 ocr),
+because `ex.py`'s `nm()` and `ex_pdf.py`'s `canon()` both apply NFC.
+
+Instance 3 is the instructive one. It killed **two** signals at once — real
+chapter headings were never detected in any manual, and the over-detection
+gate's ratio check was permanently inert — and the gate still reported a
+verdict on three signals as though it had four.
+
+### Why a lint and not just "always canon the text"
+
+Because you cannot always reach the text. A pattern run over raw extractor
+output, or over a model's answer, has no normalised side to lean on — and
+that is precisely where all three failures were. The guard therefore has to
+find *patterns*, which is an AST question, not a runtime one.
+
+### Two tiers
+
+`bengali_literal_lint.py` splits findings, and only one tier fails the build:
+
+- **ERROR** — the literal contains a nukta character. It is broken now and
+  silent about it.
+- **ADVISORY** — Bengali, but no nukta. Works today; breaks the day someone
+  edits the literal. Reported, does not fail.
+
+Blocking on both would train people to add exemptions, which is how a
+convention dies.
+
+### Its canary, and what the first version got wrong
+
+The canary runs real code from the files where the bug lived, and the two
+nukta forms are built with `chr(0x09DF)` and `chr(0x09AF) + chr(0x09BC)` —
+never typed. Typing them is the very ambiguity being linted: whichever form
+the editor saved would be used for both sides, the asymmetry would vanish,
+and the canary would pass while proving nothing.
+
+That is exactly how `heading_gate`'s own canary passed while
+`CHAPTER_WORD_RX` found 0 on every manual: its `_synth` fixture wrote the
+text with the same literal the pattern used, so both sides always agreed.
+
 ---
 
 ## Consequence worth knowing

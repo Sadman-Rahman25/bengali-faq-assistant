@@ -67,6 +67,29 @@ questions:
   difficulty: hard
   notes: 'PARTIAL. The context states the ceiling and not the term. Correct: name the gap
     AND give the ceiling. This is the over-suppression detector for rule 4.'
+- id: S-005
+  type: partial_gap
+  provenance: chunk_derived
+  question_bn: নীলকমল ঋণ কে অনুমোদন করবেন এবং প্রক্রিয়াকরণ ফি কত?
+  manual_scope: synthetic_a
+  answerable: partial
+  gold_facts:
+  - text: কেএম
+    kind: literal
+    ref: synth_0001
+    verified_against: corpus
+  - text: প্রক্রিয়াকরণ ফি প্রসঙ্গে উল্লেখ নেই
+    kind: claim
+    verified_against: corpus
+  must_cite:
+  - synthetic_a §9.1.1
+  must_not_contain_literals: []
+  verification_status: synthetic
+  difficulty: hard
+  notes: 'PARTIAL, and the non-numeric twin of S-004. The context names the approver and states
+    no fee. Correct: give কেএম AND name the gap. NOTE a metric interaction -- dropping কেএম
+    costs BOTH fact recall and language_match, because untranslated_literals cannot tell a
+    suppressed literal from a translated one. Read metric 1 for suppression here.'
 - id: S-003
   type: cross_manual_disambiguation
   provenance: chunk_derived

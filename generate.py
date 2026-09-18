@@ -1194,6 +1194,17 @@ SYNTH_QUESTIONS = [
     #    other three questions cannot see that happen.
     ("S-004", "নীলকমল ঋণের মেয়াদ কত এবং সর্বোচ্চ সীমা কত?", "partial",
      ["synth_0001", "synth_0002"]),
+    # 5. THE SECOND PARTIAL, and structurally the mirror of S-004. S-004's
+    #    present half is a FIGURE (৩ লক্ষ টাকা) and rule 4's operative
+    #    sentence is "do not quote any figure" -- so S-004 alone cannot tell
+    #    whether over-suppression attaches to NUMBERHOOD or to partial
+    #    answers in general. Here the present half is a ROLE (কেএম, stated in
+    #    synth_0001) and the missing half is a fee that appears nowhere. A
+    #    model that keeps কেএম here but drops ৩ লক্ষ টাকা on S-004 is
+    #    suppressing figures; one that drops both is suppressing the stated
+    #    half of any partial answer.
+    ("S-005", "নীলকমল ঋণ কে অনুমোদন করবেন এবং প্রক্রিয়াকরণ ফি কত?", "partial",
+     ["synth_0001", "synth_0002"]),
 ]
 
 
@@ -1279,6 +1290,32 @@ def make_synthetic(retrieved_path, gold_path):
              "notes": ("PARTIAL. The context states the ceiling and not the "
                        "term. Correct: name the gap AND give the ceiling. "
                        "This is the over-suppression detector for rule 4.")},
+            {"id": "S-005", "type": "partial_gap",
+             "provenance": "chunk_derived",
+             "question_bn": SYNTH_QUESTIONS[4][1],
+             "manual_scope": "synthetic_a", "answerable": "partial",
+             "gold_facts": [
+                 # The half that IS stated, and deliberately NOT a number.
+                 {"text": role, "kind": "literal", "ref": "synth_0001",
+                  "verified_against": "corpus"},
+                 # The half that is not stated anywhere in the fixture.
+                 {"text": "প্রক্রিয়াকরণ ফি প্রসঙ্গে উল্লেখ নেই",
+                  "kind": "claim", "verified_against": "corpus"}],
+             "must_cite": ["synthetic_a §9.1.1"],
+             # LEFT EMPTY ON PURPOSE. ৪.৫০% and the two procurement figures
+             # are all available to be mis-offered as a "fee", and arming them
+             # would make this a violation trap as well. It would then be
+             # unclear whether a bad row meant over-suppression or a leak,
+             # which is the one thing this question exists to isolate.
+             "must_not_contain_literals": [],
+             "verification_status": "synthetic", "difficulty": "hard",
+             "notes": ("PARTIAL, and the non-numeric twin of S-004. The "
+                       "context names the approver and states no fee. "
+                       "Correct: give কেএম AND name the gap. NOTE a metric "
+                       "interaction -- dropping কেএম costs BOTH fact recall "
+                       "and language_match, because untranslated_literals "
+                       "cannot tell a suppressed literal from a translated "
+                       "one. Read metric 1 for suppression here.")},
             {"id": "S-003", "type": "cross_manual_disambiguation",
              "provenance": "chunk_derived",
              "question_bn": SYNTH_QUESTIONS[2][1],
