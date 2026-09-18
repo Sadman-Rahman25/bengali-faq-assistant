@@ -773,6 +773,45 @@ def score_one(q, ans, forbidden_numbers=None, judge=None,
     }
 
 
+JUDGE_SYSTEM = (
+    "Does the ANSWER assert the CLAIM? The answer may be in Bengali and the "
+    "claim in English or Bengali. Reply with exactly YES or NO. Reply NO if "
+    "the answer is merely consistent with the claim without asserting it.")
+
+
+def make_provider_judge(provider="groq", model="openai/gpt-oss-20b"):
+    """A judge routed through generate.complete. -> (judge, label)
+
+    WHY THIS EXISTS BESIDE make_llm_judge. make_llm_judge needs the anthropic
+    package, which is not installed here, and generate.make_judge only ever
+    wired Gemini -- so --judge llm could not run at all on the provider this
+    project actually has quota on, and every real run has been scored with
+    --judge literal. That is not a small gap: with the literal matcher, fact
+    recall was 46.7% on gpt-oss and ~7 of its 8 achievable misses were facts
+    whose information was present in different words.
+
+    imported lazily: generate imports gold_eval for answer_violations, so a
+    module-scope import here would cycle.
+
+    THE JUDGE MUST NOT BE THE GENERATOR. gpt-oss-20b is distinct from both
+    generators used so far; it is the same FAMILY as gpt-oss-120b, which is
+    recorded as a weakness rather than claimed as independence.
+
+    The judge sees the fact and the answer and NOTHING else -- not the gold
+    set, not the retrieved context, not the question's notes. A judge given
+    the surrounding material grades on vibes.
+    """
+    import generate
+    generate.configure(provider, model)
+
+    def judge(fact, answer):
+        text, _meta = generate.complete(
+            JUDGE_SYSTEM, f"CLAIM:\n{fact}\n\nANSWER:\n{answer}")
+        return (text or "").strip().upper().startswith("YES")
+
+    return judge, f"{provider}:{model}"
+
+
 def make_llm_judge(model="claude-sonnet-4-6"):
     """
     Optional. Literal and numeric facts are matched deterministically above;
@@ -1201,6 +1240,10 @@ def main():
     ap.add_argument("--require-render", action="store_true",
                     help="fail the run if any scored fact is corpus-checked "
                          "only; use once figure verification is done")
+    ap.add_argument("--judge-provider", default="groq",
+                    help="provider for --judge llm (default groq)")
+    ap.add_argument("--judge-model", default="openai/gpt-oss-20b",
+                    help="judge model; must differ from the generator")
     ap.add_argument("--retrieved", metavar="PATH",
                     help="the retrieval dump the answers were generated "
                          "from. With it, citation is split into accuracy "
@@ -1232,7 +1275,15 @@ def main():
     if missing:
         print(f"\n[warn] no answer for: {', '.join(missing)}")
 
-    judge = make_llm_judge() if args.judge == "llm" else None
+    judge, judge_label = None, "literal"
+    if args.judge == "llm":
+        judge, judge_label = make_provider_judge(args.judge_provider,
+                                                 args.judge_model)
+    # EVERY REPORT SAYS WHICH JUDGE PRODUCED IT. The literal and llm numbers
+    # are not comparable -- the literal matcher requires a verbatim span and
+    # the judge accepts a paraphrase -- so a number without its judge is
+    # unreadable.
+    print(f"\njudge: {judge_label}")
     ctx = load_context(args.retrieved) if args.retrieved else {}
     twins = load_twins() if args.retrieved else {}
     if args.retrieved:
