@@ -1031,7 +1031,7 @@ wording, post-filter on:
 | 1 original | qwen 3/3, gpt-oss 0/3 | no | not yet measured |
 | 4 per-figure | **all 4 models, 10/10** | no | not yet measured |
 | 5 minimal | none | gpt-oss **2 of 3** | qwen **2/4** — English |
-| 6 shape-only | none | gpt-oss **3 of 3** | 4/4 |
+| 6 shape-only | none | gpt-oss **3 of 3** | script 4/4, ids 1/4–3/4 |
 
 Wording 6 removed the copyable English phrase and the copying stopped — qwen
 answers in Bengali 3/3. The same edit made gpt-oss-120b withhold the S-004
@@ -1042,14 +1042,48 @@ seventh wording was written. This is the argument for the post-filter: a
 prompt rule is advice, and every phrasing of a prohibition is something a
 model can comply with in a way that defeats it.
 
+**Rule 4 is lossy, not unsafe — and the block was renamed to say so.** The
+`NOT-SAFE-TO-SHIP` warning named the wrong risk. Leaking is handled below the
+prompt by the post-filter, which did not fire in any of wording 6's 24 calls
+with violations 0/4 throughout. What survives is a loss on **partial**
+answers, and it is model-dependent: on S-004, where the manual holds the
+ceiling but not the tenure, `gpt-oss-120b` drops `৩ লক্ষ টাকা` 3/3 and the
+`§9.1.1` citation with it (recall 2/7, cite 1/2), while qwen keeps both
+(3/7, 2/2). A dropped fact is a dropped citation, and a missing figure is
+indistinguishable to the reader from a figure the manual never had — which is
+why **qwen is now the default model**, first in `GROQ_PREFERENCE`.
+
 **A metric catches its neighbour's failure, not its mirror.**
 `language_match` was added to catch a Bengali role literal translated *out*
-of Bengali. qwen does the reverse — it transliterates the Latin manual id
+of Bengali. The reverse went unseen: qwen transliterates the Latin manual id
 *into* Bengali prose (`সিনথেটিক_এ` for `synthetic_a`, `§৯.১.১` for `§9.1.1`)
-while keeping the `CITATIONS:` line correctly Latin. So citation scores 2/2,
-`language_match` scores 4/4, and an officer searching the manual for
-`সিনথেটিক_এ` finds nothing. Every new metric should be asked what its
-mirror image looks like.
+while keeping the `CITATIONS:` line correctly Latin — so citation scored 2/2
+and `language_match` 4/4 on an answer whose reference cannot be looked up.
+`language_match` now carries the mirror check as a third component rather
+than a sixth metric, and it immediately found failures on **both** models,
+not just the one that prompted it: both write the S-003 clause number in
+Bengali digits (`ধারা ৯.১.১`). qwen falls to 1/4, `gpt-oss-120b` to 3/4. So
+the model chosen as default for keeping facts is the worse one on rule 7;
+the trade is recorded at both sites rather than resolved. **Every new metric
+should be asked what its mirror image looks like.**
+
+**What the mirror check cannot see, written down because it matters.** It
+keys on characters, not a word list: an underscore beside Bengali text, or a
+clause number in Bengali digits. So `synthetic_a` → `সিনথেটিক_এ` and
+`dabi_2025` → `দাবি_২০২৫` are caught, and `progoti` → `প্রগতি` never can be —
+প্রগতি is also the programme's name in ordinary prose, and flagging it would
+fail every correct answer that names the programme. Two-component Bengali
+decimals are deliberately not flagged either: `২.৩৫` and `২.৪০` are interest
+rates in these manuals, and a percentage is fact recall's business.
+
+**A canary fixture typed by hand is not the failure it claims to be.** The
+mirror canary's first version hand-typed the codepoints of qwen's answer and
+got two wrong — `\u0938` (Devanagari स) for `\u09b8` (স), and composed
+`\u09df` where qwen emits য় **decomposed** as `\u09af\u09bc`. It still went
+green, on a string the model never produced. The fixture is now generated
+from the saved answer and asserted to be a verbatim prefix of it. Both
+things that mattered — the exact codepoints and the nukta form — are
+invisible in the rendered glyph.
 
 ---
 

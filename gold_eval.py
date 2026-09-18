@@ -158,14 +158,64 @@ def untranslated_literals(q, answer):
     return out
 
 
+# THE MIRROR FAILURE, added 2026-09-18 after wording 6 was measured.
+# untranslated_literals catches a Bengali literal translated OUT of Bengali.
+# The reverse is a Latin identifier transliterated INTO Bengali, and nothing
+# saw it: qwen/qwen3.8-27b wrote "সিনথেটিক_এ" for synthetic_a and "§৯.১.১"
+# for §9.1.1 in its PROSE while its CITATIONS: line stayed correctly Latin --
+# so citation scored 2/2 and language_match 4/4 on an answer whose manual
+# reference an officer cannot look up. The corpus writes manual_id as
+# dabi_2025 / progoti / synthetic_a and clause as 2.1.2 / 9.1.1, both ASCII;
+# a reference in the body has to match that spelling to be searchable.
+#
+# TWO SHAPES, both keyed on characters rather than on a word list, so no
+# Bengali word literal enters a matching context here:
+_BN_WORD_RX = re.compile(r"[A-Za-z0-9_\u0980-\u09ff]+")
+# an identifier is the only reason an underscore appears next to Bengali text
+_BN_UNDERSCORE = "_"
+# § or a dotted three-component number, written in Bengali digits. Two
+# components are NOT flagged: ২.৩৫ and ২.৪০ are interest rates in these
+# manuals, and a percentage is fact recall's business, not rule 7's.
+_BN_CLAUSE_RX = re.compile(r"§\s*[০-৯]+(?:\.[০-৯]+)*"
+                           r"|[০-৯]+\.[০-৯]+\.[০-৯]+(?:\.[০-৯]+)*")
+
+
+def wrong_script_identifiers(answer):
+    """Manual ids and clause numbers written in Bengali in the answer body.
+    -> [str]
+
+    CANNOT SEE a manual id whose transliteration is an ordinary Bengali word.
+    progoti -> প্রগতি is undetectable here and must stay so: প্রগতি is also
+    the programme's name in running prose, and flagging it would fail every
+    correct answer that names the programme. Only ids carrying an underscore
+    (synthetic_a, dabi_2025) and clause numbers are caught. The gap is real
+    and is the reason this is reported as detail, not merely as a count.
+    """
+    out = []
+    for tok in _BN_WORD_RX.findall(answer or ""):
+        if _BN_UNDERSCORE in tok and BENGALI_RX.search(tok):
+            out.append(tok)
+    out.extend(m.group(0) for m in _BN_CLAUSE_RX.finditer(answer or ""))
+    seen, uniq = set(), []
+    for x in out:
+        if x not in seen:
+            seen.add(x)
+            uniq.append(x)
+    return uniq
+
+
 def language_match(q, answer):
-    """-> dict. Two independent checks, reported together, never averaged.
+    """-> dict. Three independent checks, reported together, never averaged.
 
     script    a Bengali question must get a majority-Bengali answer
     literals  a Bengali role/product name in the gold facts must appear in
               Bengali, not translated -- "the Area Manager" instead of এএম is
               a rule-7 failure even inside an otherwise English answer,
               because এএম is the form on the paperwork.
+    ids       the MIRROR of literals: a manual id or clause number must stay
+              Latin as the corpus writes it, because that spelling is what an
+              officer searches for. Both directions are the same failure --
+              an identifier rewritten into the wrong script stops resolving.
     """
     qsh = bengali_share(q.get("question_bn", ""))
     ash = bengali_share(answer)
@@ -175,12 +225,14 @@ def language_match(q, answer):
     else:
         script_ok = ash >= BENGALI_MAJORITY
     missing = untranslated_literals(q, answer)
+    wrong_ids = wrong_script_identifiers(answer)
     return {"question_script": script_of(q.get("question_bn", "")),
             "answer_script": script_of(answer),
             "bengali_share": (None if ash is None else round(ash, 3)),
             "script_ok": script_ok,
             "translated_literals": missing,
-            "ok": bool(script_ok and not missing)}
+            "wrong_script_ids": wrong_ids,
+            "ok": bool(script_ok and not missing and not wrong_ids)}
 
 
 def answer_violations(q, answer, forbidden_numbers=None):
@@ -524,15 +576,42 @@ def canary_selftest(verbose=True):
            "gold_facts": [{"text": _role, "kind": "literal"}]}
     _tr = language_match(_qr, "The Branch Manager approves it.")
     _kept = language_match(_qr, f"{_role} অনুমোদন করবেন।")
+    # ---- the mirror half, from the real wording-6 run --------------------
+    # qwen/qwen3.8-27b, S-004, run 1, verbatim: the manual id transliterated
+    # and the clause number in Bengali digits, inside otherwise correct
+    # Bengali prose that scores 3/7 recall and 2/2 citation.
+    # NOT HAND-TYPED. Generated from the saved answer, because the two things
+    # that matter here are invisible in a Bengali glyph: the exact codepoints
+    # and the NUKTA FORM. qwen emits য় DECOMPOSED as \u09af\u09bc in both
+    # ম্যানুয়ালের and অনুযায়ী, not composed as \u09df; a hand-typed fixture
+    # got both wrong and the canary then "passed" on a string the model never
+    # produced.
+    _ID_BN = ("\u09b8\u09bf\u09a8\u09a5\u09c7\u099f\u09bf\u0995_\u098f")
+    _CLAUSE_BN = "\u00a7\u09ef.\u09e7.\u09e7"
+    _MIRROR = (_ID_BN + " \u09ae\u09cd\u09af\u09be\u09a8\u09c1\u09af"
+               "\u09bc\u09be\u09b2\u09c7\u09b0 " + _CLAUSE_BN
+               + " \u0985\u09a8\u09c1\u09af\u09be\u09af\u09bc\u09c0")
+    _mir = language_match(_q, _MIRROR)
+    # the SAME answer with the id and the clause number left in Latin
+    _lat = language_match(_q, _MIRROR.replace(_ID_BN, "synthetic_a")
+                                     .replace(_CLAUSE_BN, "\u00a79.1.1"))
+    ok5 = (not _mir["ok"]
+           and any("_" in x for x in _mir["wrong_script_ids"])
+           and any("\u00a7" in x for x in _mir["wrong_script_ids"])
+           and _lat["ok"] and not _lat["wrong_script_ids"])
     ok4 = (not _eng["ok"] and _eng["answer_script"] == "latin"
            and _bn["ok"]
            and not _tr["ok"] and _role in _tr["translated_literals"]
-           and _kept["ok"])
+           and _kept["ok"]
+           and ok5)
     if verbose:
         print(f"  canary language_match       english-on-bengali ok="
               f"{_eng['ok']} (share {_eng['bengali_share']}); bengali ok="
               f"{_bn['ok']}; role translated ok={_tr['ok']}; role kept ok="
               f"{_kept['ok']}  [{'DETECTED' if ok4 else 'MISSED'}]")
+        print(f"  canary language_match_ids   real qwen S-004 ok={_mir['ok']} "
+              f"hits={_mir['wrong_script_ids']}; same answer in Latin ok="
+              f"{_lat['ok']}  [{'DETECTED' if ok5 else 'MISSED'}]")
 
     return ok and ok2 and ok3 and ok4
 
@@ -594,6 +673,8 @@ def report(rows):
         if lang:
             bad_script = [r for r in lang if not r["language"]["script_ok"]]
             bad_lits = [r for r in lang if r["language"]["translated_literals"]]
+            bad_ids = [r for r in lang
+                       if r["language"].get("wrong_script_ids")]
             print(f"  5. language match ..... {len(lang_ok)}/{len(lang)}"
                   + (f" = {len(lang_ok) / len(lang):.1%}" if lang else "")
                   + "   (rule 7; NOT merged into 1-4)")
@@ -610,9 +691,15 @@ def report(rows):
                 for r in bad_lits:
                     print(f"       {r['id']:<8} "
                           f"{r['language']['translated_literals']}")
-            if not bad_script and not bad_lits:
-                print("     every answer matched its question's script and "
-                      "kept its Bengali literals")
+            if bad_ids:
+                print("     manual id or clause number transliterated into "
+                      "Bengali -- not searchable in the manual:")
+                for r in bad_ids:
+                    print(f"       {r['id']:<8} "
+                          f"{r['language']['wrong_script_ids']}")
+            if not bad_script and not bad_lits and not bad_ids:
+                print("     every answer matched its question's script, kept "
+                      "its Bengali literals, and left ids in Latin")
 
     print("\n" + "=" * 62)
     print("SCORES ARE REPORTED SEPARATELY BY PROVENANCE AND NEVER MERGED.")

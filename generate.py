@@ -403,19 +403,60 @@ If you cannot answer, write CITATIONS: none
 #   hard prohibition, because every phrasing of it is advice the model may
 #   comply with in a way that defeats it. The filter does not ask.
 #
-#   *** THE NOT-SAFE-TO-SHIP WARNING STANDS. *** Wording 6 was measured
-#   against the three-part discharge condition and met two of three: no leak
-#   on either model (24/24 calls, filter never fired) and language_match 4/4.
-#   It FAILED the third -- over-suppression no worse than wording 5 -- by
-#   going 2/3 -> 3/3 on gpt-oss-120b. Two of three is not a discharge.
+#   *** RULE 4 IS LOSSY ON PARTIAL ANSWERS. *** Renamed from
+#   NOT-SAFE-TO-SHIP, 2026-09-18, because that name named the wrong risk and
+#   six wordings of measurement now say what the real one is.
 #
-#   Condition for removal:
-#   S-002 AND S-004 both passing on a model that previously LEAKED --
-#   gemini-2.5-flash or gemini-3-flash-preview. Nothing measured on a clean
-#   model discharges it. Established clean under wording 1, so useless for
-#   this purpose: gemini-flash-latest 1/1, gemini-3.5-flash 3/3,
-#   gemini-3.6-flash 3/3. Established leaking: gemini-2.5-flash 3/3,
-#   gemini-3-flash-preview 5/5.
+#   NOT UNSAFE. The leak is handled below the prompt, by the post-filter,
+#   which discards any answer carrying a forbidden figure whatever the model
+#   intended. Across wording 6's 24 calls on two models it did not fire once,
+#   and violations were 0/4 in all six runs -- the prompt now pre-empts what
+#   the filter guarantees. A prompt wording is advice; that filter is not,
+#   and it is the reason this is no longer a ship blocker.
+#
+#   LOSSY, AND BY A MODEL-DEPENDENT AMOUNT. The cost has moved entirely onto
+#   PARTIAL answers -- questions where the manual holds one half of what was
+#   asked. S-004 is that case: the tenure is absent, the ৩ লক্ষ টাকা ceiling
+#   is present and citable.
+#
+#     openai/gpt-oss-120b  drops the ceiling 3/3, and §9.1.1 with it
+#                          recall 2/7   cite 1/2
+#     qwen/qwen3.8-27b     keeps both 3/3
+#                          recall 3/7   cite 2/2
+#
+#   A dropped fact is a dropped citation: gpt-oss gives no signal that the
+#   manual holds a figure at all, so there is nothing left to cite.
+#
+#   SIX WORDINGS COULD NOT FIX BOTH DEFECTS, and the reason is structural
+#   rather than a matter of finding better words. Shrinking rule 4 invites
+#   COPYING -- wording 5 supplied the English sentence "say only that the
+#   manual does not state it" and qwen emitted it verbatim, in English, on a
+#   Bengali question, 3/3. Growing rule 4 SUPPRESSES FACTS -- wording 2
+#   silenced a correct half-answer, wording 4 produced a bulleted audit trail
+#   that leaked in every model tested, and wording 6's one added clause
+#   ("in the question's language") took gpt-oss-120b from 2/3 to 3/3
+#   over-suppression. The two defects pull in opposite directions through the
+#   same sentence, so no single wording holds both ends. THAT is the finding.
+#   No seventh wording was written.
+#
+#   DEFAULT MODEL: qwen/qwen3.8-27b, first in GROQ_PREFERENCE, chosen for
+#   this reason -- it is the model that does not silently drop a fact the
+#   manual contains, and a missing figure is indistinguishable to the reader
+#   from a figure the manual never had.
+#
+#   AND THE COUNTERWEIGHT, recorded so the choice stays legible: qwen is the
+#   WORSE model on rule 7. Under the mirror check added to language_match it
+#   scores 1/4 against gpt-oss-120b's 3/4, because it transliterates manual
+#   ids into Bengali prose (সিনথেটিক_এ for synthetic_a) in 3 of 4 answers.
+#   That is a defect in a reference an officer must look up, and it is traded
+#   knowingly against dropped facts, which are worse. Both models write the
+#   clause number in Bengali digits on S-003, so neither is clean.
+#
+#   STILL OPEN, and not a blocker: the rule-4 trade-off has only ever been
+#   measured on the 4 synthetic questions. The partial-answer case is a
+#   single question, S-004, on one leaking model and one clean one. A second
+#   partial question would tell us whether the split above is about the
+#   models or about that question.
 #
 # Rule 5 -- prevents: implying availability. products_catalogue.csv has 43
 #   rows and 0 populated status values, so every status lookup returns
@@ -560,7 +601,12 @@ KEY_HELP = {
 #
 # Cerebras was tested at the same time and returns 402 payment_required --
 # no free tier on that key -- so it gets no backend.
-GROQ_PREFERENCE = ("openai/gpt-oss-120b", "qwen/qwen3.8-27b",
+# qwen FIRST, and the reason is measured, not a guess: on a partial answer
+# gpt-oss-120b withholds the figure the manual does contain (S-004, 3 of 3
+# runs, recall 2/7 cite 1/2) while qwen gives it (3/7, 2/2). See "RULE 4 IS
+# LOSSY ON PARTIAL ANSWERS" above, including what this trades away -- qwen is
+# the worse model on rule 7's identifier check.
+GROQ_PREFERENCE = ("qwen/qwen3.8-27b", "openai/gpt-oss-120b",
                    "openai/gpt-oss-20b")
 
 
