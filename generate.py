@@ -76,19 +76,9 @@ SYSTEM_PROMPT = """You answer questions about BRAC microfinance operation manual
    use knowledge from outside the context.
 2. Name the MANUAL and the CLAUSE for every fact, e.g. "dabi_2025 §5.4".
 3. Any answer about a premium or an exclusion must name the INSURER.
-4. Before answering, for each figure in the context ask: is this figure's
-   own stated subject the same as the question's subject? Quote a figure only
-   if yes. If no figure passes, name the clauses you checked and what is
-   missing, and quote nothing.
-
-   The subject is what the context says the figure is FOR, not what it is
-   near. "২,৫০,০০০ টাকা অফিস সরঞ্জাম ক্রয়ের সীমা" has the subject "office
-   equipment purchase", so it may not be quoted in answer to a question about
-   loan approval -- even though জিএম appears in both.
-
-   A question with several parts is answered part by part under the same
-   test. Give every part that has a passing figure, with its clause; name
-   every part that does not.
+4. If the context does not answer the question, say only that the manual
+   does not state it. One sentence. Do not list clauses, do not describe what
+   any clause contains, do not quote any figure.
 5. If a product's status is not active, lead with the status, then the terms.
    A status of "unknown" is NOT active; do not imply the product is available.
 6. If the question is ambiguous across manuals or programmes, ask which one
@@ -277,6 +267,74 @@ If you cannot answer, write CITATIONS: none
 #   Gemini leakers it can be re-tested at will. The warning is no longer
 #   standing for want of budget; it stands because the wording was measured
 #   against the case it was written for and did not hold.
+#
+#   WORDING 5, in force above, and DELIBERATELY SMALLER than any of the four
+#   before it:
+#
+#     "4. If the context does not answer the question, say only that the
+#         manual does not state it. One sentence. Do not list clauses, do not
+#         describe what any clause contains, do not quote any figure."
+#
+#   THE PATTERN ACROSS ALL FOUR FAILURES. Every wording that asked the model
+#   to REASON ABOUT which figures are excluded got the figures named in the
+#   reasoning:
+#     1 "do not offer ... instead"       -> mentioned as a non-substitute
+#     2 "never state what it contains"   -> silenced a correct half-answer
+#     3 "(a) vs (b), decide which"       -> asked for self-categorisation
+#     4 "name the clauses you checked"   -> a bulleted audit trail, and it
+#                                           made gpt-oss-120b leak where the
+#                                           ORIGINAL wording had it abstaining
+#                                           in one line
+#   Wording 4 is the proof: adding a constraint added output. So wording 5
+#   REMOVES the instruction to enumerate rather than adding another
+#   constraint. "One sentence" is the operative clause; the three "do not"s
+#   exist to close the specific doors 1-4 opened.
+#
+#   WORDING 5 MEASURED ON GROQ, 2026-09-18, 3 runs per model, post-filter on.
+#   IT CLOSES THE LEAK -- and introduces two defects the four metrics do not
+#   catch.
+#
+#     openai/gpt-oss-120b   viol 0/4 x3   recall 2/7, 3/7, 2/7   cite 2/2
+#     qwen/qwen3.8-27b      viol 0/4 x3   recall 3/7 x3          cite 2/2
+#
+#   qwen leaks 3/3 under the ORIGINAL wording and 0/3 here, so this is the
+#   first wording to hold on a leaker. gpt-oss-120b, which wording 4 broke,
+#   is clean again: "ম্যানুয়ালটি জিএম কত টাকা পর্যন্ত ঋণ অনুমোদন করতে পারেন
+#   তা উল্লেখ করে না।" -- one sentence, no figure, no clause list.
+#
+#   DEFECT 1, gpt-oss-120b: S-004 OVER-SUPPRESSED IN 2 OF 3 RUNS. "do not
+#   quote any figure" bled into the partial case, so the model asserted the
+#   ceiling exists without giving it -- "সর্বোচ্চ সীমা উল্লেখ আছে, তবে
+#   মেয়াদ সম্পর্কে ম্যানুয়াল উল্লেখ করে না।" Run 2 gave ৩ লক্ষ টাকা
+#   correctly. recall 2/7 vs 3/7 is exactly that literal. Wording 2's failure
+#   returning intermittently, at 1-in-3 rather than always.
+#
+#   DEFECT 2, qwen: ANSWERS IN ENGLISH, 3/3, ON BOTH QUESTIONS. "The manual
+#   does not state it." verbatim -- wording 5's own English sentence copied
+#   as the output language, against rule 7. S-004: "The manual does not state
+#   the মেয়াদ (tenure) ... the সর্বোচ্চ সীমা (maximum limit) is ৩ লক্ষ টাকা."
+#   NONE OF THE FOUR METRICS SEES THIS. Violations 0/4, recall 3/7, citation
+#   2/2, abstention 1/1 -- a perfect row for an answer a Bengali-speaking
+#   field officer cannot use. Rule 7 exists precisely for this and is not
+#   scored. If wording 5 is kept, rule 4's text must be phrased so it cannot
+#   be mistaken for the answer, and rule 7 needs a metric.
+#
+#   THE POST-FILTER NEVER FIRED in any of the six runs, because wording 5
+#   pre-empted the leak. It is proven only by its canary -- a real captured
+#   qwen leak -- not by a live run. That is the right outcome operationally
+#   and one fewer confirmation than it looks like.
+#
+#   ALSO FIXED HERE, and it was a metric bug not a model one: gold_eval's
+#   ABSTAIN_BN had no negated-verb form, though ABSTAIN_EN already matched
+#   "does not state". Wording 5 steers models to "উল্লেখ করে না", so
+#   gpt-oss-120b scored abstention 0/1 on three correct abstentions. The
+#   numbers above are after the fix; re-scored from the saved answers, no
+#   extra calls.
+#
+#   AND IT IS STILL NOT THE GUARANTEE. The post-filter below is. Five
+#   wordings have now been measured; prompt text is the wrong layer for a
+#   hard prohibition, because every phrasing of it is advice the model may
+#   comply with in a way that defeats it. The filter does not ask.
 #
 #   *** THE NOT-SAFE-TO-SHIP WARNING STANDS. *** Condition for removal:
 #   S-002 AND S-004 both passing on a model that previously LEAKED --
@@ -890,6 +948,59 @@ ABSTAIN_TEXT = ("প্রদত্ত প্রসঙ্গে এই প্র
                 "(retrieval score below floor; no model call made)")
 
 
+# ------------------------------------------------------------- post-filter
+# THE ACTUAL GUARANTEE, and the reason it is not a sixth prompt wording.
+#
+# Five rule-4 wordings were measured against the same synthetic trap. Every
+# one either permitted the leak, over-suppressed a correct answer, or -- in
+# wording 4's case -- CREATED a leak in a model that had been clean. A prompt
+# rule is advice; the model decides how to comply, and "explain why this
+# figure does not apply" is a compliant reading of every prohibition tried.
+#
+# This is not advice. An answer carrying a forbidden figure is discarded and
+# replaced with the plain abstention, whatever the model intended.
+#
+# ONE IMPLEMENTATION, SHARED WITH THE METRIC. gold_eval.answer_violations is
+# the same function score_one uses. If the filter and the metric had separate
+# matchers they would drift, and the drift would be invisible: the metric
+# would report zero because the filter removed what it looks for, while a
+# literal the filter missed slipped past both. Sharing means a filter miss is
+# also a metric miss, and metric 4 stays a report-stopper that can still fire.
+FILTERED_TEXT = ("প্রদত্ত প্রসঙ্গে এই প্রশ্নের উত্তর নেই। "
+                 "(answer withheld: post-filter matched a forbidden figure)")
+
+
+def post_filter(answer_rec, question, forbidden_numbers=None):
+    """-> (answer_rec, filter_meta). Substitutes the abstention on a hit.
+
+    The original answer is kept in the metadata, never discarded: a filtered
+    answer is the most informative output the run produces, and throwing it
+    away would leave the leak unexaminable.
+    """
+    from gold_eval import answer_violations
+    hits = answer_violations(question, answer_rec.get("answer") or "",
+                             forbidden_numbers)
+    if not hits:
+        return answer_rec, {"filter_fired": False, "filter_hits": []}
+    return ({"id": answer_rec["id"], "answer": FILTERED_TEXT,
+             "citations": []},
+            {"filter_fired": True,
+             "filter_hits": [f"{k}:{v}" for k, v in hits],
+             "original_answer": answer_rec.get("answer"),
+             "original_citations": answer_rec.get("citations")})
+
+
+def load_questions_by_id(gold_path):
+    """{id: question} from a gold file, for the post-filter. Empty when the
+    file is missing -- the filter then cannot fire and says so."""
+    import yaml
+    p = Path(gold_path)
+    if not p.exists():
+        return {}
+    g = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    return {q["id"]: q for q in (g.get("questions") or [])}
+
+
 def answer_one(row, floor, system=SYSTEM_PROMPT):
     """-> (answer_record, meta_record). Abstains before calling the model when
     the top fused score is below the floor."""
@@ -1195,8 +1306,26 @@ def make_judge(generator_models):
 
 
 # ------------------------------------------------------------------ canary
+# A REAL LEAK, captured verbatim from qwen/qwen3.8-27b on 2026-09-18 under
+# the ORIGINAL rule-4 wording, question S-002. qwen leaks 3/3 on that wording
+# and is reachable at 1000 req/day, so this canary is a real observed failure
+# that can be re-captured at will -- not an invented one.
+QWEN_LEAK_S002 = (
+    "প্রদত্ত কনটেক্সটে জিএম (GM) এর ঋণ অনুমোদনের সীমা উল্লেখ করা নেই।\n\n"
+    "কনটেক্সট ১ (synthetic_a §9.2.1) অনুযায়ী, জিএম এর ২,৫০,০০০ টাকার সীমাটি "
+    "শুধুমাত্র অফিস সরঞ্জাম ক্রয়ের জন্য প্রযোজ্য এবং এই সীমাটি \"ঋণ "
+    "অনুমোদনের জন্য প্রযোজ্য নয়\"।\n\n"
+    "কনটেক্সট ২ (synthetic_a §9.1.1) অনুযায়ী, নীলকমল ঋণের সর্বোচ্চ সীমা "
+    "৩ লক্ষ টাকা এবং অনুমোদন দেবেন কেএম (KM), জিএম নয়।")
+
+# A correct abstention from the same model and question, for the inverse
+# control: the filter must NOT fire on it. A filter that fires on everything
+# would show a perfect violation score and silence every answer.
+QWEN_CLEAN_S002 = "প্রদত্ত কনটেক্সটে জিএম এর ঋণ অনুমোদনের সীমা উল্লেখ করা নেই।"
+
+
 def canary_selftest(verbose=True):
-    """Convention 3. Three canaries, none invented.
+    """Convention 3. Four canaries, none invented.
 
     1. FORBIDDEN OVERBROAD, reused. validate_gold already owns a canary that
        asserts a §7.1 figure quoted as a loan ceiling scores a violation while
@@ -1209,6 +1338,14 @@ def canary_selftest(verbose=True):
     3. SYNTHETIC IS SYNTHETIC. Every fixture literal is checked against
        productmatch: if a fixture ever names a real product, "the first run is
        synthetic" stops being true and real vocabulary reaches the provider.
+
+    4. THE POST-FILTER CATCHES A REAL LEAK, and does not fire on a correct
+       abstention. The fixture is qwen/qwen3.8-27b's actual S-002 answer under
+       the original wording -- five prompt wordings failed to stop this and
+       the filter is the only thing that does, so a filter that silently
+       stopped matching would restore the leak with nothing to show it. The
+       inverse half matters as much: a filter that fired on everything would
+       report a perfect violation score and silence every answer.
     """
     ok = True
 
@@ -1256,6 +1393,41 @@ def canary_selftest(verbose=True):
         print(f"  canary synthetic_is_fake    {len(SYNTH_CHUNKS)} fixture "
               f"chunks name {len(real)} real product(s) "
               f"{real[:3]}  [{'PASS' if ok3 else 'FAIL'}]")
+    import yaml as _yaml
+    gp = Path("gold/synthetic.yaml")
+    if not gp.exists():
+        if verbose:
+            print("  canary post_filter          gold/synthetic.yaml missing; "
+                  "NOT BUILDABLE -- run --make-synthetic")
+    else:
+        qs = {q["id"]: q for q in
+              (_yaml.safe_load(gp.read_text(encoding="utf-8")) or {}
+               ).get("questions") or []}
+        q2 = qs.get("S-002")
+        if q2 is None:
+            if verbose:
+                print("  canary post_filter          S-002 not in the "
+                      "synthetic gold; NOT BUILDABLE")
+        else:
+            leak_rec = {"id": "S-002", "answer": QWEN_LEAK_S002,
+                        "citations": []}
+            clean_rec = {"id": "S-002", "answer": QWEN_CLEAN_S002,
+                         "citations": []}
+            got_leak, m_leak = post_filter(leak_rec, q2)
+            got_clean, m_clean = post_filter(clean_rec, q2)
+            ok4 = (m_leak["filter_fired"]
+                   and got_leak["answer"] == FILTERED_TEXT
+                   and m_leak.get("original_answer") == QWEN_LEAK_S002
+                   and not m_clean["filter_fired"]
+                   and got_clean["answer"] == QWEN_CLEAN_S002)
+            ok &= ok4
+            if verbose:
+                print(f"  canary post_filter          real qwen leak "
+                      f"fired={m_leak['filter_fired']} hits="
+                      f"{m_leak['filter_hits']}; clean abstention "
+                      f"fired={m_clean['filter_fired']}  "
+                      f"[{'DETECTED' if ok4 else 'MISSED'}]")
+
     return bool(ok)
 
 
@@ -1354,6 +1526,15 @@ def main():
         quota_report([args.model] if args.model else list(MODEL_PREFERENCE))
 
     rows = read_retrieved(args.retrieved)
+    # The post-filter needs the questions and forbidden.json up front, so a
+    # missing gold file is reported before any model call rather than after.
+    questions = load_questions_by_id(args.gold)
+    forbidden = {}
+    if args.forbidden_numbers and Path(args.forbidden_numbers).exists():
+        forbidden = json.loads(
+            Path(args.forbidden_numbers).read_text(encoding="utf-8"))
+    print(f"post-filter: {len(questions)} question(s) from {args.gold}, "
+          f"{len(forbidden)} forbidden clause(s)")
     answers, metas = [], []
     for row in rows:
         try:
@@ -1367,13 +1548,23 @@ def main():
         except ProviderError as e:
             print(f"\nprovider failed on {row['question_id']}: {e}")
             return 1
+        q = questions.get(a["id"])
+        if q is not None:
+            a, fmeta = post_filter(a, q, forbidden)
+            m.update(fmeta)
+        else:
+            m.update({"filter_fired": False, "filter_hits": [],
+                      "filter_skipped": "question not in gold file"})
         m["corpus_guard"] = guard
         m["pinned_model"] = args.model
         answers.append(a)
         metas.append(m)
         tag = "FLOOR" if m["floor_fired"] else (m.get("model") or "?")
+        filt = "  FILTERED" if m.get("filter_fired") else ""
         print(f"  {a['id']:<7}{tag:<22}top={m['top_fused']:.4f} "
-              f"retries={m.get('retries', 0)} cites={a['citations']}")
+              f"retries={m.get('retries', 0)} cites={a['citations']}{filt}")
+        if m.get("filter_fired"):
+            print(f"          hits: {m['filter_hits']}")
 
     Path(args.answers).parent.mkdir(parents=True, exist_ok=True)
     Path(args.answers).write_text(

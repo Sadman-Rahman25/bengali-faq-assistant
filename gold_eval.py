@@ -70,6 +70,29 @@ def bare_number_violations(clause, answer, forbidden):
     return [str(n) for n in (forbidden.get(clause) or []) if str(n) in anums]
 
 
+def answer_violations(q, answer, forbidden_numbers=None):
+    """Every violation one answer commits against one question. -> [(kind, what)]
+
+    kind is "literal" (a must_not_contain_literals hit) or "clause_figure" (a
+    unit-bearing pair the cited clause forbids).
+
+    SHARED WITH THE POST-FILTER IN generate.py, deliberately. The filter that
+    discards a leaking answer and the metric that counts the leak must be the
+    same code: two copies would drift, and the drift is invisible -- the
+    metric would report zero violations because the filter removed what it was
+    looking for, while a different literal slipped past both. One function, so
+    a filter miss is also a metric miss and shows up as a non-zero count.
+    """
+    out = []
+    for lit in q.get("must_not_contain_literals", []) or []:
+        if canon_pattern(lit).search(canon(answer)):
+            out.append(("literal", lit))
+    for clause in q.get("forbidden_numbers_from_clause", []) or []:
+        for pair in forbidden_violations(clause, answer, forbidden_numbers):
+            out.append(("clause_figure", f"{clause}:{pair}"))
+    return out
+
+
 def forbidden_violations(clause, answer, forbidden):
     """Unit-bearing figures in `answer` that `clause` forbids. -> [str]
 
@@ -183,6 +206,16 @@ ABSTAIN_BN = [
     "বলা হয়নি",
     "ম্যানুয়ালে নেই",
     "তথ্য পাওয়া যায়নি",
+    # NEGATED-VERB FORMS. Added 2026-09-18 after a measured false negative:
+    # ABSTAIN_EN already matched "does not state|contain|specify", but the
+    # Bengali list had only the "নেই / হয়নি" families and no equivalent of
+    # the negated verb. A correct abstention reading
+    # "ম্যানুয়ালটি ... উল্লেখ করে না" therefore scored abstention 0/1 on
+    # gpt-oss-120b, three runs out of three -- the model was right and the
+    # metric was wrong. The asymmetry between the two lists was the bug.
+    "উল্লেখ করে না",
+    "উল্লেখ করেনি",
+    "তথ্য দেয় না",
 ]
 ABSTAIN_EN = re.compile(
     r"not stated|not in the manual|does not (state|contain|specify)|"
@@ -224,14 +257,7 @@ def score_one(q, ans, forbidden_numbers=None, judge=None):
     # headline number never rests on them.
     unrendered = [f for f in facts if fact_verified(f) != "render"]
 
-    violations = []
-    for lit in q.get("must_not_contain_literals", []) or []:
-        if canon_pattern(lit).search(canon(answer)):
-            violations.append(("literal", lit))
-
-    for clause in q.get("forbidden_numbers_from_clause", []) or []:
-        for pair in forbidden_violations(clause, answer, forbidden_numbers):
-            violations.append(("clause_figure", f"{clause}:{pair}"))
+    violations = answer_violations(q, answer, forbidden_numbers)
 
     answerable = norm_answerable(q.get("answerable", "yes"))
     abstained = is_abstention(answer)
