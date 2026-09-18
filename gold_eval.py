@@ -70,6 +70,119 @@ def bare_number_violations(clause, answer, forbidden):
     return [str(n) for n in (forbidden.get(clause) or []) if str(n) in anums]
 
 
+# ------------------------------------------------------------ rule 7
+# RULE 7 COULD NOT FAIL UNTIL NOW, and that is why this exists.
+#
+# Measured 2026-09-18: qwen/qwen3.8-27b answered a Bengali question in
+# English, 3 runs of 3 --
+#   "The manual does not state it."
+#   "The manual does not state the মেয়াদ (tenure) of the নীলকমল ঋণ.
+#    According to synthetic_a §9.1.1, the সর্বোচ্চ সীমা (maximum limit) is
+#    ৩ লক্ষ টাকা."
+# and scored a PERFECT row on all four metrics: violations 0/4, fact recall
+# 3/7 (the literal-only maximum), citation 2/2, abstention 1/1. Every number
+# said the answer was good. A field officer cannot read it.
+#
+# TWO SEPARATE FAILURES, because they need separate fixes:
+#   script   -- a Bengali question answered predominantly in Latin script
+#   literals -- a role or product name TRANSLATED rather than quoted. "the
+#               Area Manager" instead of এএম is a rule-7 failure even inside
+#               an otherwise English answer, because এএম is the form that
+#               appears on the paperwork the officer has to fill in.
+#
+# REPORTED AS A FIFTH NUMBER AND NEVER MERGED INTO THE FOUR. It is not a
+# quality score and averaging it into recall would hide both.
+LATIN_RX = re.compile(r"[A-Za-z]")
+BENGALI_RX = re.compile(r"[ঀ-\u09ff]")
+# Manual ids and clause citations are Latin BY REQUIREMENT -- rule 2 forbids
+# translating them and rule 7 keeps clause citations as they are printed. They
+# must not count as "the answer is in English". Stripped before measuring:
+# any ASCII run carrying an underscore or a digit (dabi_2025, synthetic_a,
+# 9.1.1) plus the section sign itself.
+_IDENTLIKE_RX = re.compile(r"§|[A-Za-z0-9_]*[_0-9][A-Za-z0-9_.]*")
+
+
+def bengali_share(text):
+    """Bengali letters / (Bengali + Latin letters), identifiers removed.
+
+    -> None when the text carries no letters at all to judge by.
+    """
+    t = _IDENTLIKE_RX.sub(" ", text or "")
+    bn = len(BENGALI_RX.findall(t))
+    la = len(LATIN_RX.findall(t))
+    return (bn / (bn + la)) if (bn + la) else None
+
+
+def script_of(text):
+    """-> "bengali" | "latin" | "mixed" | "none". For the report, not the
+    verdict: the verdict uses the share directly, because the failure this
+    metric exists to catch -- English prose with Bengali terms dropped in --
+    lands squarely in "mixed" and would pass a three-way test."""
+    sh = bengali_share(text)
+    if sh is None:
+        return "none"
+    if sh >= 0.85:
+        return "bengali"
+    if sh <= 0.15:
+        return "latin"
+    return "mixed"
+
+
+# PREDOMINANTLY. A Bengali question needs a majority-Bengali answer; anything
+# less is English prose with terms quoted into it, which is the measured qwen
+# failure and reads as helpful while being unusable.
+BENGALI_MAJORITY = 0.5
+
+
+def untranslated_literals(q, answer):
+    """Bengali role/product literals in the gold facts MISSING from the
+    answer. -> [str]
+
+    Only Bengali non-figure literals are checked: a figure like ৩ লক্ষ is
+    fact recall's job, and an English gold fact has nothing to translate.
+    Uses fact_present, the same matcher recall uses, so the two cannot
+    disagree about whether a literal is present.
+    """
+    out = []
+    for f in q.get("gold_facts") or []:
+        kind = (f.get("kind", "literal") if isinstance(f, dict) else "literal")
+        if kind != "literal":
+            continue
+        lit = fact_text(f)
+        if lit.strip().upper().startswith("TODO"):
+            continue
+        if not BENGALI_RX.search(lit) or NUM_RX.search(lit):
+            continue
+        if not fact_present(lit, answer):
+            out.append(lit)
+    return out
+
+
+def language_match(q, answer):
+    """-> dict. Two independent checks, reported together, never averaged.
+
+    script    a Bengali question must get a majority-Bengali answer
+    literals  a Bengali role/product name in the gold facts must appear in
+              Bengali, not translated -- "the Area Manager" instead of এএম is
+              a rule-7 failure even inside an otherwise English answer,
+              because এএম is the form on the paperwork.
+    """
+    qsh = bengali_share(q.get("question_bn", ""))
+    ash = bengali_share(answer)
+    q_is_bn = qsh is not None and qsh >= BENGALI_MAJORITY
+    if not q_is_bn or ash is None:
+        script_ok = True          # nothing to hold the answer to
+    else:
+        script_ok = ash >= BENGALI_MAJORITY
+    missing = untranslated_literals(q, answer)
+    return {"question_script": script_of(q.get("question_bn", "")),
+            "answer_script": script_of(answer),
+            "bengali_share": (None if ash is None else round(ash, 3)),
+            "script_ok": script_ok,
+            "translated_literals": missing,
+            "ok": bool(script_ok and not missing)}
+
+
 def answer_violations(q, answer, forbidden_numbers=None):
     """Every violation one answer commits against one question. -> [(kind, what)]
 
@@ -291,6 +404,8 @@ def score_one(q, ans, forbidden_numbers=None, judge=None):
         "facts_total_rendered": len([f for f in facts
                                      if fact_verified(f) == "render"]),
         "citation": cite_ok(q.get("must_cite"), ans.get("citations", [])),
+        # Fifth number. Never folded into the four above.
+        "language": language_match(q, answer),
         "abstention": abstention,
         # the raw signal, so a row can be read without re-deriving it
         "abstained": abstained,
@@ -393,7 +508,33 @@ def canary_selftest(verbose=True):
         print(f"  canary abstain_nukta_forms  both forms match={both} "
               f"control={control}  "
               f"[{'DETECTED' if ok3 else 'MISSED'}]")
-    return ok and ok2 and ok3
+    # ---- rule 7: language_match must be able to FAIL ---------------------
+    # Real observed failure, qwen/qwen3.8-27b, 2026-09-18, wording 5, S-002 of
+    # the synthetic set: a Bengali question answered "The manual does not
+    # state it." -- and it scored a perfect four-metric row. Assembled from
+    # parts so the file carries no typed Bengali sentence reaching a matcher.
+    _QBN = ("জিএম কত টাকা পর্যন্ত ঋণ অনুমোদন করতে পারেন?")
+    _q = {"question_bn": _QBN, "gold_facts": []}
+    _eng = language_match(_q, "The manual does not state it.")
+    _bn = language_match(
+        _q, "ম্যানুয়ালটি এই তথ্য উল্লেখ করে না।")
+    # and the literal half: a role name translated instead of quoted
+    _role = "শাখা ব্যবস্থাপক"
+    _qr = {"question_bn": _QBN,
+           "gold_facts": [{"text": _role, "kind": "literal"}]}
+    _tr = language_match(_qr, "The Branch Manager approves it.")
+    _kept = language_match(_qr, f"{_role} অনুমোদন করবেন।")
+    ok4 = (not _eng["ok"] and _eng["answer_script"] == "latin"
+           and _bn["ok"]
+           and not _tr["ok"] and _role in _tr["translated_literals"]
+           and _kept["ok"])
+    if verbose:
+        print(f"  canary language_match       english-on-bengali ok="
+              f"{_eng['ok']} (share {_eng['bengali_share']}); bengali ok="
+              f"{_bn['ok']}; role translated ok={_tr['ok']}; role kept ok="
+              f"{_kept['ok']}  [{'DETECTED' if ok4 else 'MISSED'}]")
+
+    return ok and ok2 and ok3 and ok4
 
 
 # ---------------------------------------------------------------- report
@@ -406,6 +547,8 @@ def report(rows):
     def block(name, rs):
         if not rs:
             return
+        lang = [r for r in rs if r.get("language")]
+        lang_ok = [r for r in lang if r["language"]["ok"]]
         ft = sum(r["facts_total"] for r in rs)
         fh = sum(r["facts_hit"] for r in rs)
         cited = [r for r in rs if r["citation"] is not None]
@@ -443,6 +586,33 @@ def report(rows):
             print(f"     render-verified subset: {rh}/{rt}"
                   + (f" = {rh / rt:.1%}" if rt else "  <-- nothing verified "
                                                    "against a page image yet"))
+
+        # FIFTH NUMBER. Reported beside the four, never folded into them:
+        # rule 7 is a readability gate, not a quality score, and averaging it
+        # into recall would hide both. It exists because qwen scored a perfect
+        # four-metric row on a Bengali question answered in English.
+        if lang:
+            bad_script = [r for r in lang if not r["language"]["script_ok"]]
+            bad_lits = [r for r in lang if r["language"]["translated_literals"]]
+            print(f"  5. language match ..... {len(lang_ok)}/{len(lang)}"
+                  + (f" = {len(lang_ok) / len(lang):.1%}" if lang else "")
+                  + "   (rule 7; NOT merged into 1-4)")
+            if bad_script:
+                print("     wrong script -- a Bengali question answered "
+                      "predominantly in Latin:")
+                for r in bad_script:
+                    L = r["language"]
+                    print(f"       {r['id']:<8} bengali share "
+                          f"{L['bengali_share']}  ({L['answer_script']})")
+            if bad_lits:
+                print("     role/product literal translated away rather "
+                      "than quoted in Bengali:")
+                for r in bad_lits:
+                    print(f"       {r['id']:<8} "
+                          f"{r['language']['translated_literals']}")
+            if not bad_script and not bad_lits:
+                print("     every answer matched its question's script and "
+                      "kept its Bengali literals")
 
     print("\n" + "=" * 62)
     print("SCORES ARE REPORTED SEPARATELY BY PROVENANCE AND NEVER MERGED.")

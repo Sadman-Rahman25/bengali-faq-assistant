@@ -76,9 +76,10 @@ SYSTEM_PROMPT = """You answer questions about BRAC microfinance operation manual
    use knowledge from outside the context.
 2. Name the MANUAL and the CLAUSE for every fact, e.g. "dabi_2025 §5.4".
 3. Any answer about a premium or an exclusion must name the INSURER.
-4. If the context does not answer the question, say only that the manual
-   does not state it. One sentence. Do not list clauses, do not describe what
-   any clause contains, do not quote any figure.
+4. If the context does not answer the question, reply with a single
+   sentence, in the question's language, stating that the manual does not
+   contain it. Do not list clauses, do not describe what any clause contains,
+   do not quote any figure.
 5. If a product's status is not active, lead with the status, then the terms.
    A status of "unknown" is NOT active; do not imply the product is available.
 6. If the question is ambiguous across manuals or programmes, ask which one
@@ -330,6 +331,28 @@ If you cannot answer, write CITATIONS: none
 #   gpt-oss-120b scored abstention 0/1 on three correct abstentions. The
 #   numbers above are after the fix; re-scored from the saved answers, no
 #   extra calls.
+#
+#   WORDING 6, in force above. Wording 5's text DESCRIBED the behaviour by
+#   supplying a phrase -- "say only that the manual does not state it" -- and
+#   qwen/qwen3.8-27b emitted that sentence verbatim, in English, on a Bengali
+#   question, 3 runs of 3:
+#
+#     S-002: "The manual does not state it."
+#     S-004: "The manual does not state the মেয়াদ (tenure) of the নীলকমল ঋণ.
+#             According to synthetic_a §9.1.1, the সর্বোচ্চ সীমা (maximum
+#             limit) is ৩ লক্ষ টাকা."
+#
+#   A prompt sentence in English is a template a model may fill rather than a
+#   behaviour it describes, and the smaller the rule got the more template-like
+#   it became. Wording 6 therefore states the SHAPE -- one sentence, in the
+#   question's language, saying the manual does not contain it -- and supplies
+#   no phrase to copy. "in the question's language" is also rule 7 restated at
+#   the point of failure, because rule 7 alone did not hold here.
+#
+#   That failure scored a PERFECT FOUR-METRIC ROW: violations 0/4, recall
+#   3/7 (the literal-only maximum), citation 2/2, abstention 1/1, on an answer
+#   a Bengali-speaking field officer cannot read. gold_eval now reports
+#   language_match as a fifth number for exactly this; see report().
 #
 #   AND IT IS STILL NOT THE GUARANTEE. The post-filter below is. Five
 #   wordings have now been measured; prompt text is the wrong layer for a
