@@ -206,11 +206,14 @@ If you cannot answer, write CITATIONS: none
 #   WORDING 4 MEASURED 2026-09-18, AND IT FAILS. Both leakers, one original
 #   control run the same day to rule out drift:
 #
-#     gemini-2.5-flash        original  viol 1/4  (still leaks, as in Sept 17)
-#                             v4        viol 1/4  LEAKS
-#     gemini-3-flash-preview  v4        viol 1/4  LEAKS
+#     gemini-2.5-flash        original  1 run   viol 1/4  still leaks
+#                             v4        1 run   viol 1/4  LEAKS
+#     gemini-3-flash-preview  v4        3 runs  viol 1/4  LEAKS 3 of 3
 #
-#   Same two violations every time: ৫০,০০০ and ২,৫০,০০০ on S-002.
+#   Four v4 samples across two models, every one leaking, with the same two
+#   violations: ৫০,০০০ and ২,৫০,০০০ on S-002. Self-consistent per model, and
+#   the narration is near-verbatim identical between runs -- run 2 differed
+#   only in writing the clause as §9.2.1 rather than §৯.২.১.
 #
 #   THE MECHANISM, and it is the reason to stop rewriting this rule. V4 asks
 #   the model to run a per-figure subject test. The model runs it, gets the
