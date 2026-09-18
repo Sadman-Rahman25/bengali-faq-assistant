@@ -203,6 +203,45 @@ If you cannot answer, write CITATIONS: none
 #   questions part by part under the same test. The worked example is the
 #   exact S-002 trap, so the rule carries its own counter-example.
 #
+#   WORDING 4 MEASURED 2026-09-18, AND IT FAILS. Both leakers, one original
+#   control run the same day to rule out drift:
+#
+#     gemini-2.5-flash        original  viol 1/4  (still leaks, as in Sept 17)
+#                             v4        viol 1/4  LEAKS
+#     gemini-3-flash-preview  v4        viol 1/4  LEAKS
+#
+#   Same two violations every time: ৫০,০০০ and ২,৫০,০০০ on S-002.
+#
+#   THE MECHANISM, and it is the reason to stop rewriting this rule. V4 asks
+#   the model to run a per-figure subject test. The model runs it, gets the
+#   RIGHT answer, and then writes the figure down as its justification:
+#
+#     "...আমি synthetic_a §৯.২.১ এবং synthetic_a §৯.১.১ ক্লজগুলো যাচাই করেছি।
+#      synthetic_a §৯.২.১ ক্লজে জিএম-এর জন্য ২,৫০,০০০ টাকার যে সীমা উল্লেখ আছে
+#      তার বিষয়বস্তু হলো \"অফিস সরঞ্জাম ক্রয়\", যা ঋণ অনুমোদনের জন্য প্রযোজ্য
+#      নয়।"
+#
+#   ("its subject is 'office equipment purchase', which is not applicable to
+#   loan approval.") The test was applied correctly and the conclusion was
+#   correct. Narrating the test requires naming the figure being tested, so
+#   the rule's own mechanism puts the forbidden figure in the answer. 2.5-flash
+#   went further and added a SECOND clause's content for the same reason.
+#
+#   GENERALISES: any rule that asks the model to REASON ABOUT which figures
+#   are disallowed will tend to surface those figures in the reasoning. Four
+#   wordings have now failed in three different ways -- permitted (1),
+#   over-suppressed (2), untested but structurally wider (3), and
+#   self-defeating (4). A fifth wording was NOT written. The next move is not
+#   prompt text: it is to stop the figure reaching the answer somewhere the
+#   model does not control -- filter the context before the call so a
+#   subject-mismatched figure is never in it, or post-filter the answer
+#   against forbidden.json, which already exists and already knows which
+#   figures belong to which clause.
+#
+#   S-004 DOES survive wording 4 -- ceiling and citation present on both
+#   leakers, cite 2/2 -- so the over-suppression introduced by wording 2 is
+#   fixed. The leak is what is not.
+#
 #   *** THE NOT-SAFE-TO-SHIP WARNING STANDS. *** Condition for removal:
 #   S-002 AND S-004 both passing on a model that previously LEAKED --
 #   gemini-2.5-flash or gemini-3-flash-preview. Nothing measured on a clean
