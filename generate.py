@@ -354,12 +354,62 @@ If you cannot answer, write CITATIONS: none
 #   a Bengali-speaking field officer cannot read. gold_eval now reports
 #   language_match as a fifth number for exactly this; see report().
 #
+#   WORDING 6 MEASURED ON GROQ, 2026-09-18, 3 runs per model, post-filter
+#   on, 24 calls. IT FIXES THE LANGUAGE DEFECT AND MAKES THE OTHER WORSE.
+#
+#     openai/gpt-oss-120b  viol 0/4 x3  recall 2/7 x3  cite 1/2  lang 4/4
+#     qwen/qwen3.8-27b     viol 0/4 x3  recall 3/7 x3  cite 2/2  lang 4/4
+#
+#   Both models deterministic: all three runs byte-identical per model.
+#
+#   FIXED -- DEFECT 2 IS GONE. qwen answers in Bengali 3/3, language_match
+#   2/4 -> 4/4:
+#     S-002 "সিনথেটিক_এ ম্যানুয়ালে জিএম এর ঋণ অনুমোদনের সীমা উল্লেখ করা নেই।"
+#     S-004 "সিনথেটিক_এ ম্যানুয়ালে নীলকমল ঋণের মেয়াদ সম্পর্কে কোনো তথ্য নেই,
+#            তবে সর্বোচ্চ সীমা ৩ লক্ষ টাকা (synthetic_a §9.1.1)।"
+#   Removing the copyable English phrase removed the copying. That is the one
+#   thing wording 6 was written to do, and it did it.
+#
+#   NOT FIXED, WORSE -- DEFECT 1 WENT FROM 2 OF 3 TO 3 OF 3. gpt-oss-120b
+#   withholds the S-004 ceiling in every run:
+#     S-004 "ম্যানুয়ালটি নীলকমল ঋণের মেয়াদ সম্পর্কে তথ্য দেয় না।"
+#   and the SHAPE degraded too. Under wording 5 the model at least asserted
+#   the ceiling existed without giving it; under wording 6 it drops the
+#   ceiling entirely, so there is no longer any signal to the reader that the
+#   manual holds a figure at all. That also costs the citation: cite 2/2
+#   under wording 5, 1/2 here, because a dropped fact is a dropped §9.1.1.
+#
+#   "in the question's language" plausibly did this. It is the only clause
+#   added, it makes rule 4 longer, and wording 4 already established that
+#   adding to rule 4 adds suppression. Two defects, one rule, and the fixes
+#   pull opposite ways -- which is the argument for the post-filter, not for
+#   a seventh wording. NO SEVENTH WORDING WAS WRITTEN.
+#
+#   NEITHER MODEL LEAKED. violations 0/4 on all six runs, and the post-filter
+#   did not fire on any of the 24 calls. qwen leaks 3/3 under the ORIGINAL
+#   wording, so wording 6 holds on a leaker exactly as wording 5 did.
+#
+#   UNCAUGHT BY ALL FIVE METRICS, recorded because language_match was added
+#   to catch its neighbour: qwen TRANSLITERATES the manual id in prose --
+#   সিনথেটিক_এ for synthetic_a, and §৯.১.১ for §9.1.1 in run 1 -- while its
+#   CITATIONS line stays correctly Latin, which is why cite is 2/2 and
+#   language_match is 4/4. language_match only checks that Bengali gold-fact
+#   literals were not translated OUT of Bengali; a Latin manual id
+#   transliterated INTO Bengali is the mirror failure and nothing tests it.
+#   An officer searching the manual for সিনথেটিক_এ will not find it.
+#
 #   AND IT IS STILL NOT THE GUARANTEE. The post-filter below is. Five
 #   wordings have now been measured; prompt text is the wrong layer for a
 #   hard prohibition, because every phrasing of it is advice the model may
 #   comply with in a way that defeats it. The filter does not ask.
 #
-#   *** THE NOT-SAFE-TO-SHIP WARNING STANDS. *** Condition for removal:
+#   *** THE NOT-SAFE-TO-SHIP WARNING STANDS. *** Wording 6 was measured
+#   against the three-part discharge condition and met two of three: no leak
+#   on either model (24/24 calls, filter never fired) and language_match 4/4.
+#   It FAILED the third -- over-suppression no worse than wording 5 -- by
+#   going 2/3 -> 3/3 on gpt-oss-120b. Two of three is not a discharge.
+#
+#   Condition for removal:
 #   S-002 AND S-004 both passing on a model that previously LEAKED --
 #   gemini-2.5-flash or gemini-3-flash-preview. Nothing measured on a clean
 #   model discharges it. Established clean under wording 1, so useless for

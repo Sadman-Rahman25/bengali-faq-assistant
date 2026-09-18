@@ -1021,6 +1021,36 @@ chance, which no un-baselined report can show you.
 | Per-literal exclusions | General letter-boundary guard | A boundary guard drops inflected forms like `সিডিওকে` and silently changes recorded counts |
 | AST-based lint | Runtime assertions | A pattern's nukta form is a *source* property; there is no runtime moment at which to check it |
 
+**Six rule-4 wordings, and the two defects pull opposite ways.** Rule 4
+forbids quoting a figure the context does not support. Measured on Groq
+(1000 req/day/model, so budget is not the constraint), 3 runs per model per
+wording, post-filter on:
+
+| Wording | Leak | S-004 over-suppressed | `language_match` |
+|---|---|---|---|
+| 1 original | qwen 3/3, gpt-oss 0/3 | no | not yet measured |
+| 4 per-figure | **all 4 models, 10/10** | no | not yet measured |
+| 5 minimal | none | gpt-oss **2 of 3** | qwen **2/4** — English |
+| 6 shape-only | none | gpt-oss **3 of 3** | 4/4 |
+
+Wording 6 removed the copyable English phrase and the copying stopped — qwen
+answers in Bengali 3/3. The same edit made gpt-oss-120b withhold the S-004
+ceiling in every run instead of two, and drop it entirely rather than
+asserting it exists unquoted, which costs the citation as well (2/2 → 1/2).
+**Adding to rule 4 adds suppression; shrinking it invites copying.** No
+seventh wording was written. This is the argument for the post-filter: a
+prompt rule is advice, and every phrasing of a prohibition is something a
+model can comply with in a way that defeats it.
+
+**A metric catches its neighbour's failure, not its mirror.**
+`language_match` was added to catch a Bengali role literal translated *out*
+of Bengali. qwen does the reverse — it transliterates the Latin manual id
+*into* Bengali prose (`সিনথেটিক_এ` for `synthetic_a`, `§৯.১.১` for `§9.1.1`)
+while keeping the `CITATIONS:` line correctly Latin. So citation scores 2/2,
+`language_match` scores 4/4, and an officer searching the manual for
+`সিনথেটিক_এ` finds nothing. Every new metric should be asked what its
+mirror image looks like.
+
 ---
 
 ## 5. The four conventions, and why they are checks rather than prose
