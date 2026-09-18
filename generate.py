@@ -1034,8 +1034,110 @@ def format_context(chunks):
     return "\n\n".join(out)
 
 
-def build_user_prompt(question, chunks):
-    return (f"{format_context(chunks)}\n\n--- QUESTION\n{question}\n")
+# ------------------------------------------------------------- glossary
+# MEASURED, NOT ADOPTED. Off unless --glossary is passed.
+#
+# WHY IT MIGHT HELP. roles.py records সিডিও = Credit Development Officer and
+# পিও = Programme Organiser, and the prompt has never seen the registry. On
+# G-222 gpt-oss-120b invented "সিনিয়র ডিস্ট্রিবিউশন অফিসার" and "পোস্ট
+# অফিসার" -- fabricated expansions for two terms the repo already knows.
+#
+# WHY IT MIGHT HURT. A glossary is more context to quote from, and rule 4's
+# entire history is models reciting adjacent material. Hence the measurement
+# includes whether an answer glosses a term the question never asked about.
+#
+# NO LITERAL IS TYPED HERE, per Convention 2: every term and expansion is
+# read out of roles.py and productmatch, and presence is tested with
+# bn_shared.count_literal so the owning registry's exclusions apply -- সিডিপি
+# is not matched inside এনসিডিপি, পিএ not inside পিএলসি.
+_GLOSS_TERMS = None
+
+
+def glossary_terms():
+    """[(bengali_term, expansion, manual_or_None)] from the registries.
+
+    Roles carry a per-manual form: where the Dabi and Progoti columns differ,
+    the term itself says which manual the asker works under, and that is
+    recorded rather than flattened -- roles.py's own note for field_officer
+    says "do not expand one to the other".
+    """
+    global _GLOSS_TERMS
+    if _GLOSS_TERMS is not None:
+        return _GLOSS_TERMS
+    terms = []
+    try:
+        import roles
+        for row in getattr(roles, "ROLES", []):
+            if len(row) < 5:
+                continue
+            dabi, progoti, acronym, english = row[1], row[2], row[3], row[4]
+            if not (english or "").strip():
+                continue
+            seen = {}
+            if (dabi or "").strip():
+                seen[dabi.strip()] = "dabi_2025" if dabi != progoti else None
+            if (progoti or "").strip():
+                seen.setdefault(progoti.strip(),
+                                "progoti" if dabi != progoti else None)
+            if (acronym or "").strip() and "/" not in acronym:
+                seen.setdefault(acronym.strip(), None)
+            for t, man in seen.items():
+                terms.append((t, english.strip(), man))
+    except ImportError:
+        pass
+    try:
+        import productmatch as pm
+        for row in getattr(pm, "ENTITIES", []):
+            if len(row) < 4:
+                continue
+            bn, desc = row[2], row[3]
+            if (bn or "").strip() and (desc or "").strip():
+                terms.append((bn.strip(), desc.split(";")[0].strip(), None))
+        for _k, pair in (getattr(pm, "PROGRAMME_NAMES", {}) or {}).items():
+            bn = pair[0] if isinstance(pair, (list, tuple)) else None
+            al = pair[1] if isinstance(pair, (list, tuple)) and len(pair) > 1 \
+                else ""
+            if bn and al:
+                terms.append((bn.strip(), al.split(";")[0].strip(), None))
+    except ImportError:
+        pass
+    # longest first, so a longer term is offered before a shorter one it
+    # contains, and de-duplicated on the Bengali term
+    out, have = [], set()
+    for t, e, m in sorted(terms, key=lambda x: -len(x[0])):
+        if t not in have:
+            have.add(t)
+            out.append((t, e, m))
+    _GLOSS_TERMS = out
+    return out
+
+
+def glossary_block(chunks):
+    """A glossary for ONLY the terms present in these chunks. -> str or ''
+
+    Never the whole registry: 40-odd entries of irrelevant vocabulary is both
+    a token cost and more material to misquote.
+    """
+    from bn_shared import count_literal
+    texts = [c.get("display_text") or "" for c in chunks]
+    if not any(texts):
+        return ""
+    lines = []
+    for term, expansion, manual in glossary_terms():
+        occ, _n = count_literal(term, texts, warn=False)
+        if occ:
+            where = f" [{manual}]" if manual else ""
+            lines.append(f"{term} = {expansion}{where}")
+    if not lines:
+        return ""
+    return ("--- GLOSSARY (terms appearing above; expansions only, not new "
+            "facts)\n" + "\n".join(lines))
+
+
+def build_user_prompt(question, chunks, glossary=False):
+    gloss = glossary_block(chunks) if glossary else ""
+    mid = f"{gloss}\n\n" if gloss else ""
+    return (f"{format_context(chunks)}\n\n{mid}--- QUESTION\n{question}\n")
 
 
 CITE_LINE = canon_pattern("CITATIONS")
@@ -1120,7 +1222,7 @@ def load_questions_by_id(gold_path):
     return {q["id"]: q for q in (g.get("questions") or [])}
 
 
-def answer_one(row, floor, system=SYSTEM_PROMPT):
+def answer_one(row, floor, system=SYSTEM_PROMPT, glossary=False):
     """-> (answer_record, meta_record). Abstains before calling the model when
     the top fused score is below the floor."""
     chunks = row.get("chunks") or []
@@ -1132,7 +1234,7 @@ def answer_one(row, floor, system=SYSTEM_PROMPT):
                  "citations": []},
                 dict(base, floor_fired=True, model=None, provider=None,
                      retries=0, prompt_tokens=None, output_tokens=None))
-    user = build_user_prompt(row["question_bn"], chunks)
+    user = build_user_prompt(row["question_bn"], chunks, glossary)
     text, meta = complete(system, user)
     answer, cites = split_citations(text)
     return ({"id": row["question_id"], "answer": answer, "citations": cites},
@@ -1643,6 +1745,11 @@ def main():
     ap.add_argument("--quota-report", action="store_true",
                     help="probe each model for reachability before "
                          "generating, so the numbers are attributable")
+    ap.add_argument("--glossary", action="store_true",
+                    help="append a glossary of the role/product terms that "
+                         "appear in the retrieved chunks, expanded from "
+                         "roles.py and productmatch. MEASURED, not a "
+                         "default: a glossary is more context to misquote")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
 
@@ -1694,7 +1801,7 @@ def main():
     answers, metas = [], []
     for row in rows:
         try:
-            a, m = answer_one(row, args.floor)
+            a, m = answer_one(row, args.floor, glossary=args.glossary)
         except MissingKey as e:
             print(f"\n{e}")
             return 1
@@ -1713,6 +1820,7 @@ def main():
                       "filter_skipped": "question not in gold file"})
         m["corpus_guard"] = guard
         m["pinned_model"] = args.model
+        m["glossary"] = bool(args.glossary)
         answers.append(a)
         metas.append(m)
         tag = "FLOOR" if m["floor_fired"] else (m.get("model") or "?")
