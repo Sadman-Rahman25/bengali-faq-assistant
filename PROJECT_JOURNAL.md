@@ -1021,6 +1021,34 @@ chance, which no un-baselined report can show you.
 | Per-literal exclusions | General letter-boundary guard | A boundary guard drops inflected forms like `সিডিওকে` and silently changes recorded counts |
 | AST-based lint | Runtime assertions | A pattern's nukta form is a *source* property; there is no runtime moment at which to check it |
 
+**A fabricated figure looks like a paraphrase to a similarity metric.**
+G-207 asks which approver signs a new loan in a given band. The gold fact is
+`নতুন ঋণ: ২০০০০-৭০০০০ — বিএম`, and it is the same in both manuals —
+`dabi_2025_0049` and `progoti_0056` are byte-identical twins and both print
+`২০০০০-৭০০০০ — বিএম`. Both models answered with a lower bound of **১৫,০০০**,
+which occurs in neither manual:
+
+```
+gold    নতুন ঋণ: ২০০০০-৭০০০০ — বিএম
+gpt-oss নতুন ঋণ ১৫০০০‑৭০০০০ টাকা পর্যন্ত অনুমোদনের ক্ষমতা শাখা ব্যবস্থাপক (বিএম) এর।
+qwen    dabi_2025 §2.1.1 অনুযায়ী, ১৫,০০০ থেকে ৭০,০০০ টাকা পর্যন্ত নতুন ঋণের
+        অনুমোদনের ক্ষমতা শাখা ব্যবস্থাপক (বিএম)-এর।
+```
+
+**My token-overlap proxy scored this 0.8 and classified it a paraphrase.**
+`৭০০০০`, `বিএম`, `নতুন` and `ঋণ` all match; only the lower bound is invented,
+and it is one token out of five. A similarity score cannot distinguish "said
+it differently" from "said it wrongly", because the token that decides
+correctness is exactly the one a majority vote outweighs. The llm judge
+failed it correctly; the proxy did not.
+
+So **class A cannot be trusted without reading the fact.** The classifier was
+useful for separating retrieval misses from everything else — class C is
+keyed on chunk ids and is exact — but its A/B split is a hypothesis, not a
+measurement, and at least one of its A cases was the most serious failure in
+the set. A confidently wrong figure is worse than a missing one: the officer
+has no signal that anything is off.
+
 **Clause-level expansion: a measured negative. Do not rebuild it.** The idea
 was to pull in sibling chunks sharing a retrieved chunk's `manual_id` and
 clause, so that a section arrives whole. Measured on the 17 recall-scoreable
@@ -1184,6 +1212,7 @@ Twelve instances of a check passing on data it could not see:
 | 11 | the gold-span **extractor**, verified against its own copy | it sliced facts out of a body built with `.replace("\n", " ")`, then asserted `literal in that same flattened body` -- so the check agreed with the bug and passed. The stored fact was NOT byte-exact in the chunk: G-216's span glued the heading line `১. প্রত্যাশা লোন:` to the following sentence across a newline. `validate_gold` caught it only because it reads the RAW `display_text` independently. Same shape as instance 3 -- a check that imports the thing it is asserting against verifies self-consistency, not correctness |
 | 12 | ad-hoc acronym **counting**, going around a guard that already existed | a one-off `str.count` reported **440** occurrences of the four programme acronyms where the guarded figure is **282** across 134 chunks; `সিডিপি` alone read 180 against a true 22, because it is a substring of `এনসিডিপি` and `এসসিডিপি`. NOT a new collision -- row 4 of §6.3, guarded in `productmatch` since Phase 6 by `(?<![নস])সিডিপি`. The script simply never reached the registry. Nothing threw, and the number was written into a gold-file note as evidence. Fixed by `bn_shared.count_literal`, which is shorter than the loop it replaces; Convention 2 was NOT extended, because a rule costing more than the wrong thing collects exemptions |
 | 13 | a **canary fixture** hand-typed instead of sliced from the stored run | A DISTINCT CLASS from every row above: not a check blind to its data, but a check **passing on data that resembled the real data**. `language_match_ids` was given qwen's answer as hand-typed codepoints and got two wrong -- `\u0938` (Devanagari `स`) for `\u09b8` (Bengali `স`), and composed `\u09df` where qwen emits `য়` **decomposed** as `\u09af\u09bc`. Both render identically; neither is visible by re-reading. It went green on a string no model ever produced, satisfying Convention 3's letter (a real failure, watched going red) while breaking its intent. Surfaced only because a hit printed as `িনথেটিক_এ` -- the Devanagari character sat outside the Bengali range being scanned, so the token started one character late. Fixture now generated from the saved answer and asserted to be a verbatim prefix of it; rule recorded in CONVENTIONS.md under Convention 3 |
+| 14 | the **class-A classifier** I proposed, which scored a fabricated figure as a paraphrase | G-207's gold fact is `নতুন ঋণ: ২০০০০-৭০০০০ — বিএম`; **both** models answered `১৫,০০০-৭০,০০০`, and `১৫,০০০` appears in NEITHER manual -- both print `২০০০০-৭০০০০ — বিএম`. Token overlap scored it **0.8** and the classifier filed it under class A, "information present, verbatim match failed". A fabricated figure reads as HIGH overlap whenever the surrounding tokens match: `৭০০০০`, `বিএম`, `নতুন`, `ঋণ` all matched and only the operative lower bound was invented. The llm judge caught it where my proxy did not. **Class A cannot be trusted without reading the fact**, and a similarity proxy must never be the last word on whether a figure is right -- the one token that decides correctness is the one most easily outvoted |
 
 **Number 5 is why this is a convention rather than a habit.** The check was
 written *specifically* to catch silent failures, and it failed silently.
