@@ -1021,6 +1021,54 @@ chance, which no un-baselined report can show you.
 | Per-literal exclusions | General letter-boundary guard | A boundary guard drops inflected forms like `সিডিওকে` and silently changes recorded counts |
 | AST-based lint | Runtime assertions | A pattern's nukta form is a *source* property; there is no runtime moment at which to check it |
 
+**Clause-level expansion: a measured negative. Do not rebuild it.** The idea
+was to pull in sibling chunks sharing a retrieved chunk's `manual_id` and
+clause, so that a section arrives whole. Measured on the 17 recall-scoreable
+questions, k=5, token cap 6,000:
+
+| | result |
+|---|---|
+| unachievable facts recovered | **0 of 14** |
+| unachievable questions recovered | **0 of 6** |
+| median context tokens | 3,473 → 5,886 (**1.69x**) |
+| questions over 2x the k=5 context | 4 of 17 |
+
+Raising the cap to 9,000 recovers nothing — the cap is not the binding
+constraint. Adding parent-clause awareness recovers exactly one fact.
+
+**MY PREMISE WAS WRONG, and the reason is worth keeping.** I expected G-223's
+six step headers to arrive together off any single §5.1.8 hit. *None of them
+is retrieved* — the top-5 for G-223 holds §5.2.6, §5.4.14 and §6.3, so there
+is no §5.1.8 anchor to expand from. Expansion can only widen around a chunk
+already found; it cannot find a clause the retriever missed.
+
+The 14 facts split three ways, and only the middle one is addressable:
+
+| cause | questions | facts | reachable by a clause rule? |
+|---|---|---|---|
+| gold clause never retrieved — no anchor | G-216, G-217, G-208, G-223, G-222 | 11 | **no** |
+| parent/child mismatch — gold is §5.4, retrieved are §5.4.1…§5.4.12 | G-215 | 2 | yes, with parent awareness |
+| anchored but never reached | G-207 | 1 | not by raising the cap |
+
+A bug worth recording because it nearly produced a false negative: `ix.meta`
+rows carry **no `clause` field** — `search()` derives it with `clause_of`. The
+first version keyed on `m.get("clause")`, so every chunk fell into the `''`
+bucket and the 0/14 was an artefact of the measurement, not of the idea. The
+corrected version also refuses `''` as an expansion key: an empty clause is
+the *absence* of one, and expanding on it pulled 397 chunks of a single
+manual into the candidate pool.
+
+**G-223 cannot be completed from a top-30 pool, and that is structural.** Its
+six gold chunks sit at fused ranks **9, 11, 22, 39, 53 and 57**. A reranker
+over the top 30 sees four of the six, so fact recall for that question is
+capped at 4/6 however good the reordering is. Question-level recall@30 reads
+100% only because its *best* gold chunk is at rank 9 — which is why
+question-level recall flatters a question whose answer is spread across six
+chunks. **Do not widen k for one question:** k is paid on every query, and the
+median context is already 3,473 tokens against an 8,000 TPM ceiling. The
+honest options are a clause-aware fetch that expansion failed to deliver, or
+accepting 4/6 and recording it.
+
 **Six rule-4 wordings, and the two defects pull opposite ways.** Rule 4
 forbids quoting a figure the context does not support. Measured on Groq
 (1000 req/day/model, so budget is not the constraint), 3 runs per model per
