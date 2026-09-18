@@ -52,6 +52,7 @@ from pathlib import Path
 
 import embed
 from dedupe import clause_of, collapse
+import redact
 from embed import (BM25, expand_banglish, index_text, is_figure_query,
                    query_text, rank_hybrid)
 
@@ -136,6 +137,12 @@ class Index:
         ppat = progs[programme] if programme else None
         keep = []
         for i, m in enumerate(self.meta):
+            # WITHHELD FOR PERSONAL DATA, checked first and unconditionally.
+            # This is the only choke point every search shares -- filtered,
+            # unfiltered, dumped or interactive -- so the exclusion cannot be
+            # bypassed by calling search() a different way. See redact.py.
+            if redact.is_excluded(m["chunk_id"]):
+                continue
             if manual_id and m["manual_id"] != manual_id:
                 continue
             if ipat and not ipat.search(m["index_text"]):
@@ -198,6 +205,11 @@ class Index:
                   if mask[i] != -np.inf]
         kept = collapse(ranked, k=k,
                         prefer_manual=prefer_manual or manual_id)
+        # BELT AND BRACES. _allowed already excluded these; this catches a
+        # future path that builds results without going through it, and it
+        # raises rather than filtering, because silently dropping a chunk here
+        # would hide the bug that let it through.
+        redact.assert_clean([m for _score, m in kept], "search result")
 
         status, populated, total = product_status()
         out = []
@@ -284,6 +296,12 @@ def canary_selftest(verbose=True):
               f"programmes={len(programmes())}  "
               f"[{'PASS' if ok3 else 'FAIL'}]")
     ok &= ok3
+
+    # 4. the personal-data exclusion, and it is asserted END TO END below as
+    #    well: redact.py proves the chunk is dropped from a chunk list, and
+    #    the dump path proves it never reaches a retrieval result.
+    ok4 = redact.canary_selftest(verbose=verbose)
+    ok &= ok4
     return ok
 
 
