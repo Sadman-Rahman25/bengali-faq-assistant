@@ -245,6 +245,39 @@ If you cannot answer, write CITATIONS: none
 #   leakers, cite 2/2 -- so the over-suppression introduced by wording 2 is
 #   fixed. The leak is what is not.
 #
+#   WORDING 4 RE-MEASURED ON GROQ, 2026-09-18, where quota is not a
+#   constraint (1000 req/day/model). Three runs per wording per model:
+#
+#     openai/gpt-oss-120b   original  CLEAN 3/3      v4  LEAKS 3/3
+#     qwen/qwen3.8-27b      original  LEAKS 3/3      v4  LEAKS 3/3
+#
+#   TWO RESULTS, AND THE FIRST IS THE WORSE ONE.
+#
+#   1. V4 CREATES LEAKS IN CLEAN MODELS. gpt-oss-120b abstains in one line
+#      under the original wording:
+#        "প্রশ্নে জিএম-এর ঋণ অনুমোদনের সীমা সম্পর্কে কোনো তথ্য প্রেক্ষাপটে নেই।"
+#      Under v4 the same model emits a bulleted audit trail naming BOTH
+#      forbidden figures -- ২,৫০,০০০ and ৩ লক্ষ -- one bullet per clause
+#      checked. The rule asks for a per-figure test; the model shows its
+#      working; the working is the leak.
+#
+#   2. V4 DOES NOT FIX A LEAKER. qwen3.8-27b leaks identically under both,
+#      and under v4 states the rule's own conclusion while violating it:
+#        "...তাই এই সংখ্যাটি ঋণ অনুমোদনের প্রশ্নের উত্তরে ব্যবহার করা যাবে না।"
+#      ("so this number cannot be used in answering the loan-approval
+#      question") -- having already printed the number.
+#
+#   Ten v4 samples now, four models, EVERY ONE LEAKING: gemini-2.5-flash,
+#   gemini-3-flash-preview, gpt-oss-120b, qwen3.8-27b. S-004 stays correct
+#   throughout on every model, cite 2/2, so there is no over-suppression
+#   left to trade against -- v4 simply does not work.
+#
+#   THE CONDITION HAS NOW BEEN EVALUATED ON A LEAKER AND FAILED. qwen3.8-27b
+#   leaks under the original wording and still leaks under v4, and unlike the
+#   Gemini leakers it can be re-tested at will. The warning is no longer
+#   standing for want of budget; it stands because the wording was measured
+#   against the case it was written for and did not hold.
+#
 #   *** THE NOT-SAFE-TO-SHIP WARNING STANDS. *** Condition for removal:
 #   S-002 AND S-004 both passing on a model that previously LEAKED --
 #   gemini-2.5-flash or gemini-3-flash-preview. Nothing measured on a clean
@@ -368,11 +401,36 @@ def _retryable(exc, status):
 MAX_ATTEMPTS = 5
 BACKOFF_BASE = 1.7
 
-KEY_ENV = {"gemini": "GEMINI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
+KEY_ENV = {"gemini": "GEMINI_API_KEY", "anthropic": "ANTHROPIC_API_KEY",
+           "groq": "GROQ_API_KEY"}
 KEY_HELP = {
     "gemini": "https://aistudio.google.com/apikey",
     "anthropic": "https://console.anthropic.com/settings/keys",
+    "groq": "https://console.groq.com/keys",
 }
+
+# GROQ. Measured 2026-09-18 on a Bengali fidelity probe: gpt-oss-120b,
+# gpt-oss-20b and qwen3.8-27b all copied ৩ লক্ষ and শাখা ব্যবস্থাপক verbatim
+# out of inline context, with no ASCII conversion and no denial of context --
+# indistinguishable from the gemini-2.5-flash baseline on all three checks.
+#
+# WHY IT IS THE ONLY FREE PROVIDER THAT CAN RUN THIS EVAL. From the response
+# headers, not the documentation:
+#     x-ratelimit-limit-requests: 1000     per DAY, and PER MODEL
+#     x-ratelimit-limit-tokens:   8000     per MINUTE (reset-tokens ~547ms)
+# Per-model is demonstrated, not assumed: after exactly 2 calls to each of
+# three models, all three reported remaining-requests 998. A shared bucket
+# would have counted 998 -> 997 -> 996.
+#
+# A 39-question run is 77,904 tokens (measured, out/retrieved.jsonl), so:
+#     requests:   1000 / 39  = 25 complete runs per day per model
+#     throughput: 77904/8000 = ~10 minutes minimum per run
+# Against Gemini's 20 requests/day/model = 0.51 runs/day. Roughly 49x.
+#
+# Cerebras was tested at the same time and returns 402 payment_required --
+# no free tier on that key -- so it gets no backend.
+GROQ_PREFERENCE = ("openai/gpt-oss-120b", "qwen/qwen3.8-27b",
+                   "openai/gpt-oss-20b")
 
 
 class ProviderError(RuntimeError):
@@ -425,6 +483,57 @@ def _status_of(exc):
     if "RESOURCE_EXHAUSTED" in text.upper():
         return 429
     return None
+
+
+def _parse_reset(v):
+    """Groq reset headers -> seconds. Formats seen: '547ms', '8.5s',
+    '2m52.8s', '1m', '2h3m0s'. Returns None when unparseable, so a caller
+    falls back to its own backoff rather than sleeping on a guess."""
+    if not v:
+        return None
+    t = str(v).strip()
+    if t.endswith("ms"):
+        try:
+            return float(t[:-2]) / 1000.0
+        except ValueError:
+            return None
+    total, num = 0.0, ""
+    for ch in t:
+        if ch.isdigit() or ch == ".":
+            num += ch
+            continue
+        if not num:
+            return None
+        mult = {"h": 3600.0, "m": 60.0, "s": 1.0}.get(ch)
+        if mult is None:
+            return None
+        total += float(num) * mult
+        num = ""
+    return total if not num else None
+
+
+# The token limit is PER MINUTE, so a long run hits it mid-way rather than
+# failing up front. Pace from the headers the API already returns instead of
+# sleeping a fixed amount: the server knows how much is left and when it
+# refills, and a guess is either too slow or still 429s.
+TPM_HEADROOM = 1.15        # ask for 15% more than the last call actually used
+
+
+def _pace_from_headers(state, need_tokens):
+    """Sleep only if the remaining token budget cannot cover `need_tokens`.
+    -> seconds slept."""
+    h = state.get("headers") or {}
+    rem = h.get("x-ratelimit-remaining-tokens")
+    reset = _parse_reset(h.get("x-ratelimit-reset-tokens"))
+    try:
+        rem = int(rem)
+    except (TypeError, ValueError):
+        return 0.0
+    if rem >= need_tokens or reset is None:
+        return 0.0
+    nap = min(reset + 0.25, 65.0)     # never sleep longer than one TPM window
+    time.sleep(nap)
+    return nap
 
 
 def _sleep_for(attempt):
@@ -569,6 +678,75 @@ def _anthropic_complete(system, user, cache_system, key, state):
     raise ProviderError(f"every model failed; tried {tried}")
 
 
+def _groq_complete(system, user, cache_system, key, state):
+    """Groq. Same retry classification as gemini, plus TPM pacing.
+
+    cache_system is accepted and recorded but not wired: Groq exposes no
+    prompt-cache control on this tier, so claiming it were cached would put a
+    false field in the run metadata.
+    """
+    from groq import Groq
+    client = state.get("client")
+    if client is None:
+        client = Groq(api_key=key)
+        state["client"] = client
+
+    pin = _STATE.get("pin")
+    models = [pin] if pin else list(GROQ_PREFERENCE)
+
+    retries, paced, tried = 0, 0.0, []
+    for model in models:
+        for attempt in range(MAX_ATTEMPTS):
+            try:
+                # Pace BEFORE the call, using what the last call reported
+                # left. need = the last observed total, with headroom; on the
+                # first call there is nothing to go on, so it does not sleep.
+                need = int(state.get("last_total", 0) * TPM_HEADROOM)
+                paced += _pace_from_headers(state, need)
+                raw = client.chat.completions.with_raw_response.create(
+                    model=model, temperature=0.0, max_tokens=1024,
+                    messages=[{"role": "system", "content": system},
+                              {"role": "user", "content": user}])
+                state["headers"] = {k.lower(): v
+                                    for k, v in raw.headers.items()}
+                r = raw.parse()
+                u = getattr(r, "usage", None)
+                pt = getattr(u, "prompt_tokens", None)
+                ct = getattr(u, "completion_tokens", None)
+                state["last_total"] = (pt or 0) + (ct or 0)
+                h = state["headers"]
+                return (r.choices[0].message.content or ""), {
+                    "model": model, "retries": retries, "tried": tried,
+                    "prompt_tokens": pt, "output_tokens": ct,
+                    "system_cached": False,
+                    "paced_seconds": round(paced, 2),
+                    "tpm_remaining": h.get("x-ratelimit-remaining-tokens"),
+                    "rpd_remaining": h.get("x-ratelimit-remaining-requests"),
+                }
+            except Exception as e:                           # noqa: BLE001
+                st = _status_of(e)
+                hdrs = getattr(getattr(e, "response", None), "headers", None)
+                if hdrs:
+                    state["headers"] = {k.lower(): v for k, v in hdrs.items()}
+                if _retryable(e, st) and attempt < MAX_ATTEMPTS - 1:
+                    retries += 1
+                    # A 429 here is usually TPM, not the daily cap. Prefer the
+                    # server's own reset window over exponential backoff.
+                    reset = _parse_reset(
+                        (state.get("headers") or {}).get(
+                            "x-ratelimit-reset-tokens"))
+                    nap = (min(reset + 0.25, 65.0) if reset is not None
+                           else _sleep_for(attempt))
+                    time.sleep(nap)
+                    paced += nap
+                    continue
+                tried.append({"model": model, "status": st,
+                              "error": type(e).__name__,
+                              "detail": str(e)[:160]})
+                break
+    raise ProviderError(f"every model failed; tried {tried}")
+
+
 def _local_complete(system, user, cache_system, key, state):
     # Would need: a served instruction-tuned model with real Bengali coverage
     # (the corpus is 100% decomposed-nukta Unicode, so a tokeniser that mangles
@@ -581,6 +759,7 @@ def _local_complete(system, user, cache_system, key, state):
 
 
 _BACKENDS = {"gemini": _gemini_complete,
+             "groq": _groq_complete,
              "anthropic": _anthropic_complete,
              "local": _local_complete}
 _STATE = {"provider": None, "pin": None, "cache": {}}
@@ -695,7 +874,13 @@ def split_citations(text):
         if stripped.upper().startswith("CITATIONS:"):
             raw = stripped.split(":", 1)[1].strip()
             if raw and raw.lower() != "none":
-                cites = [c.strip() for c in raw.split(";") if c.strip()]
+                # Drop a per-item "none" too, not just a whole-line one:
+                # gpt-oss-120b emitted "CITATIONS: synthetic_a §9.1.1; none",
+                # which used to yield a literal 'none' citation. cite_ok
+                # tolerates extras so it scored fine, but it is noise in the
+                # answers file and would count as a citation to a reader.
+                cites = [c.strip() for c in raw.split(";")
+                         if c.strip() and c.strip().lower() != "none"]
             continue
         keep.append(ln)
     return "\n".join(keep).strip(), cites
