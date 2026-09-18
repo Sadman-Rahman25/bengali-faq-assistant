@@ -893,6 +893,62 @@ way; G-223 is the one that has been caught. A role token is
 evidence that a chunk MENTIONS a role, and mention is not authority: 3.9 names
 `আরএম` as applicant, as assistant, and as approver, in different clauses.
 
+**The free tier cannot support a scored run, and the quota error says so in
+a way that reads as something else.** Measured 2026-09-17/18 from the full
+429 body, which the truncated log line hides:
+
+```
+quotaId    GenerateRequestsPerDayPerProjectPerModel-FreeTier
+quotaValue 20
+metric     generativelanguage.googleapis.com/generate_content_free_tier_requests
+retryDelay 58s
+```
+
+**Twenty requests per model per day**, resetting at midnight US Pacific. One
+question is one call:
+
+| set | questions | calls | budget |
+|---|---|---|---|
+| synthetic | 4 | 4 | 5 runs per model per day |
+| real gold | 39 | **156** | **8 days on one model** |
+
+A real scored run cannot complete inside a quota window, and a run that
+cannot complete yields nothing -- `answer_one` raises on the first provider
+failure, so a run beginning with two calls left writes no answers at all.
+
+**`retryDelay: 58s` is what cost four sessions.** On a per-DAY quota it is a
+generic backoff hint, not a time-to-reset. Every exhaustion therefore looked
+transient: it was retried, the retry failed the same way, and the failure was
+attributed to an unreliable model. Three separate findings in this journal
+were shaped by that misreading before the full error body was ever printed --
+`gemini-flash-latest` was recorded as "flaky" when it was out of budget, a
+model comparison was run with one arm silently answered by the other, and an
+A/B was planned at 24 calls per model against a 20-call ceiling.
+
+Two operational consequences worth keeping:
+
+- **Every reachability probe costs 1 of the 20** -- a quarter of a synthetic
+  run. A `quota_report` over 13 models spends three runs' worth. `probe_model`
+  caches per process for this reason. `models.list()` is free; reachability is
+  not.
+- **Budget before running:** `(runs x questions) + probes <= 20`.
+
+**THE CONSEQUENCE FOR THE PLAN.** A real scored run needs either a paid tier
+or a sampled subset. Independently, the free tier carries a clause permitting
+inputs to be used for model training, and the corpus cannot clear it -- these
+are BRAC internal documents pending a data-protection decision, which is what
+`generate.CORPUS_GUARD` exists to enforce. **Both constraints point the same
+way**: no real chunk goes to this provider on this tier, whatever the budget.
+The provider decision is therefore not a cost question that can be deferred
+until the eval is built; it gates the eval.
+
+**No sampled-subset mode has been built, deliberately.** Sampling 5 of 39
+questions would make all four metrics noisy in a way the report cannot
+express: it prints counts per provenance with no interval, so a 5-question
+recall figure would read exactly like a 39-question one. Given this project's
+failure mode -- a number that looks like a measurement and is not -- that is
+worse than waiting.
+
 **Retrieval results so far** (`out/retrieval_eval.json`, 15 questions / 17 query
 variants — 10 field-sourced, 5 chunk-derived; 8 answerable, 4 partial, 3 not):
 

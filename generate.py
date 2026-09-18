@@ -16,6 +16,40 @@ Conventions (CONVENTIONS.md):
      YES/NO, the fixture assertions -- it goes through bn_shared.canon_pattern
      or gold_eval.fact_present, which own that comparison.
 
+THE FREE TIER CANNOT SUPPORT A REAL EVAL. Read this before planning a run.
+
+    GenerateRequestsPerDayPerProjectPerModel-FreeTier = 20
+
+Twenty requests per model per day, resetting at midnight US Pacific. One
+question is one call, so:
+
+    synthetic set,  4 questions  =   4 calls  -> 5 runs per model per day
+    real gold set, 39 questions  = 156 calls  -> 8 DAYS of budget, one model
+
+A real scored run is therefore not merely slow on the free tier, it is
+impossible: the run cannot complete inside a quota window, and a run that
+cannot complete produces nothing, because answer_one raises on the first
+provider failure. Partial budgets are wasted budgets.
+
+`retryDelay: 58s` in the 429 body is a GENERIC BACKOFF HINT, not the time
+until a per-day quota resets. That single misleading field is what made four
+sessions of quota exhaustion look like model flakiness: every failure was
+read as transient, retried, and attributed to an unreliable model.
+
+TWO ROADS, AND THEY POINT THE SAME WAY. A real scored run needs either a paid
+tier or a sampled subset of the gold set. Independently, the free tier
+carries a clause permitting inputs to be used for model training, which the
+corpus cannot clear -- these are BRAC internal documents pending a
+data-protection decision, which is what CORPUS_GUARD below exists for. Both
+constraints say the same thing: no real chunk goes to this provider on this
+tier, whatever the budget.
+
+NO SAMPLED-SUBSET MODE IS IMPLEMENTED, DELIBERATELY. Sampling 5 of 39
+questions would make all four metrics noisy in a way the report cannot
+express -- it reports counts per provenance with no confidence interval, and
+a 5-question recall figure would read exactly like a 39-question one. That is
+a worse failure than waiting for the provider decision.
+
 USAGE
     python generate.py --make-synthetic            # build the synthetic pair
     python generate.py --retrieved out/synthetic_retrieved.jsonl \\
