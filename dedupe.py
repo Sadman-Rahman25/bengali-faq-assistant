@@ -307,6 +307,13 @@ def write_manifest():
                 "clause": clause_of(c),
                 "heading_path": list(c.get("heading_path") or []),
                 "n_chars": len(dt),
+                # THE TWIN RELATION, and it is not the sha above. The sha is
+                # of display_text, which carries the heading -- so the one
+                # passage printed at 1.1.2 in Dabi and 1.1.3 in Progoti has
+                # two different shas and one dup_group. dup_group is computed
+                # on index_text and is the relation collapse() acts on, so it
+                # is the one anything reasoning about twins must use.
+                "dup_group": c.get("dup_group"),
             })
             why = redact.is_excluded(c["chunk_id"])
             if why:

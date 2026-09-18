@@ -410,6 +410,103 @@ def norm_cite(c):
     return canon(c).replace("§", "").replace(" ", "").lower()
 
 
+# ------------------------------------------- was the citation even possible
+# A METRIC THAT CHARGES FOR THE STRUCTURALLY IMPOSSIBLE CANNOT IMPROVE, and
+# citation accuracy was one. Measured on the 17-question real run: 6 of the
+# remaining failures per model were questions whose gold chunk was never in
+# the context. G-216 is the clearest -- the context held progoti_0017, _0015
+# and _0019, all labelled clause 1.1.2, so the answer's "progoti §1.1.2" was
+# a truthful citation of what it had been given, while the gold chunk
+# progoti_0021 at §1.1.3 was never retrieved. Scoring that as a citation
+# failure blames the answer layer for a retrieval miss.
+#
+# Same shape as the absent-fact fix: a kind:absent fact resolved to a gold
+# chunk and was counted in recall, so recall was scoring retrieval on a fact
+# that names no chunk to retrieve.
+#
+# TWO NUMBERS, NEVER MERGED. Accuracy over the achievable questions, and a
+# count of the unachievable ones. Merging them would let a retrieval
+# regression look like a generation improvement: drop a gold chunk out of
+# context and the question leaves the denominator.
+MANIFEST_PATH = Path("data/processed/chunk_manifest.json")
+
+
+def load_twins(path=MANIFEST_PATH):
+    """{chunk_id: set of chunk_ids in its dup_group, itself included}.
+
+    Read from the manifest, which is the tracked artefact -- the chunk files
+    are under data/processed/* and gitignored. Keyed on dup_group and NOT on
+    the manifest sha: the sha covers display_text, which carries the heading,
+    so one passage printed at 1.1.2 in Dabi and 1.1.3 in Progoti has two
+    shas and one dup_group. dup_group is what collapse() acts on.
+    """
+    p = Path(path)
+    if not p.exists():
+        return {}
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return {}
+    groups = defaultdict(set)
+    for row in doc.get("chunks") or []:
+        g = row.get("dup_group")
+        if g:
+            groups[g].add(row["chunk_id"])
+    out = {}
+    for members in groups.values():
+        for cid in members:
+            out[cid] = set(members)
+    return out
+
+
+def load_context(path):
+    """{question_id: [chunk_id, ...]} from a retrieval dump. -> dict"""
+    ctx = {}
+    p = Path(path)
+    if not p.exists():
+        return ctx
+    for line in p.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        ctx[row.get("question_id")] = [c.get("chunk_id")
+                                       for c in (row.get("chunks") or [])]
+    return ctx
+
+
+def gold_chunk_ids(q):
+    """Chunk ids this question's gold declares. -> set"""
+    ids = set()
+    for r in q.get("source_refs") or []:
+        c = r.get("chunk_id") if isinstance(r, dict) else None
+        if c and not str(c).strip().upper().startswith("TODO"):
+            ids.add(str(c))
+    for f in q.get("gold_facts") or []:
+        r = f.get("ref") if isinstance(f, dict) else None
+        if r and not str(r).strip().upper().startswith("TODO"):
+            ids.add(str(r))
+    return ids
+
+
+def citation_achievable(q, ctx_ids, twins):
+    """Could a correct citation have been produced from this context?
+    -> True / False / None
+
+    None when there is nothing to judge by: no must_cite, no declared gold
+    chunk, or no context supplied. None keeps the question OUT of both
+    numbers rather than silently into one.
+    """
+    if not (q.get("must_cite") or []):
+        return None
+    gold = gold_chunk_ids(q)
+    if not gold or ctx_ids is None:
+        return None
+    acceptable = set(gold)
+    for cid in gold:
+        acceptable |= twins.get(cid, set())
+    return bool(acceptable & set(ctx_ids))
+
+
 CITE_MODES = ("all", "any")
 
 
@@ -510,7 +607,8 @@ def norm_answerable(v):
     return str(v).strip().lower()
 
 
-def score_one(q, ans, forbidden_numbers=None, judge=None):
+def score_one(q, ans, forbidden_numbers=None, judge=None,
+              ctx_ids=None, twins=None):
     answer = ans.get("answer", "")
     facts = q.get("gold_facts", []) or []
     hit = [f for f in facts
@@ -556,6 +654,10 @@ def score_one(q, ans, forbidden_numbers=None, judge=None):
                                      if fact_verified(f) == "render"]),
         "citation": cite_ok(q.get("must_cite"), ans.get("citations", []),
                             q.get("must_cite_mode", "all")),
+        # None when no context was supplied, so an eval run without
+        # --retrieved reports citation exactly as it did before.
+        "citation_achievable": citation_achievable(q, ctx_ids, twins or {}),
+        "citations": ans.get("citations", []),
         # Fifth number. Never folded into the four above.
         "language": language_match(q, answer),
         "abstention": abstention,
@@ -676,6 +778,40 @@ def canary_selftest(verbose=True):
            "gold_facts": [{"text": _role, "kind": "literal"}]}
     _tr = language_match(_qr, "The Branch Manager approves it.")
     _kept = language_match(_qr, f"{_role} অনুমোদন করবেন।")
+    # ---- citation must not be charged for a retrieval miss ---------------
+    # A REAL CASE: G-216. The gold chunk is progoti_0021, the same passage as
+    # dabi_2025_0014 (one dup_group, printed at 1.1.3 in Progoti and 1.1.2 in
+    # Dabi). On the 2026-09-18 run the context held progoti_0017, _0015 and
+    # _0019 -- all labelled clause 1.1.2 -- and NEITHER gold chunk nor its
+    # twin. Both models cited "progoti §1.1.2", truthfully describing what
+    # they were given, and both were scored as citation failures.
+    #
+    # The canary asserts that context counts as UNACHIEVABLE, and that a
+    # context holding the gold chunk or its twin counts as achievable -- so
+    # the split cannot silently classify everything one way.
+    _q216 = {"id": "G-216",
+             "must_cite": ["dabi_2025 \u00a71.1.2", "progoti \u00a71.1.3"],
+             "must_cite_mode": "any",
+             "source_refs": [{"chunk_id": "dabi_2025_0014"},
+                             {"chunk_id": "progoti_0021"}]}
+    _twins216 = {"dabi_2025_0014": {"dabi_2025_0014", "progoti_0021"},
+                 "progoti_0021": {"dabi_2025_0014", "progoti_0021"}}
+    _real_ctx = ["progoti_0017", "progoti_0015", "progoti_0019"]
+    _miss = citation_achievable(_q216, _real_ctx, _twins216)
+    _hit = citation_achievable(_q216, ["progoti_0017", "progoti_0021"],
+                               _twins216)
+    _twin_hit = citation_achievable(_q216, ["progoti_0017", "dabi_2025_0014"],
+                                    _twins216)
+    _noctx = citation_achievable(_q216, None, _twins216)
+    ok6 = (_miss is False and _hit is True and _twin_hit is True
+           and _noctx is None)
+    if verbose:
+        print(f"  canary cite_achievable      real G-216 context -> "
+              f"{_miss} (want False); gold chunk present -> {_hit}; "
+              f"twin present -> {_twin_hit}; no context -> {_noctx}"
+              f"  [{'DETECTED' if ok6 else 'MISSED'}]")
+    ok = ok and ok6
+
     # ---- the mirror half, from the real wording-6 run --------------------
     # qwen/qwen3.8-27b, S-004, run 1, verbatim: the manual id transliterated
     # and the clause number in Bengali digits, inside otherwise correct
@@ -736,10 +872,30 @@ def report(rows):
         print(f"\n[{name}]  n={len(rs)}")
         print(f"  1. fact recall ........ {fh}/{ft} = "
               f"{(fh / ft if ft else 0):.1%}")
-        print(f"  2. citation accuracy .. "
-              f"{sum(1 for r in cited if r['citation'])}/{len(cited)}"
-              + (f" = {sum(1 for r in cited if r['citation']) / len(cited):.1%}"
-                 if cited else " (none scored)"))
+        # TWO NUMBERS, NEVER MERGED. Accuracy is over the questions where a
+        # correct citation was POSSIBLE from the context; the unachievable
+        # ones are counted and listed, not scored. See citation_achievable.
+        # A PASS IS PROOF OF ACHIEVABILITY, whatever the context said. G-222
+        # cites bare manual ids -- "dabi_2025", "progoti" -- so an answer can
+        # satisfy it without the gold clause being retrieved, and it did.
+        # Excluding a demonstrated success distorts the number exactly as much
+        # as charging for the impossible, so only FAILURES can be
+        # unachievable.
+        unach = [r for r in cited
+                 if r.get("citation_achievable") is False and not r["citation"]]
+        scor = [r for r in cited if r not in unach]
+        chit = sum(1 for r in scor if r["citation"])
+        print(f"  2. citation accuracy .. {chit}/{len(scor)}"
+              + (f" = {chit / len(scor):.1%}" if scor else " (none scored)")
+              + ("   (gold chunk was in context)" if unach else ""))
+        if unach:
+            print(f"  2b. citation unachievable  {len(unach)}"
+                  f"   (NOT merged into 2: the gold chunk was never "
+                  f"retrieved,\n      so no correct citation could be "
+                  f"produced -- a retrieval miss, not a\n      citation "
+                  f"failure)")
+            for r in unach:
+                print(f"       {r['id']:<8} cited {r.get('citations') or []}")
         print(f"  3. abstention accuracy  "
               f"{sum(1 for r in abst if r['abstention'])}/{len(abst)}"
               + (f" = {sum(1 for r in abst if r['abstention']) / len(abst):.1%}"
@@ -860,6 +1016,12 @@ def main():
     ap.add_argument("--require-render", action="store_true",
                     help="fail the run if any scored fact is corpus-checked "
                          "only; use once figure verification is done")
+    ap.add_argument("--retrieved", metavar="PATH",
+                    help="the retrieval dump the answers were generated "
+                         "from. With it, citation is split into accuracy "
+                         "over questions whose gold chunk was in context and "
+                         "a count of those where it was not. Without it, "
+                         "citation is reported exactly as before")
     ap.add_argument("--out", default="out/eval_report.json")
     args = ap.parse_args()
 
@@ -886,7 +1048,13 @@ def main():
         print(f"\n[warn] no answer for: {', '.join(missing)}")
 
     judge = make_llm_judge() if args.judge == "llm" else None
-    rows = [score_one(qs[i], answers[i], forbidden, judge)
+    ctx = load_context(args.retrieved) if args.retrieved else {}
+    twins = load_twins() if args.retrieved else {}
+    if args.retrieved:
+        print(f"context {args.retrieved}: {len(ctx)} question(s); "
+              f"{len(twins)} chunk(s) in a declared twin group")
+    rows = [score_one(qs[i], answers[i], forbidden, judge,
+                      ctx.get(qs[i].get("id")), twins)
             for i in qs if i in answers]
     code = report(rows)
     if args.require_render:
