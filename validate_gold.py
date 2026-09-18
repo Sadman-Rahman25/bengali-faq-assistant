@@ -252,6 +252,53 @@ def check_manifest_drift(refs, corpus, manifest):
     return out
 
 
+def manifest_manual_ids(manifest):
+    """Every manual id the corpus actually uses. -> set"""
+    return {row.get("manual_id") for row in manifest.values()
+            if row.get("manual_id")}
+
+
+def cite_manual_id(citation):
+    """The manual id part of a must_cite string. -> str
+
+    A citation is "<manual_id> §<clause>" or bare "<manual_id>". Split on the
+    section sign rather than on whitespace: a manual id never contains one,
+    and splitting on space would truncate nothing today but would the day an
+    id gains a space.
+    """
+    return (citation or "").split("\u00a7")[0].strip()
+
+
+def unknown_cite_manuals(gold, manifest):
+    """must_cite entries naming a manual the manifest has never seen.
+    -> [(qid, citation, manual_id)]
+
+    WHY THIS EXISTS, and it is a failure I introduced and did not notice.
+    Both gold files cited "progoti_2025" for 30 entries. The corpus manual id
+    is "progoti". Nothing checked the two against each other, so 12 of the 17
+    recall-scoreable questions required a citation string that could not be
+    produced from any chunk, and citation accuracy was capped near 5/17
+    before any model was called. Both models scored 1/17 on a real run and
+    the number looked like a model failure.
+
+    A wrong manual id cannot be caught by reading the gold file -- progoti and
+    progoti_2025 both look like plausible ids -- so it has to be checked
+    against the corpus.
+    """
+    known = manifest_manual_ids(manifest)
+    if not known:
+        return []
+    out = []
+    for q in gold.get("questions") or []:
+        for c in q.get("must_cite") or []:
+            if is_todo(str(c)):
+                continue
+            mid = cite_manual_id(str(c))
+            if mid and mid not in known:
+                out.append((q.get("id", "?"), str(c), mid))
+    return out
+
+
 def manifest_orphans(corpus, manifest):
     """Chunk ids the manifest has and the corpus no longer does."""
     return sorted(set(manifest) - set(corpus))
@@ -321,6 +368,7 @@ def validate(gold, corpus, heads=None, root=Path(".")):
         "manifest_unknown": [],
         "manifest_orphans": [],
         "manifest_ok": 0,
+        "unknown_cite_manual": [],
     }
     for q in qs:
         qid = q.get("id", "?")
@@ -413,6 +461,7 @@ def validate(gold, corpus, heads=None, root=Path(".")):
             else:
                 rep["manifest_unknown"].append((cid, detail))
         rep["manifest_orphans"] = manifest_orphans(corpus, manifest)
+        rep["unknown_cite_manual"] = unknown_cite_manuals(gold, manifest)
 
     return rep
 
@@ -666,6 +715,47 @@ def canary_selftest(gold, corpus, verbose=True):
                   f"{true_sha[:12]}: true={clean[0][1]}, "
                   f"mutated={fired[0][1]}, absent={missing[0][1]}  "
                   f"[{'DETECTED' if ok3 else 'MISSED'}]")
+
+    # ---- must_cite manual ids must exist in the corpus -------------------
+    # A REAL OBSERVED FAILURE, AND IT WAS MINE. Both gold files cited
+    # "progoti_2025" where the corpus manual id is "progoti", for 30 entries
+    # across both files. 12 of the 17 recall-scoreable questions therefore
+    # required an unproducible citation, and a real two-model run scored
+    # 1/17 each -- which read as a model failure until the ids were compared
+    # against the manifest.
+    #
+    # The canary points one citation at a manual that does not exist and
+    # asserts the check fires, then asserts it stays quiet on the gold file
+    # as it now stands.
+    manifest2, why2 = load_manifest()
+    if why2:
+        if verbose:
+            print(f"  canary cite_manual_exists   NOT BUILDABLE: {why2}")
+    else:
+        live = unknown_cite_manuals(gold, manifest2)
+        # a copy with one citation's manual id broken
+        import copy as _copy
+        broken = None
+        for q in gold.get("questions") or []:
+            if q.get("must_cite"):
+                broken = _copy.deepcopy(gold)
+                for bq in broken["questions"]:
+                    if bq.get("id") == q.get("id"):
+                        first = str(bq["must_cite"][0])
+                        rest = first.split("\u00a7", 1)
+                        bq["must_cite"][0] = (
+                            "no_such_manual_9999"
+                            + ("\u00a7" + rest[1] if len(rest) > 1 else ""))
+                        break
+                break
+        hit = unknown_cite_manuals(broken, manifest2) if broken else []
+        ok_c = bool(hit) and not live
+        if verbose:
+            print(f"  canary cite_manual_exists   broken id detected="
+                  f"{[h[2] for h in hit]}; live gold clean={not live}"
+                  f"  [{'DETECTED' if ok_c else 'MISSED'}]")
+        ok = ok and ok_c
+
         ok &= ok3
 
     return ok
@@ -798,6 +888,17 @@ def report(rep, strict=False):
               f"({len(rep['manifest_unknown'])})")
         for cid, detail in rep["manifest_unknown"][:10]:
             print(f"  {cid:<22} {detail}")
+
+    if rep["unknown_cite_manual"]:
+        fails += len(rep["unknown_cite_manual"])
+        print(f"\nFAIL must_cite names a manual the corpus does not have "
+              f"({len(rep['unknown_cite_manual'])})")
+        print("A citation naming a manual id no chunk carries can never be "
+              "produced, so\nevery answer scores wrong on it however correct "
+              "it is. This capped citation\naccuracy near 5/17 on a real run "
+              "and read as a model failure.")
+        for qid, cite, mid in rep["unknown_cite_manual"][:10]:
+            print(f"  {qid:<8} {cite!r}  -- no manual {mid!r} in the manifest")
 
     if rep["manifest_orphans"]:
         print(f"\n[warn] manifest has {len(rep['manifest_orphans'])} chunk(s) "

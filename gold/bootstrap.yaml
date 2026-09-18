@@ -52,7 +52,7 @@
 meta:
   version: 1
   created: 2026-09-15
-  manuals: [dabi_2025, progoti_2025]
+  manuals: [dabi_2025, progoti]
   provenance: chunk_derived
   note: >
     Answerable/unanswerable split is 19/5, about 21% unanswerable. Every
@@ -88,7 +88,7 @@ questions:
       kind: claim
       verified_against: corpus
   must_cite: []
-  forbidden_numbers_from_clause: ["dabi_2025 §7.1", "progoti_2025 §7.1"]
+  forbidden_numbers_from_clause: ["dabi_2025 §7.1", "progoti §7.1"]
   source_refs:
     - chunk_id: TODO          # the §7.1 প্রাধিকারসূচি chunk
       manual_id: dabi_2025
@@ -143,7 +143,7 @@ questions:
       kind: absent
       verified_against: corpus
   must_cite: []
-  forbidden_numbers_from_clause: ["dabi_2025 §7.1", "progoti_2025 §7.1"]
+  forbidden_numbers_from_clause: ["dabi_2025 §7.1", "progoti §7.1"]
   source_refs:
     - chunk_id: TODO
       manual_id: dabi_2025
@@ -170,7 +170,7 @@ questions:
       kind: literal          # quoted from §5.1.2 — check it matches exactly
       ref: dabi_2025_0186
       verified_against: corpus
-  must_cite: ["dabi_2025 §5.1.2", "progoti_2025 §5.1.2"]
+  must_cite: ["dabi_2025 §5.1.2", "progoti §5.1.2"]
   forbidden_numbers_from_clause: ["dabi_2025 §1.1"]
   source_refs:
     - chunk_id: dabi_2025_0186   # §5.1.2, the exclusion rule
@@ -282,11 +282,11 @@ questions:
       kind: literal
       ref: progoti_0152
       verified_against: corpus
-  must_cite: ["progoti_2025 §3.9.6"]
+  must_cite: ["progoti §3.9.6"]
   must_not_contain_literals: ["শাখা ব্যবস্থাপক"]
   source_refs:
     - chunk_id: progoti_0152
-      manual_id: progoti_2025
+      manual_id: progoti
       clause: "৩.৯.৬"
   verification_status: unverified
   difficulty: hard
@@ -320,11 +320,11 @@ questions:
     - text: "কর্মসূচি অনুযায়ী বিল-ভাউচার অনুমোদনকারী ভিন্ন"
       kind: claim
       verified_against: corpus
-  must_cite: ["progoti_2025 §3.9.6", "dabi_2025 §3.9.6"]
+  must_cite: ["progoti §3.9.6", "dabi_2025 §3.9.6"]
   must_not_contain_literals: []
   source_refs:
     - chunk_id: progoti_0152
-      manual_id: progoti_2025
+      manual_id: progoti
       clause: "৩.৯.৬"
     - chunk_id: dabi_2025_0136
       manual_id: dabi_2025
@@ -369,10 +369,10 @@ questions:
       kind: literal
       ref: dabi_2025_0247    # the Dabi §5.4 chunk
       verified_against: corpus
-  must_cite: ["progoti_2025 §5.4", "dabi_2025 §5.4"]
+  must_cite: ["progoti §5.4", "dabi_2025 §5.4"]
   source_refs:
     - chunk_id: progoti_0275
-      manual_id: progoti_2025
+      manual_id: progoti
       clause: "৫.৪"
     - chunk_id: dabi_2025_0247
       manual_id: dabi_2025
@@ -402,13 +402,13 @@ questions:
     - text: "দুই ম্যানুয়ালে একই বিষয় ভিন্ন নম্বরে"
       kind: claim
       verified_against: corpus
-  must_cite: ["dabi_2025 §1.1.2", "progoti_2025 §1.1.3"]
+  must_cite: ["dabi_2025 §1.1.2", "progoti §1.1.3"]
   source_refs:
     - chunk_id: dabi_2025_0014
       manual_id: dabi_2025
       clause: "১.১.২"
     - chunk_id: progoti_0021
-      manual_id: progoti_2025
+      manual_id: progoti
       clause: "১.১.৩"
   verification_status: unverified
   difficulty: medium
@@ -449,13 +449,13 @@ questions:
     - text: "পার্থক্য শুধু পদবি ও পরিধির ক্ষেত্রে"
       kind: claim
       verified_against: corpus
-  must_cite: ["dabi_2025", "progoti_2025"]
+  must_cite: ["dabi_2025", "progoti"]
   source_refs:
     - chunk_id: dabi_2025_0014
       manual_id: dabi_2025
       clause: "১.১.২"
     - chunk_id: progoti_0021
-      manual_id: progoti_2025
+      manual_id: progoti
       clause: "১.১.৩"
   verification_status: unverified
   difficulty: hard
@@ -484,13 +484,13 @@ questions:
       kind: literal
       ref: progoti_0044      # the mirrored Progoti §2.1.1(খ), names পিও
       verified_against: corpus
-  must_cite: ["dabi_2025", "progoti_2025"]
+  must_cite: ["dabi_2025", "progoti"]
   source_refs:
     - chunk_id: dabi_2025_0037
       manual_id: dabi_2025
       clause: "২.১.১(খ)"
     - chunk_id: progoti_0044
-      manual_id: progoti_2025
+      manual_id: progoti
       clause: "২.১.১(খ)"
   verification_status: unverified
   difficulty: medium
@@ -539,10 +539,10 @@ questions:
       kind: literal
       ref: progoti_0016_p2
       verified_against: corpus
-  must_cite: ["progoti_2025 §1.1.2"]
+  must_cite: ["progoti §1.1.2"]
   source_refs:
     - chunk_id: progoti_0016_p2
-      manual_id: progoti_2025
+      manual_id: progoti
       clause: "১.১.২"
   verification_status: unverified
   difficulty: easy
@@ -558,13 +558,13 @@ questions:
       kind: literal
       ref: dabi_2025_0017
       verified_against: corpus
-  must_cite: ["dabi_2025 §1.2.1", "progoti_2025 §1.2.1"]
+  must_cite: ["dabi_2025 §1.2.1", "progoti §1.2.1"]
   source_refs:
     - chunk_id: dabi_2025_0017
       manual_id: dabi_2025
       clause: "১.২.১"
     - chunk_id: progoti_0024
-      manual_id: progoti_2025
+      manual_id: progoti
       clause: "১.২.১"
   verification_status: unverified
   difficulty: easy
@@ -585,10 +585,10 @@ questions:
       kind: literal
       ref: progoti_0016_p1
       verified_against: corpus
-  must_cite: ["progoti_2025 §1.1.2"]
+  must_cite: ["progoti §1.1.2"]
   source_refs:
     - chunk_id: progoti_0016_p1
-      manual_id: progoti_2025
+      manual_id: progoti
       clause: "১.১.২"
   verification_status: unverified
   difficulty: easy
@@ -637,10 +637,10 @@ questions:
       kind: literal
       ref: progoti_0056
       verified_against: corpus
-  must_cite: ["progoti_2025 §2.1.1(চ)"]
+  must_cite: ["progoti §2.1.1(চ)"]
   source_refs:
     - chunk_id: progoti_0056
-      manual_id: progoti_2025
+      manual_id: progoti
       clause: "২.১.১(চ)"
   verification_status: unverified
   difficulty: medium
@@ -661,10 +661,10 @@ questions:
       kind: literal
       ref: progoti_0056
       verified_against: corpus
-  must_cite: ["progoti_2025 §2.1.1(চ)"]
+  must_cite: ["progoti §2.1.1(চ)"]
   source_refs:
     - chunk_id: progoti_0056
-      manual_id: progoti_2025
+      manual_id: progoti
       clause: "২.১.১(চ)"
   verification_status: unverified
   difficulty: medium
@@ -680,10 +680,10 @@ questions:
       kind: literal
       ref: progoti_0062
       verified_against: corpus
-  must_cite: ["progoti_2025 §2.1.2(গ)"]
+  must_cite: ["progoti §2.1.2(গ)"]
   source_refs:
     - chunk_id: progoti_0062
-      manual_id: progoti_2025
+      manual_id: progoti
       clause: "২.১.২(গ)"
   verification_status: unverified
   difficulty: hard

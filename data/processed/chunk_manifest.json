@@ -5017,7 +5017,9 @@
     "\"লাইভস্টক গ্রো\" প্রকল্পের অপারেশনাল ম্যানুয়াল",
     "বিমাদাবি নিষ্পত্তিকরণ পদ্ধতি"
    ],
-   "n_chars": 1009
+   "n_chars": 1009,
+   "excluded_from_retrieval": true,
+   "exclusion_reason": "page 8: two staff first names beside personal mobile numbers, in the same sentence as the institutional hotline. Manual text on a free tier that trains on inputs is an accepted demo trade-off; named individuals' personal numbers are not."
   },
   {
    "chunk_id": "livestock_grow_2026_0033",

@@ -280,6 +280,18 @@ def write_manifest():
     display_text the sha covers -- not the chunk's own n_chars field, which
     counts the body.
     """
+    # THE PERSONAL-DATA EXCLUSION, carried into the manifest because the
+    # manifest is the only tracked artefact under data/processed -- .gitignore
+    # excludes that directory and re-includes this one file. The chunk files
+    # themselves are not tracked, so the excluded_from_retrieval flag written
+    # onto a chunk row does not survive a rebuild; recorded here it does, and
+    # it shows up in a diff when it changes.
+    #
+    # redact.py STAYS THE SINGLE OWNER and this is a derived copy, re-read
+    # from it on every manifest write. A second tracked list of ids would be
+    # a second source of truth, and every duplicate in this repo became a
+    # divergence.
+    import redact
     rows = []
     for tag in CORPORA:
         src = P / f"chunks_{tag}_final.jsonl"
@@ -296,12 +308,18 @@ def write_manifest():
                 "heading_path": list(c.get("heading_path") or []),
                 "n_chars": len(dt),
             })
+            why = redact.is_excluded(c["chunk_id"])
+            if why:
+                rows[-1]["excluded_from_retrieval"] = True
+                rows[-1]["exclusion_reason"] = why
     rows.sort(key=lambda r: r["chunk_id"])
     MANIFEST.write_text(
         json.dumps({"version": 1, "n_chunks": len(rows), "chunks": rows},
                    ensure_ascii=False, indent=1) + "\n",
         encoding="utf-8")
-    print(f"  -> {MANIFEST}  ({len(rows)} chunks)")
+    n_excl = sum(1 for r in rows if r.get("excluded_from_retrieval"))
+    print(f"  -> {MANIFEST}  ({len(rows)} chunks, {n_excl} withheld from "
+          f"retrieval)")
     return len(rows)
 
 

@@ -18,7 +18,7 @@
 meta:
   version: 2
   created: 2026-09-13
-  manuals: [dabi_2025, progoti_2025, livestock_grow_2026]
+  manuals: [dabi_2025, progoti, livestock_grow_2026]
   new_manual: livestock_grow_2026
 
   source_status: >
@@ -497,7 +497,7 @@ questions:
   must_not_contain_literals: []
   forbidden_numbers_from_clause:
     - "dabi_2025 §7.1"
-    - "progoti_2025 §7.1"
+    - "progoti §7.1"
   difficulty: hard
   notes: >
     No approval ceiling exists for a সিডিও anywhere in this manual, and the

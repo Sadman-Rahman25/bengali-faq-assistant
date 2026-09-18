@@ -134,15 +134,63 @@ def script_of(text):
 BENGALI_MAJORITY = 0.5
 
 
-def untranslated_literals(q, answer):
-    """Bengali role/product literals in the gold facts MISSING from the
-    answer. -> [str]
+# THE GLOSS TABLE, and it is what makes "translated" decidable at all.
+# roles.py rows are (key, dabi_form, progoti_form, acronym, english, note), so
+# the registry that owns role names also owns their English names. Built lazily
+# -- roles.py imports bn_shared, so importing it at module scope here would
+# add an import-time cost to every consumer of gold_eval.
+_ROLE_GLOSS = None
 
-    Only Bengali non-figure literals are checked: a figure like ৩ লক্ষ is
-    fact recall's job, and an English gold fact has nothing to translate.
-    Uses fact_present, the same matcher recall uses, so the two cannot
-    disagree about whether a literal is present.
+
+def role_gloss():
+    """{canon(bengali form): English name} for every role. -> dict"""
+    global _ROLE_GLOSS
+    if _ROLE_GLOSS is None:
+        try:
+            import roles
+        except ImportError:
+            _ROLE_GLOSS = {}
+            return _ROLE_GLOSS
+        g = {}
+        for row in getattr(roles, "ROLES", []):
+            if len(row) < 5:
+                continue
+            english = (row[4] or "").strip()
+            if not english:
+                continue
+            for form in row[1:4]:
+                form = (form or "").strip()
+                if form:
+                    g[canon(form)] = english
+        _ROLE_GLOSS = g
+    return _ROLE_GLOSS
+
+
+def untranslated_literals(q, answer):
+    """Gold literals that were TRANSLATED rather than quoted. -> [str]
+
+    ABSENCE IS NOT TRANSLATION, and conflating the two was a real defect in
+    this metric. The first version reported a hit whenever a Bengali literal
+    was missing from the answer -- which is exactly metric 1's measurement.
+    Measured on the 17-question real run, 2026-09-18: 13 of 13 hits for qwen
+    and 11 of 11 for gpt-oss-120b were literals simply ABSENT, i.e. missed
+    facts counted a second time under rule 7. Metric 5 read 47% and 53% while
+    carrying almost no rule-7 signal.
+
+    A literal now counts as translated only when a TRANSLATED FORM OF IT IS
+    PRESENT: the literal is missing AND its English name, from the roles
+    registry, is in the answer. "the Area Manager" where এএম was required is
+    a hit; এএম simply not mentioned is metric 1's business alone.
+
+    WHAT THIS CANNOT DECIDE, and therefore does not report. A literal with no
+    entry in the gloss table -- every multi-clause verbatim span, and every
+    product or programme name, none of which carry an English name in any
+    registry -- cannot be tested this way, because there is no known
+    translated form to look for. Those are SKIPPED rather than guessed at.
+    skipped_undecidable() reports how many, so the component's narrowness is
+    visible in the report instead of being mistaken for a clean result.
     """
+    gloss = role_gloss()
     out = []
     for f in q.get("gold_facts") or []:
         kind = (f.get("kind", "literal") if isinstance(f, dict) else "literal")
@@ -153,9 +201,37 @@ def untranslated_literals(q, answer):
             continue
         if not BENGALI_RX.search(lit) or NUM_RX.search(lit):
             continue
-        if not fact_present(lit, answer):
+        if fact_present(lit, answer):
+            continue                      # quoted as required
+        english = gloss.get(canon(lit.strip()))
+        if not english:
+            continue                      # undecidable -- metric 1's alone
+        if re.search(re.escape(english), answer or "", re.I):
             out.append(lit)
     return out
+
+
+def skipped_undecidable(q, answer):
+    """How many absent Bengali literals this component could not judge. -> int
+
+    Reported beside metric 5 so a low hit count is not read as a clean bill.
+    """
+    gloss = role_gloss()
+    n = 0
+    for f in q.get("gold_facts") or []:
+        kind = (f.get("kind", "literal") if isinstance(f, dict) else "literal")
+        if kind != "literal":
+            continue
+        lit = fact_text(f)
+        if lit.strip().upper().startswith("TODO"):
+            continue
+        if not BENGALI_RX.search(lit) or NUM_RX.search(lit):
+            continue
+        if fact_present(lit, answer):
+            continue
+        if not gloss.get(canon(lit.strip())):
+            n += 1
+    return n
 
 
 # THE MIRROR FAILURE, added 2026-09-18 after wording 6 was measured.
@@ -231,6 +307,7 @@ def language_match(q, answer):
             "bengali_share": (None if ash is None else round(ash, 3)),
             "script_ok": script_ok,
             "translated_literals": missing,
+            "undecidable_literals": skipped_undecidable(q, answer),
             "wrong_script_ids": wrong_ids,
             "ok": bool(script_ok and not missing and not wrong_ids)}
 
@@ -675,9 +752,24 @@ def report(rows):
             bad_lits = [r for r in lang if r["language"]["translated_literals"]]
             bad_ids = [r for r in lang
                        if r["language"].get("wrong_script_ids")]
+            undec = sum(r["language"].get("undecidable_literals") or 0
+                        for r in lang)
             print(f"  5. language match ..... {len(lang_ok)}/{len(lang)}"
                   + (f" = {len(lang_ok) / len(lang):.1%}" if lang else "")
                   + "   (rule 7; NOT merged into 1-4)")
+            # SPLIT BY COMPONENT. One number over three different failures
+            # hid that the middle one was re-reporting metric 1: before the
+            # fix, 13 of 13 "translated" hits on the real run were literals
+            # simply absent from the answer.
+            print(f"     by component: wrong script {len(bad_script)}, "
+                  f"translated literal {len(bad_lits)}, "
+                  f"transliterated id {len(bad_ids)}")
+            if undec:
+                print(f"     {undec} absent literal(s) NOT judged for "
+                      f"translation: no English name in any registry, so "
+                      f"there is no\n     translated form to look for. Those "
+                      f"are metric 1's alone. A low count above is\n     "
+                      f"therefore not a clean bill of health.")
             if bad_script:
                 print("     wrong script -- a Bengali question answered "
                       "predominantly in Latin:")
