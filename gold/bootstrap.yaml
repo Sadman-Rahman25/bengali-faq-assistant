@@ -171,6 +171,7 @@ questions:
       ref: dabi_2025_0186
       verified_against: corpus
   must_cite: ["dabi_2025 §5.1.2", "progoti §5.1.2"]
+  must_cite_mode: any   # both refs have Progoti twins (c65a56169f13, 383d5cb8aee2) at the same clause 5.1.2
   forbidden_numbers_from_clause: ["dabi_2025 §1.1"]
   source_refs:
     - chunk_id: dabi_2025_0186   # §5.1.2, the exclusion rule
@@ -403,6 +404,7 @@ questions:
       kind: claim
       verified_against: corpus
   must_cite: ["dabi_2025 §1.1.2", "progoti §1.1.3"]
+  must_cite_mode: any   # one dup_group (b9404f5bb017) printed at 1.1.2 in Dabi and 1.1.3 in Progoti -- the differing NUMBER is the question
   source_refs:
     - chunk_id: dabi_2025_0014
       manual_id: dabi_2025
@@ -559,6 +561,7 @@ questions:
       ref: dabi_2025_0017
       verified_against: corpus
   must_cite: ["dabi_2025 §1.2.1", "progoti §1.2.1"]
+  must_cite_mode: any   # dabi_2025_0017 and progoti_0024 are one dup_group (54fb3bbf5bc5), same clause 1.2.1
   source_refs:
     - chunk_id: dabi_2025_0017
       manual_id: dabi_2025
@@ -618,7 +621,8 @@ questions:
     - text: "সঞ্চিত অর্থ ফেরত বা উত্তোলনকে সঞ্চয় ফেরত সেবা বলে, সদস্যরা এই সেবা পাবেন"
       kind: claim
       verified_against: corpus
-  must_cite: ["dabi_2025 §1.2.3"]
+  must_cite: ["dabi_2025 §1.2.3", "progoti §1.2.3"]
+  must_cite_mode: any   # twin progoti_0040 at the same clause; scope any was right and must_cite was missing the Progoti copy
   source_refs:
     - chunk_id: dabi_2025_0033
       manual_id: dabi_2025
@@ -740,7 +744,8 @@ questions:
     - text: "শাখা পর্যায়ের পদসমূহ অন্য ধারায় আছে, অর্গানোগ্রামে নয়"
       kind: claim
       verified_against: corpus
-  must_cite: ["dabi_2025 §10"]
+  must_cite: ["dabi_2025 §10", "progoti §10"]
+  must_cite_mode: any   # twin progoti_0351 at clause 10.1; scope any was right
   must_not_contain_literals: []
   # Deliberately unarmed, same reasoning as G-218. The wrong answer here
   # NAMES branch posts, and those literals belong to roles.py — but the
@@ -801,7 +806,8 @@ questions:
       kind: literal
       ref: dabi_2025_0205
       verified_against: corpus
-  must_cite: ["dabi_2025 §5.1.8"]
+  must_cite: ["dabi_2025 §5.1.8", "progoti §5.1.8"]
+  must_cite_mode: any   # Progoti carries 5.1.8 too (14 chunks) and 4 of the 6 refs have Progoti twins; scope any was right
   source_refs:
     - chunk_id: dabi_2025_0198
       manual_id: dabi_2025
@@ -842,7 +848,13 @@ questions:
   type: procedural
   provenance: chunk_derived
   question_bn: "ইনসিডেন্ট নোটিফিকেশন আর বিমাদাবি পদ্ধতি — এই দুই ধারায় পার্থক্য কী?"
-  manual_scope: any
+  manual_scope: dabi   # NARROWED from "any" 2026-09-18. must_cite names two DIFFERENT
+  # clauses of one manual, 5.1.8 and 5.1.9, and the question is what differs
+  # between them -- so any-of cannot be used: it would pass on one clause
+  # and drop the requirement to cite both. The doubled passage does appear
+  # in each manual, so "any" was defensible, but the gold pins its
+  # evidence to Dabi's two copies. The fuller fix is a quantifier that is
+  # any-of over MANUALS and all-of over CLAUSES; that does not exist yet.
   answerable: partial
   gold_facts:
     - text: "দুই ধারার বিষয়বস্তু একই"

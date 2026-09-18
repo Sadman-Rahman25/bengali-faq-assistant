@@ -410,13 +410,35 @@ def norm_cite(c):
     return canon(c).replace("§", "").replace(" ", "").lower()
 
 
-def cite_ok(expected, got):
-    """Manual name and clause both required. Missing manual name = wrong."""
+CITE_MODES = ("all", "any")
+
+
+def cite_ok(expected, got, mode="all"):
+    """Manual name and clause both required. Missing manual name = wrong.
+
+    TWO QUANTIFIERS, because must_cite was only ever all-of and that scored a
+    correct answer wrong. Where the same passage is printed in both manuals --
+    516 of 867 chunks are byte-identical across manuals -- an answer citing
+    either copy has cited the content correctly, and demanding both made
+    G-203 fail for emitting dabi_2025 §1.2.1 when progoti §1.2.1 is the same
+    bytes.
+
+      mode "all"  every listed citation must appear. The listed manuals say
+                  DIFFERENT things and an answer needs each: G-215, where
+                  §5.4 is fire-safety insurance in one manual and livestock
+                  insurance in the other, so one citation is half an answer.
+      mode "any"  at least one listed citation must appear. The listed
+                  citations are the same content in different places.
+
+    Set per question with must_cite_mode; absent means "all", so every
+    existing question keeps its meaning and only the ones examined changed.
+    """
     if not expected:
         return None                               # not scored
     g = {norm_cite(x) for x in got}
-    return all(any(norm_cite(e) in x or x in norm_cite(e) for x in g)
-               for e in expected)
+    hit = [any(norm_cite(e) in x or x in norm_cite(e) for x in g)
+           for e in expected]
+    return any(hit) if mode == "any" else all(hit)
 
 
 # ---------------------------------------------------------------- scoring
@@ -532,7 +554,8 @@ def score_one(q, ans, forbidden_numbers=None, judge=None):
                                    if fact_verified(f) == "render"]),
         "facts_total_rendered": len([f for f in facts
                                      if fact_verified(f) == "render"]),
-        "citation": cite_ok(q.get("must_cite"), ans.get("citations", [])),
+        "citation": cite_ok(q.get("must_cite"), ans.get("citations", []),
+                            q.get("must_cite_mode", "all")),
         # Fifth number. Never folded into the four above.
         "language": language_match(q, answer),
         "abstention": abstention,

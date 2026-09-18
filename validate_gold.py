@@ -299,6 +299,75 @@ def unknown_cite_manuals(gold, manifest):
     return out
 
 
+# manual_scope values that name no single manual.
+SCOPE_MULTI = frozenset({"any", "both", "ambiguous"})
+
+
+def scope_manual_id(scope, known):
+    """manual_scope -> a corpus manual_id, or None if it names no single one.
+
+    Same prefix resolution retrieve.scope_to_manual_id uses: the gold files
+    write dabi / progoti / livestock_grow and the corpus writes dabi_2025 /
+    progoti / livestock_grow_2026.
+    """
+    if not isinstance(scope, str):
+        return None
+    sc = scope.strip().lower()
+    if sc in SCOPE_MULTI or not sc:
+        return None
+    if sc in known:
+        return sc
+    cands = [k for k in known if k.startswith(sc)]
+    return cands[0] if len(cands) == 1 else None
+
+
+def scope_cite_conflicts(gold, manifest):
+    """Questions whose manual_scope and must_cite contradict each other.
+    -> [(qid, detail)]
+
+    A REAL CLASS OF DEFECT, and G-205 was an instance: manual_scope "any"
+    with must_cite naming dabi_2025 alone. The scope says either manual
+    answers the question; the citation demanded one specific manual. Every
+    answer citing the Progoti copy -- byte-identical, same clause -- scored
+    wrong, and nothing compared the two fields.
+
+    TWO DIRECTIONS:
+      1. scope names no single manual (any / both / ambiguous) but must_cite
+         names exactly one manual, and must_cite_mode is not "any". Either
+         the content really is in one manual only, in which case the scope is
+         wrong, or it is in both and the mode should be any-of.
+      2. scope names one manual and must_cite never mentions it. The question
+         is scoped to a manual it does not ask to be cited.
+    """
+    known = manifest_manual_ids(manifest)
+    out = []
+    for q in gold.get("questions") or []:
+        cites = [str(c) for c in (q.get("must_cite") or [])
+                 if not is_todo(str(c))]
+        if not cites:
+            continue
+        qid = q.get("id", "?")
+        scope = q.get("manual_scope")
+        mode = (q.get("must_cite_mode") or "all").strip().lower()
+        manuals = {cite_manual_id(c) for c in cites}
+        manuals.discard("")
+        sc = str(scope).strip().lower() if isinstance(scope, str) else ""
+        if sc in SCOPE_MULTI:
+            if len(manuals) == 1 and mode != "any":
+                only = sorted(manuals)[0]
+                out.append((qid, f'manual_scope "{sc}" but must_cite names '
+                                 f'only {only} and must_cite_mode is "{mode}"'
+                                 f' -- either the scope is wrong or the mode '
+                                 f'should be any'))
+        else:
+            want = scope_manual_id(scope, known)
+            if want and want not in manuals:
+                out.append((qid, f'manual_scope "{sc}" resolves to {want}, '
+                                 f'which must_cite does not mention '
+                                 f'({sorted(manuals)})'))
+    return out
+
+
 def manifest_orphans(corpus, manifest):
     """Chunk ids the manifest has and the corpus no longer does."""
     return sorted(set(manifest) - set(corpus))
@@ -369,6 +438,7 @@ def validate(gold, corpus, heads=None, root=Path(".")):
         "manifest_orphans": [],
         "manifest_ok": 0,
         "unknown_cite_manual": [],
+        "scope_cite_conflict": [],
     }
     for q in qs:
         qid = q.get("id", "?")
@@ -462,6 +532,7 @@ def validate(gold, corpus, heads=None, root=Path(".")):
                 rep["manifest_unknown"].append((cid, detail))
         rep["manifest_orphans"] = manifest_orphans(corpus, manifest)
         rep["unknown_cite_manual"] = unknown_cite_manuals(gold, manifest)
+        rep["scope_cite_conflict"] = scope_cite_conflicts(gold, manifest)
 
     return rep
 
@@ -716,6 +787,45 @@ def canary_selftest(gold, corpus, verbose=True):
                   f"mutated={fired[0][1]}, absent={missing[0][1]}  "
                   f"[{'DETECTED' if ok3 else 'MISSED'}]")
 
+    # ---- manual_scope must not contradict must_cite ----------------------
+    # A REAL INSTANCE, AND IT WAS MINE: G-205 carried manual_scope "any" with
+    # must_cite naming dabi_2025 alone, while progoti_0040 is the same bytes
+    # at the same clause. Every answer citing the Progoti copy scored wrong.
+    # The canary restores that exact shape on a copy -- scope "any", one
+    # manual, mode all -- and asserts the check fires, then asserts the gold
+    # as it now stands is clean.
+    manifest3, why3 = load_manifest()
+    if why3:
+        if verbose:
+            print(f"  canary scope_vs_cite        NOT BUILDABLE: {why3}")
+    else:
+        import copy as _copy2
+        live3 = scope_cite_conflicts(gold, manifest3)
+        broke = _copy2.deepcopy(gold)
+        target = None
+        for bq in broke.get("questions") or []:
+            if bq.get("id") == "G-205":
+                target = bq
+                break
+        if target is None:                 # fall back to any cited question
+            for bq in broke.get("questions") or []:
+                if bq.get("must_cite"):
+                    target = bq
+                    break
+        if target is not None:
+            target["manual_scope"] = "any"
+            target["must_cite"] = [str(target["must_cite"][0])]
+            target.pop("must_cite_mode", None)
+        hit3 = scope_cite_conflicts(broke, manifest3)
+        ok_s = bool(hit3) and not live3
+        if verbose:
+            which = target.get("id") if target else "?"
+            print(f"  canary scope_vs_cite        {which} reverted to scope="
+                  f"any/one-manual/all detected={[h[0] for h in hit3]}; "
+                  f"live gold clean={not live3}"
+                  f"  [{'DETECTED' if ok_s else 'MISSED'}]")
+        ok = ok and ok_s
+
     # ---- must_cite manual ids must exist in the corpus -------------------
     # A REAL OBSERVED FAILURE, AND IT WAS MINE. Both gold files cited
     # "progoti_2025" where the corpus manual id is "progoti", for 30 entries
@@ -899,6 +1009,17 @@ def report(rep, strict=False):
               "and read as a model failure.")
         for qid, cite, mid in rep["unknown_cite_manual"][:10]:
             print(f"  {qid:<8} {cite!r}  -- no manual {mid!r} in the manifest")
+
+    if rep["scope_cite_conflict"]:
+        fails += len(rep["scope_cite_conflict"])
+        print(f"\nFAIL manual_scope contradicts must_cite "
+              f"({len(rep['scope_cite_conflict'])})")
+        print("The scope says which manual answers the question and must_cite "
+              "says which manual\nmust be named. When they disagree a correct "
+              "answer scores wrong, and no single\nfield is visibly at fault. "
+              "Mark the citation any-of, or narrow the scope.")
+        for qid, detail in rep["scope_cite_conflict"][:10]:
+            print(f"  {qid:<8} {detail}")
 
     if rep["manifest_orphans"]:
         print(f"\n[warn] manifest has {len(rep['manifest_orphans'])} chunk(s) "
