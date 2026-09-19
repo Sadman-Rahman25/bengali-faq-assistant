@@ -1049,6 +1049,80 @@ measurement, and at least one of its A cases was the most serious failure in
 the set. A confidently wrong figure is worse than a missing one: the officer
 has no signal that anything is off.
 
+**A context glossary: a measured negative. Default stays off.** The idea was
+to append expansions for the role and product terms appearing in the
+retrieved chunks, read from `roles.py` and `productmatch`, because
+`gpt-oss-120b` had invented সিনিয়র ডিস্ট্রিবিউশন অফিসার and পোস্ট অফিসার for
+two terms the repo already knows correctly. One run per model over the 17
+recall-scoreable questions.
+
+**G-222 could never test the idea.** `roles.py` row 4 is the combined string
+`Credit Development Officer (Dabi) / Programme Organiser (Progoti)` — it
+*states the equivalence the gold fact asks the model to discover*. So a
+correct answer on that question is a transcription, not an inference, and the
+phrasing shows it. qwen reproduced all eight gloss fragments verbatim
+including both parentheticals, wrote **গ্লসারি অনুযায়ী** ("according to the
+glossary"), and **cited the glossary instead of the manual** — losing both its
+citations. Copying and reasoning are indistinguishable in the score and
+distinguishable in the text; only the text was checked, and only the text
+showed it.
+
+**Reasoning is not safer than copying — it fails differently.** gpt-oss did
+restate rather than copy: it dropped both parentheticals and Programme
+Organiser entirely and framed the manual-to-term mapping in its own words. In
+doing so it asserted that *both* terms mean "Credit Development Officer",
+which is wrong for পিও. The gloss did not contain that error; the restatement
+introduced it.
+
+**The over-suppression trade arrives through context too.** G-205, gpt-oss:
+
+```
+WITHOUT  সঞ্চয় ফেরত সেবা হল … শাখা ব্যবস্থাপকের অনুমোদন সাপেক্ষে, সদস্যকে
+         স্বশরীরে অফিসে উপস্থিত হতে হবে …【progoti §1.2.3】
+         cites: progoti §1.2.3, dabi_2025 §2.2.1
+WITH     আপনি কোন ম্যানুয়ালের (progoti বা dabi_2025) সঞ্চয় ফেরত সেবা সম্পর্কে
+         জানতে চান?
+         cites: none
+```
+
+A substantive answer carrying two facts and two citations became "which
+manual do you mean?". Showing both manuals' terms side by side triggered
+rule-6 behaviour on a question that had an answer. Six rule-4 wordings failed
+on the same trade — constrain the model and it withholds what it does know —
+and this is the first time that trade has arrived through CONTEXT rather than
+through a rule's wording. Context is not a safer place to put an instruction;
+it is the same instruction with no wording to audit.
+
+**The ledger: 26 of 34 answers perturbed, one metric better and four worse.**
+
+| | changed | metric moves |
+|---|---|---|
+| qwen | 11 of 17 | G-222 citation **worse** |
+| gpt-oss | 15 of 17 | G-214 recall better; G-205 recall 2→0 and citation **worse**; G-219 language **worse** |
+
+**THE ONE CLEAN RESULT, and the design detail behind it.** No
+cross-programme role leakage: 18 of 18 single-manual-scoped answers across
+both models, no new leaks and none pre-existing. A dabi-scoped answer never
+named পিও and a progoti-scoped one never named সিডিও — the failure
+`expand_in_query = NO` exists to prevent did not arrive through context.
+**The reason is that only terms PRESENT IN THE RETRIEVED CHUNKS are emitted.**
+A whole-registry glossary would put both halves of every per-manual pair in
+front of the model on every question and would not have this property. If
+anyone revisits this, that is the detail to keep.
+
+The post-filter also never fired: 0/17 on all four runs, and
+`answer_violations` is empty for G-212 and G-213 on both models even though
+those two arm `must_not_contain_literals` on exactly the role terms the
+glossary supplies.
+
+**A token proxy that over-predicted by half again.** The char-based estimate
+said +5.1%; the billed figures were +3.0% (qwen, 56,480 → 58,172) and +3.3%
+(gpt-oss, 44,059 → 45,521). The same 1.666 chars-per-token constant produced
+the **1.69x median growth** reported for clause expansion, so that figure is
+likely an overestimate on the same scale. It does not change the clause-
+expansion conclusion — 0 of 14 facts recovered at any cap — but the cost side
+of that measurement should be read as an upper bound, not a measurement.
+
 **Clause-level expansion: a measured negative. Do not rebuild it.** The idea
 was to pull in sibling chunks sharing a retrieved chunk's `manual_id` and
 clause, so that a section arrives whole. Measured on the 17 recall-scoreable
