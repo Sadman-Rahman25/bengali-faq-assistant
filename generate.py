@@ -59,6 +59,7 @@ USAGE
 """
 import argparse
 import json
+from datetime import datetime, timezone
 import os
 import random
 import sys
@@ -610,6 +611,109 @@ GROQ_PREFERENCE = ("qwen/qwen3.8-27b", "openai/gpt-oss-120b",
                    "openai/gpt-oss-20b")
 
 
+# MEASURED, not documented by the provider. Groq's free tier refused a request
+# with "on tokens per day (TPD): Limit 200000" for openai/gpt-oss-120b on
+# 19 Sep 2026. Per model, like the request limit: qwen's bucket was untouched
+# while gpt-oss's was exhausted. Keyed by name so a model with a different
+# limit can be added when one is observed rather than guessed.
+TPD_LIMIT = {"groq": 200_000}
+TPD_WARN_AT = 0.80
+
+# The calibrated character-to-token ratio, measured against billed
+# prompt_tokens over the 17-question k=5 run: 113,592 chars / 44,059 tokens.
+# Predicting that run forward from it lands within 0.02%. The earlier 1.666
+# over-stated every absolute by 55%; see the journal's token-proxy note.
+CHARS_PER_TOKEN = 2.578
+
+LEDGER = Path("out/token_ledger.json")
+
+
+def _today():
+    """UTC date. The provider's day is not this machine's timezone, and
+    guessing wrong shifts the whole ledger by up to a day."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def ledger_read(path=LEDGER):
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (FileNotFoundError, ValueError):
+        return {}
+
+
+def ledger_used(provider, model, path=LEDGER):
+    """Tokens already spent today on this provider:model. -> int"""
+    return int((ledger_read(path).get(_today()) or {})
+               .get(f"{provider}:{model}", 0))
+
+
+def ledger_add(provider, model, tokens, path=LEDGER):
+    """Add `tokens` to today's total. Called after a call, never on import."""
+    if not tokens:
+        return ledger_used(provider, model, path)
+    doc = ledger_read(path)
+    day = doc.setdefault(_today(), {})
+    key = f"{provider}:{model}"
+    day[key] = int(day.get(key, 0)) + int(tokens)
+    # Keep the last 14 days; a ledger nobody prunes becomes a file nobody
+    # opens.
+    for old in sorted(doc)[:-14]:
+        doc.pop(old, None)
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n",
+                          encoding="utf-8")
+    return day[key]
+
+
+def estimate_run_tokens(rows, system=None, reserve=1024):
+    """What this run will cost, in billed tokens. -> int
+
+    Prompt characters over the calibrated ratio, plus the reserved completion
+    budget per question -- `reserve` counts against the limit whether or not
+    the model uses it, which is why a 7,131-token prompt was refused while a
+    7,220-token one went through at k=20.
+    """
+    sysn = len(system if system is not None else SYSTEM_PROMPT)
+    total = 0
+    for r in rows:
+        chunks = r.get("chunks") or []
+        if not chunks:
+            continue
+        user = build_user_prompt(r.get("question_bn", ""), chunks, False)
+        total += int((sysn + len(user)) / CHARS_PER_TOKEN) + reserve
+    return total
+
+
+def tpd_preflight(provider, model, rows, system=None, out=print):
+    """-> (ok, message). Refuse a run that cannot finish in today's budget.
+
+    Returns rather than raising so the caller decides; main() treats False as
+    a hard stop, because the alternative is spending the remainder to produce
+    nothing.
+    """
+    limit = TPD_LIMIT.get(provider)
+    if not limit:
+        return True, f"no TPD limit recorded for provider {provider!r}"
+    used = ledger_used(provider, model)
+    left = limit - used
+    need = estimate_run_tokens(rows, system)
+    pct = used / limit
+    msg = (f"token budget {provider}:{model} -- used {used:,}/{limit:,} "
+           f"({pct:.0%}) today, {left:,} left; this run needs ~{need:,}")
+    if need > left:
+        return False, (
+            msg + "\n  REFUSING TO START. A run that runs out part-way "
+            "writes NO answers at all (answer_one raises on the first "
+            "provider failure), so starting would spend the remainder and "
+            "produce nothing. Wait for the day to roll over, or use a "
+            "different model -- the limit is per model.")
+    if pct >= TPD_WARN_AT:
+        out(f"  WARNING: {msg}")
+    else:
+        out(f"  {msg}")
+    return True, msg
+
+
 class ProviderError(RuntimeError):
     pass
 
@@ -956,6 +1060,14 @@ def complete(system, user, cache_system=True):
     state = _STATE["cache"].setdefault(provider, {})
     text, meta = _BACKENDS[provider](system, user, cache_system, key, state)
     meta["provider"] = provider
+    # THE LEDGER IS WRITTEN HERE, at the one door every call goes through, so
+    # a new backend cannot forget to account for itself.
+    spent = (meta.get("prompt_tokens") or 0) + (meta.get("output_tokens") or 0)
+    if spent and meta.get("model"):
+        try:
+            meta["tpd_used_today"] = ledger_add(provider, meta["model"], spent)
+        except OSError as e:          # a ledger that cannot be written must
+            meta["tpd_ledger_error"] = str(e)   # not take the run down
     return text, meta
 
 
@@ -1165,8 +1277,14 @@ def split_citations(text):
     return "\n".join(keep).strip(), cites
 
 
-ABSTAIN_TEXT = ("প্রদত্ত প্রসঙ্গে এই প্রশ্নের উত্তর নেই। "
-                "(retrieval score below floor; no model call made)")
+# THE REPLY IS BENGALI ONLY. The reason an answer was withheld is operator
+# information: it belongs in the meta row, which is where every other
+# diagnostic already lives. It used to be appended to the sentence itself --
+# "(retrieval score below floor; no model call made)" -- and that string went
+# to a field officer who reads Bengali, in an answer that was otherwise
+# correct. A reply is not a log line.
+ABSTAIN_TEXT = "প্রদত্ত প্রসঙ্গে এই প্রশ্নের উত্তর নেই।"
+ABSTAIN_REASON = "retrieval score below floor; no model call made"
 
 
 # ------------------------------------------------------------- post-filter
@@ -1187,8 +1305,8 @@ ABSTAIN_TEXT = ("প্রদত্ত প্রসঙ্গে এই প্র
 # would report zero because the filter removed what it looks for, while a
 # literal the filter missed slipped past both. Sharing means a filter miss is
 # also a metric miss, and metric 4 stays a report-stopper that can still fire.
-FILTERED_TEXT = ("প্রদত্ত প্রসঙ্গে এই প্রশ্নের উত্তর নেই। "
-                 "(answer withheld: post-filter matched a forbidden figure)")
+FILTERED_TEXT = "প্রদত্ত প্রসঙ্গে এই প্রশ্নের উত্তর নেই।"
+FILTERED_REASON = "post-filter matched a forbidden figure"
 
 
 def post_filter(answer_rec, question, forbidden_numbers=None):
@@ -1206,6 +1324,7 @@ def post_filter(answer_rec, question, forbidden_numbers=None):
     return ({"id": answer_rec["id"], "answer": FILTERED_TEXT,
              "citations": []},
             {"filter_fired": True,
+             "filter_reason": FILTERED_REASON,
              "filter_hits": [f"{k}:{v}" for k, v in hits],
              "original_answer": answer_rec.get("answer"),
              "original_citations": answer_rec.get("citations")})
@@ -1222,23 +1341,64 @@ def load_questions_by_id(gold_path):
     return {q["id"]: q for q in (g.get("questions") or [])}
 
 
-def answer_one(row, floor, system=SYSTEM_PROMPT, glossary=False):
+def answer_one(row, floor, system=SYSTEM_PROMPT, glossary=False,
+               registry_rules=True):
     """-> (answer_record, meta_record). Abstains before calling the model when
-    the top fused score is below the floor."""
+    the top fused score is below the floor.
+
+    THE REGISTRY RUNS ON BOTH SIDES OF THE MODEL, and rule 4 runs before it.
+
+    Before: a question whose answer the field team has WITHDRAWN is answered
+    from data/registry alone -- no context is built and no provider call is
+    made. That is not an optimisation. The withheld rows exist because the
+    manual still prints a figure that is no longer true, so the one thing
+    that must not happen is the model being handed that figure and asked to
+    be careful with it. generate.py already measured where that leads: see
+    the post-filter note above, five wordings, every one of them leaked.
+
+    After: rules 1-3 shape whatever was produced, including the floor
+    abstention. A question naming a suspended product gets the suspension
+    sentence even when retrieval found nothing -- the registry knows the
+    answer there and the corpus does not.
+    """
     chunks = row.get("chunks") or []
+    question = row["question_bn"]
     top = chunks[0]["fused_score"] if chunks else 0.0
     base = {"id": row["question_id"], "top_fused": top,
             "n_chunks": len(chunks)}
-    if not chunks or top < floor:
-        return ({"id": row["question_id"], "answer": ABSTAIN_TEXT,
-                 "citations": []},
-                dict(base, floor_fired=True, model=None, provider=None,
-                     retries=0, prompt_tokens=None, output_tokens=None))
-    user = build_user_prompt(row["question_bn"], chunks, glossary)
-    text, meta = complete(system, user)
-    answer, cites = split_citations(text)
+    reg = None
+    if registry_rules:
+        import registry as _registry
+        reg = _registry.load()
+        clauses = [c.get("clause") for c in chunks if c.get("clause")]
+        if reg.withheld(question, clauses):
+            text, cites, rmeta = _registry.apply_rules(
+                question, "", [], chunks, reg)
+            return ({"id": row["question_id"], "answer": text,
+                     "citations": cites},
+                    dict(base, floor_fired=False, model=None, provider=None,
+                         retries=0, prompt_tokens=None, output_tokens=None,
+                         **rmeta))
+
+    abstained = not chunks or top < floor
+    if abstained:
+        answer, cites = ABSTAIN_TEXT, []
+        meta = dict(floor_fired=True, abstain_reason=ABSTAIN_REASON,
+                    model=None, provider=None, retries=0,
+                    prompt_tokens=None, output_tokens=None)
+    else:
+        user = build_user_prompt(question, chunks, glossary)
+        text, mmeta = complete(system, user)
+        answer, cites = split_citations(text)
+        meta = dict(floor_fired=False, **mmeta)
+
+    if registry_rules:
+        import registry as _registry
+        answer, cites, rmeta = _registry.apply_rules(
+            question, answer, cites, chunks, reg, abstained=abstained)
+        meta.update(rmeta)
     return ({"id": row["question_id"], "answer": answer, "citations": cites},
-            dict(base, floor_fired=False, **meta))
+            dict(base, **meta))
 
 
 # ------------------------------------------------------------- the synthetic
@@ -1750,8 +1910,18 @@ def main():
                          "appear in the retrieved chunks, expanded from "
                          "roles.py and productmatch. MEASURED, not a "
                          "default: a glossary is more context to misquote")
+    ap.add_argument("--run-id", metavar="ID",
+                    help="identifies this invocation in the run log's "
+                         "filename and in every meta row. Defaults to a UTC "
+                         "timestamp, which is what makes a retry stop "
+                         "destroying the record of the attempt before it.")
+    ap.add_argument("--run-log-dir", default="out/runs", metavar="DIR",
+                    help="where the per-invocation run log goes "
+                         "(default out/runs). One file per run id.")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
+    if not args.run_id:
+        args.run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
     print("CANARY")
     if not canary_selftest():
@@ -1797,7 +1967,39 @@ def main():
         forbidden = json.loads(
             Path(args.forbidden_numbers).read_text(encoding="utf-8"))
     print(f"post-filter: {len(questions)} question(s) from {args.gold}, "
-          f"{len(forbidden)} forbidden clause(s)")
+          f"{sum(1 for k in forbidden if not k.startswith(chr(95)))}"
+          f" forbidden clause(s)")
+    # TPD PREFLIGHT. Before spending anything, check the run fits in what is
+    # left of today's per-day token budget -- the limit the response headers
+    # do not carry. Skipped when a model is not pinned, because the estimate
+    # is per model and preference-order fallthrough could land anywhere.
+    if args.model:
+        ok_budget, budget_msg = tpd_preflight(args.provider, args.model, rows)
+        if not ok_budget:
+            print("\n" + budget_msg)
+            return 1
+
+    # THE RUN LOG. Opened before the first call and flushed after every line,
+    # so a run that dies part-way still leaves everything it managed to do.
+    run_log = None
+    try:
+        Path(args.run_log_dir).mkdir(parents=True, exist_ok=True)
+        run_log = open(Path(args.run_log_dir) / f"{args.run_id}.log",
+                       "w", encoding="utf-8", newline="\n")
+        run_log.write(f"run_id {args.run_id}\n"
+                      f"provider {args.provider}  model {args.model}\n"
+                      f"retrieved {args.retrieved}\n"
+                      f"answers {args.answers}\n")
+        run_log.flush()
+    except OSError as e:               # a log that cannot be opened must not
+        print(f"  [warn] no run log: {e}")   # take the run down
+
+    def _log(line):
+        print(line)
+        if run_log:
+            run_log.write(line + "\n")
+            run_log.flush()
+
     answers, metas = [], []
     for row in rows:
         try:
@@ -1809,7 +2011,14 @@ def main():
             print(f"\n{e}")
             return 1
         except ProviderError as e:
-            print(f"\nprovider failed on {row['question_id']}: {e}")
+            msg = f"\nprovider failed on {row['question_id']}: {e}"
+            print(msg)
+            if run_log:
+                run_log.write(msg + "\n  ABORTED. The answers above were "
+                              "produced but NOT written to the answers file; "
+                              "this log is the only record of them.\n")
+                run_log.flush()
+                run_log.close()
             return 1
         q = questions.get(a["id"])
         if q is not None:
@@ -1820,16 +2029,22 @@ def main():
                       "filter_skipped": "question not in gold file"})
         m["corpus_guard"] = guard
         m["pinned_model"] = args.model
+        m["run_id"] = args.run_id
         m["glossary"] = bool(args.glossary)
         answers.append(a)
         metas.append(m)
         tag = "FLOOR" if m["floor_fired"] else (m.get("model") or "?")
         filt = "  FILTERED" if m.get("filter_fired") else ""
-        print(f"  {a['id']:<7}{tag:<22}top={m['top_fused']:.4f} "
-              f"retries={m.get('retries', 0)} cites={a['citations']}{filt}")
+        _log(f"  {a['id']:<7}{tag:<22}top={m['top_fused']:.4f} "
+             f"retries={m.get('retries', 0)} cites={a['citations']}{filt}"
+             f"\n      ANSWER: {(a.get('answer') or '')[:400]}")
         if m.get("filter_fired"):
             print(f"          hits: {m['filter_hits']}")
 
+    if run_log:
+        run_log.write(f"COMPLETE. {len(answers)} answer(s) written to "
+                      f"{args.answers}" + "\n")
+        run_log.close()
     Path(args.answers).parent.mkdir(parents=True, exist_ok=True)
     Path(args.answers).write_text(
         "\n".join(json.dumps(a, ensure_ascii=False) for a in answers) + "\n",
