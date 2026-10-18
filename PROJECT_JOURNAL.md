@@ -31,7 +31,7 @@ to reputation.
 That is also why the project is heavy on *checks* relative to *features*. The
 ratio looks strange until you notice that twelve separate checks in this repo
 have, at some point, reported "clean" on data they could not actually see
-(twelve, as of 2026-09-17 -- see 5.3; seven of them in the evaluation
+(seventeen, as of 2026-09-25 -- see 5.3; seven of them in the evaluation
 layer, and three of them measurements rather than checks).
 
 ### Inputs
@@ -1115,13 +1115,58 @@ The post-filter also never fired: 0/17 on all four runs, and
 those two arm `must_not_contain_literals` on exactly the role terms the
 glossary supplies.
 
-**A token proxy that over-predicted by half again.** The char-based estimate
-said +5.1%; the billed figures were +3.0% (qwen, 56,480 → 58,172) and +3.3%
-(gpt-oss, 44,059 → 45,521). The same 1.666 chars-per-token constant produced
-the **1.69x median growth** reported for clause expansion, so that figure is
-likely an overestimate on the same scale. It does not change the clause-
-expansion conclusion — 0 of 14 facts recovered at any cap — but the cost side
-of that measurement should be read as an upper bound, not a measurement.
+**A token proxy that over-predicted by half again — and a wrong inference
+drawn from that.** The char-based estimate said +5.1%; the billed figures were
++3.0% (qwen, 56,480 → 58,172) and +3.3% (gpt-oss, 44,059 → 45,521).
+
+**CALIBRATED 19 Sep 2026: the constant is 2.578 chars/token, not 1.666.**
+Measured against billed `prompt_tokens` on the 17-question k=5 run:
+113,592 characters over 44,059 billed tokens. Predicting the same run
+forward from 2.578 gives 44,048 against 44,059 actual — 0.02% out. The old
+constant over-states every absolute token figure by **+54.7%**.
+
+**WHAT ACTUALLY MOVES, and the reasoning error above.** The paragraph as
+first written argued that because the same constant produced the **1.69x**
+clause-expansion figure, that figure was "likely an overestimate on the same
+scale". That does not follow, and it is worth keeping as an error. 1.69x is a
+RATIO OF TWO ESTIMATES MADE WITH THE SAME CONSTANT, so the constant cancels
+exactly: 5,886/3,473 = 1.695 before rescaling and 1.695 after. The same is
+true of the +5.1% glossary estimate and of "4 of 17 questions over 2x the k=5
+context" — all three are ratios and all three are untouched.
+
+**SO THE GLOSSARY OVER-PREDICTION IS STILL UNEXPLAINED, AND THAT QUESTION IS
+OPEN.** Calibrating the constant did not close it and could not have: the
+estimate said +5.1% and the billed figures were +3.0% and +3.3%, and both the
+estimate and the outcome are ratios, so every chars/token constant on earth
+predicts the same +5.1%. Whatever makes the glossary cost less than its
+character count implies is a property of the TOKENISER, not of the constant —
+the most likely candidate is that the glossary's content (Latin role
+expansions, repeated registry phrasing) tokenises at a different rate from
+the Bengali manual prose the constant was fitted on, so a single global
+chars/token figure cannot price it. **Not measured. Do not record this
+paragraph as the explanation.** Measuring it means tokenising the glossary
+block on its own and comparing its own chars/token against 2.578.
+
+What does change is every ABSOLUTE token count derived from the constant:
+
+| figure | as published | rescaled |
+|---|---|---|
+| clause expansion, median k=5 context | 3,473 | **2,244** |
+| clause expansion, median expanded context | 5,886 | **3,804** |
+| clause-expansion growth **1.69x** | 1.69x | **1.69x — unchanged, a ratio** |
+| glossary cost **+5.1%** | +5.1% | **+5.1% — unchanged, a ratio** |
+| questions over 2x the k=5 context, 4 of 17 | 4 of 17 | **unchanged, a ratio** |
+
+None of it changes the clause-expansion conclusion — 0 of 14 facts recovered
+at any cap — and the cost side is now a calibrated estimate rather than an
+upper bound. The one place the correction bites is any comparison of an
+absolute estimate against the **8,000 TPM** ceiling, because that ceiling is
+an absolute number: at 1.666 the k=20 prompts would have been projected ~55%
+larger than they are. The k=20 projection in Phase 15 uses 2.578 throughout.
+
+**THE RULE.** A proxy constant is invisible in every ratio and decisive in
+every comparison against an absolute limit. Before rescaling a figure, ask
+which of the two it is.
 
 **Clause-level expansion: a measured negative. Do not rebuild it.** The idea
 was to pull in sibling chunks sharing a retrieved chunk's `manual_id` and
@@ -1132,7 +1177,7 @@ questions, k=5, token cap 6,000:
 |---|---|
 | unachievable facts recovered | **0 of 14** |
 | unachievable questions recovered | **0 of 6** |
-| median context tokens | 3,473 → 5,886 (**1.69x**) |
+| median context tokens | 2,244 → 3,804 (**1.69x**) — rescaled 19 Sep to the calibrated 2.578 chars/token; the published 3,473 → 5,886 used 1.666 and over-stated both by 54.7%. The RATIO is unaffected. |
 | questions over 2x the k=5 context | 4 of 17 |
 
 Raising the cap to 9,000 recovers nothing — the cap is not the binding
@@ -1159,6 +1204,38 @@ bucket and the 0/14 was an artefact of the measurement, not of the idea. The
 corrected version also refuses `''` as an expansion key: an empty clause is
 the *absence* of one, and expanding on it pulled 397 chunks of a single
 manual into the candidate pool.
+
+**RETRACTED 19 Sep 2026: every reranker RECALL figure in this project is
+void.** Anything reporting that `bge-reranker-v2-m3` moved recall@5 --
+including the "9/17 -> 1/17 collapse" reported in session notes -- measured a
+model whose tokenizer never loaded and which was therefore ranking by
+sequence length. See Convention 3, instance 15. Those numbers must not be
+cited as a reason for anything, in either direction: they are not evidence
+that the reranker is bad, they are evidence that the harness was broken.
+
+**THE RERANKER IS STILL REJECTED, ON TWO REASONS THAT SURVIVE THE
+RETRACTION.** Neither depends on any recall number:
+
+1. **It cannot be resident.** Loading it beside the embedding model raises
+   `MemoryError` on the second load; this machine has 7.9G with ~2-3G free in
+   practice. Serving needs the embedder for the query and the reranker for
+   the pool, in the same process, at the same time. It does not fit.
+   **Re-measured from the other direction, 19 Sep 2026: the FIRST model now
+   fails to load when the ordinary toolchain is open** — LaBSE died in
+   `transformers`' tensor materialisation at 11.5 GB commit charge against a
+   14.4 GB limit. See §4f, which is the same ceiling stated as a standing
+   constraint on the machine rather than as a fact about this one model.
+2. **BGE-M3 addresses the same weakness and is deployable.** The reranker was
+   proposed to compensate for a dense side that barely works -- LaBSE dense
+   finds the gold chunk first on 1 of 16 questions. BGE-M3 fixes that at the
+   embedding layer (dense@5 1/16 -> 10/16, §4a), costs nothing extra at query
+   time, and is a drop-in index swap. A second model in the serving path is
+   the expensive way to buy what a better first model gives for free.
+
+The pool-rank data gathered during that work IS still usable, because it came
+from the retriever and not from the reranker: the base ranks in
+`pools30.jsonl` are LaBSE fused ranks, and §4a independently reproduces all
+sixteen of them.
 
 **G-223 cannot be completed from a top-30 pool, and that is structural.** Its
 six gold chunks sit at fused ranks **9, 11, 22, 39, 53 and 57**. A reranker
@@ -1237,6 +1314,1279 @@ invisible in the rendered glyph.
 
 ---
 
+## 4a. The embedding benchmark, finished — LaBSE's dense side barely works
+
+Queued in the original benchmark and never run for want of RAM. Run
+19 Sep 2026 as an isolated batch job: BGE-M3 encoded the 867 chunks alone in
+its own process, fp32, in 18 resumable shards, ~50 minutes. n=16 — the
+benchmark excludes `answerable: "no"`, so G-217 is out; the other 16 are the
+recall-scoreable set.
+
+| model | mode | @1 | @3 | @5 | @10 | @30 |
+|---|---|---|---|---|---|---|
+| LaBSE | dense | 1/16 | 1/16 | **1/16** | 6/16 | 9/16 |
+| BGE-M3 | dense | 6/16 | 9/16 | **10/16** | 13/16 | 13/16 |
+| LaBSE | hybrid | 5/16 | 8/16 | **9/16** | 12/16 | 16/16 |
+| BGE-M3 | hybrid | 8/16 | 11/16 | **11/16** | 12/16 | 16/16 |
+
+**THE HEADLINE: BGE-M3's DENSE SIDE ALONE BEATS LaBSE's FULL HYBRID** at
+k=5, 10/16 against 9/16. LaBSE dense finds the gold chunk first for exactly
+one question in sixteen. The fusion was not adding a complementary signal to
+a working dense retriever; it was carrying one that barely functions.
+
+Dense-only rank of the first gold chunk, over the whole corpus:
+
+| qid | LaBSE | BGE-M3 | | qid | LaBSE | BGE-M3 |
+|---|---|---|---|---|---|---|
+| G-201 | 19 | **1** | | G-212 | 28 | **1** |
+| G-202 | 29 | **1** | | G-213 | 10 | **1** |
+| G-203 | 7 | *31* | | G-214 | 1 | *2* |
+| G-204 | 38 | **1** | | G-215 | 101 | *195* |
+| G-205 | 35 | **3** | | G-216 | 214 | **33** |
+| G-206 | 10 | **2** | | G-219 | 33 | **5** |
+| G-207 | 32 | **10** | | G-222 | 7 | *8* |
+| G-208 | 41 | **8** | | G-223 | 9 | **1** |
+
+Better on 12 of 16, and the improvements are not marginal: 19→1, 29→1, 38→1,
+41→8, 214→33. Four regress, three of them trivially (7→8, 1→2, 7→31).
+
+**THE ONE REAL REGRESSION IS G-215, AND IT IS INFORMATIVE.** 101 → 195, the
+worst dense rank in the set under either model. G-215 asks what insurance
+§5.4 covers, and §5.4 means fire-safety insurance in Progoti and livestock
+insurance in Dabi. There is no embedding of that question that can rank the
+right chunk first, because the question does not determine which chunk is
+right. A better encoder cannot fix a question whose answer depends on a
+manual the asker did not name — that is what rule 6 and the cross-manual
+citation requirement are for.
+
+**WHAT THIS DOES AND DOES NOT BUY.** The hybrid path is what ships, and there
+the gain is real but much smaller: **+3 questions at k=1 (5→8) and +2 at k=5
+(9→11), and nothing at k=10 or k=30.** Sparse is already finding what dense
+misses at the larger cut-offs. So BGE-M3's value is concentrated exactly
+where it matters most for generation — the top of the list, where the model
+reads — and it is worth re-indexing for on that basis, not on the dense
+table's much larger numbers.
+
+**NOT YET MEASURED, and needed before adopting.** These figures come from
+`benchmark_one`, which ranks the raw fused scores. The deployed `search()`
+additionally collapses 1.000 duplicate groups and applies manual-scope
+preference, and neither is in this path. The fact-level and citation-level
+gain therefore is NOT known yet; only the question-level chunk recall is.
+Adopting means rebuilding `out/index` on BGE-M3 (dim 1024, not 768) and
+re-running the k=5 generation, and until that is done the honest statement is
+that the retrieval floor rises and the downstream effect is unquantified.
+
+**A CONSISTENCY CHECK WORTH RECORDING.** LaBSE's per-question hybrid ranks
+here reproduce the pre-collapse pool ranks measured independently for the
+reranker work — G-212 2, G-213 1, G-214 1, G-215 18, G-216 12, G-222 11,
+G-201 3, G-202 4, G-203 1, G-204 3, G-205 6, G-206 1, G-207 10, G-208 30,
+G-219 1, G-223 9 — all sixteen identical. Two code paths written days apart
+for different purposes agree exactly, which is the only reason to believe
+either.
+
+**The cached LaBSE row was stale and the guard caught it.** The 15 Sep row
+answered @1/@3/@5/@10 on n=12 from an older gold set, and reusing it would
+have printed a number from a different denominator under a new heading.
+`benchmark_subprocs` now refuses a cache whose `ks` or `per_question` do not
+match the request and re-runs instead. The document matrix cache is safe to
+keep and was verified byte-identical to `out/index/dense.faiss`
+(max abs diff 0.0), so the LaBSE arm scores the deployed retriever exactly.
+
+---
+
+## 4a-2. BGE-M3 end to end: index built and switchable, generation NOT measured
+
+**STATUS: NOT ADOPTED. `out/index` is still LaBSE.** The candidate index
+exists and one variable switches to it, but the end-to-end result the
+adoption decision depends on was not obtained, and the reason is a quota
+limit this project had never recorded.
+
+```
+out/index          LaBSE, dim  768   <- live, unchanged
+out/index_labse    LaBSE, dim  768   <- explicit copy, so the live dir can be swapped
+out/index_bge_m3   BGE-M3, dim 1024  <- candidate
+BFA_INDEX_DIR=out/index_bge_m3       <- the one flag; embed.py also takes --out-dir
+```
+
+Building the candidate cost no re-encode: `build()` already reuses
+`out/benchmark/<slug>.docs.npy`, so the 3.5-hour BGE-M3 encode was paid once.
+
+### What WAS measured, model-free: the retrieval gain is one question
+
+Achievability depends only on the retrieved context, so it is measurable
+without generating. At k=5, LaBSE vs BGE-M3:
+
+| | LaBSE | BGE-M3 |
+|---|---|---|
+| facts in the denominator | 15 | **16** |
+| facts unachievable | 14 | **13** |
+| citation-achievable questions | 10 | **11** |
+| questions whose context changed at all | — | **16 of 17** |
+
+**The benchmark's +2 questions at k=5 became +1 fact.** Sixteen of seventeen
+contexts changed and the achievability needle moved once: G-223 went from
+0 of 6 gold chunks retrieved to 1 of 6. The other question BGE-M3 newly
+reaches at k=5, G-205, was already fully achievable under LaBSE, so its
+better rank (hybrid 6 → 1) buys nothing the metric can see.
+
+**This is exactly the gap the benchmark could not show.** `benchmark_one`
+counts "any gold chunk in the top k" over raw fused ranks. The deployed
+`search()` collapses duplicate groups and prefers the scoped manual, and
+achievability is per-FACT with twins. A question-level recall gain lands as a
+fact-level gain only when the newly-found chunk carries a fact that was not
+already reachable through a twin. Here, mostly it did not.
+
+### Citations: no gain, and one real regression hidden by the exclusion rule
+
+The generation run completed 16 of 17 questions before failing, so the
+answer text is lost but the emitted citations were printed. Scored offline —
+no model call, `cite_ok` is a pure function:
+
+| | LaBSE | BGE-M3 |
+|---|---|---|
+| citation accuracy | 12/12 = 100% **[UNVERIFIED]** | 11/11 = 100% **[UNVERIFIED]** |
+
+**UNVERIFIED — 22 Sep 2026.** The 12/12 figure came from a chat report, never from a file. The artefacts it named — `scratchpad/real/oss.jsonl`, `scratchpad/retrieved17.jsonl`, `out/answers.jsonl`, `out/answers_meta.jsonl`, `out/runs/` — are all absent, and `out/` is gitignored, so it cannot be recovered or re-scored. The last file-backed citation figure is **7/11 = 63.6%** from `out/eval_report.json` (19 Sep). That file matches this k=5 column on fact recall (8/15) and violations (0/17) but NOT on citation, 2b or language (17/17 there, 15/17 here), so it is a different scoring pass of the same question set, not this run re-scored. Do not quote 12/12. See §4j.
+
+
+Both read 100%, and **that conceals a regression.** G-222 cited
+`dabi_2025 §4.2.5` and `progoti §4.2.5` correctly under LaBSE; under BGE-M3
+it emitted **no citations at all**. Because `gold_eval` counts a citation
+failure as unachievable when the gold chunk was not retrieved — and only
+failures can be unachievable, a pass being proof of achievability — G-222
+leaves the denominator instead of scoring zero. The rate is unchanged and a
+question that was correctly cited is now uncited. **A metric that excludes
+the impossible will hide a regression INTO impossibility.** Read 2b's count
+alongside 2: it went 5 → 5 while the population changed.
+
+### Why it stopped: Groq's per-DAY token limit, which the headers cannot see
+
+```
+429 ... on tokens per day (TPD): Limit 200000, Used 197523, Requested 3199
+```
+
+The project had recorded two Groq limits — 1000 requests/day/model and 8000
+tokens/minute — both taken from response headers. **There is a third, and it
+is the binding one for a day of measurement.** 200,000 tokens per day per
+model. The k sweep alone spent ~139,000 (44k at k=5, 81k at k=10, ~14k on the
+k=20 subsets), and the BGE-M3 run's 16 completed questions took most of the
+rest.
+
+**THE HEADERS DO NOT CARRY IT.** Probed at the moment generation was being
+refused:
+
+```
+x-ratelimit-limit-requests    1000      x-ratelimit-remaining-requests  983
+x-ratelimit-limit-tokens      8000      x-ratelimit-remaining-tokens   7924
+```
+
+Everything looks healthy. `_pace_from_headers` paces on exactly these numbers,
+so it cannot see the limit that actually stops the run, and it will pace
+perfectly into a wall. The TPD figure appears only in the body of the 429.
+This is the repo's recurring failure in a new place: **an instrument that
+reports green because it is not measuring the thing that fails.**
+
+Consequence for planning: a day's budget is ~200,000 tokens per model, which
+at the k=5 context size is **about four 17-question runs per model per day**,
+not the 25 the requests-per-day figure implies. Budget experiments in tokens,
+not requests. qwen has a separate, nearly untouched bucket — but switching
+generator mid-comparison would confound the very thing being measured, so the
+BGE-M3 run should be finished on gpt-oss-120b when the window rolls over.
+
+### What remains to declare BGE-M3
+
+One command, once the token budget refills:
+
+```
+python generate.py --provider groq --model openai/gpt-oss-120b \
+  --retrieved <scratchpad>/k/retrieved17_bge_k5.jsonl \
+  --gold <scratchpad>/bootstrap_scoreable.yaml --judge llm ...
+```
+
+Then facts, violations and language against the LaBSE k=5 baseline
+(8/15, 0/17, 15/17). Until that exists, the honest statement is: **the
+retrieval floor rises by one fact and one citation-achievable question, one
+previously-correct citation is lost, and the generation-side effect is
+unknown.** On the evidence so far the case for adopting is weaker than the
+benchmark table suggested.
+
+### A smaller thing, fixed in passing
+
+`generate.py` printed "N forbidden clause(s)" using `len(forbidden)`, which
+counts the metadata keys as well. It read 7 when 3 clauses were armed, and 9
+once `_roles`/`_roles_note` were added. It now counts keys without a leading
+underscore, which is how `forbidden_build` documents the file.
+
+---
+
+## 4a-3. Three defects the BGE-M3 comparison exposed
+
+None of these is about BGE-M3. All three were latent and the A/B is what made
+them visible.
+
+### 1. Achievability was not sticky across an A/B, so a regression vanished
+
+metric 2 excludes a citation failure when the gold chunk was never retrieved.
+Within one run that is right: charging a model for an impossible citation
+measures retrieval, not citation. **Across an A/B it is wrong, because
+retrieval config is exactly what moves achievability.**
+
+G-222 is the case. `must_cite` is the bare manual ids, mode `all`.
+
+| | cited | gold chunk in context | scored |
+|---|---|---|---|
+| LaBSE k=5 | `dabi_2025 §4.2.5`, `progoti §4.2.5` | no | **PASS** — a pass is proof of achievability |
+| BGE-M3 k=5 | *nothing* | no | **excluded** — unachievable |
+
+Both runs read **100%**. A question that was correctly cited became uncited
+and the metric improved its own denominator to hide it. *A metric that
+excludes the impossible will hide a regression INTO impossibility.*
+
+`--baseline REPORT` fixes it. A question the baseline could cite stays in the
+candidate's denominator whatever the candidate's own context holds. Nothing
+is ever removed by the anchor, only added back. Both numbers print and are
+never merged — the self-scored one answers "how did this run do on what it
+could reach", the anchored one answers "did changing retrieval lose
+anything", and one figure cannot carry both.
+
+Anchored on the LaBSE k=5 run, over the 16 questions the BGE-M3 run
+completed:
+
+| | citation |
+|---|---|
+| LaBSE k=5, self-scored | 12/12 = 100% **[UNVERIFIED]** |
+| BGE-M3 k=5, self-scored | 11/11 = 100% |
+| **BGE-M3 k=5, baseline-anchored** | **11/12 = 91.7%** |
+
+The canary is the real G-222 shape and was watched going **MISSED** with
+`baseline_reachable` changed to trust the baseline's own `citation_achievable`
+flag instead of counting a pass as proof — which is the way this would most
+plausibly be got wrong.
+
+### 2. Groq has THREE limits and the headers carry two
+
+```
+x-ratelimit-limit-requests    1000   remaining  983    per DAY, per model
+x-ratelimit-limit-tokens      8000   remaining 7924    per MINUTE
+(no header at all)          200000   remaining 2477    per DAY, per model
+```
+
+Those numbers were read at the moment generation was being refused. The third
+limit appears only in the body of the 429:
+`on tokens per day (TPD): Limit 200000, Used 197523`.
+
+`_pace_from_headers` paces on the two visible numbers, so **it paced
+perfectly into a wall** — sleeping for the per-minute budget while the
+per-day budget ran out, then failing at question 16 of 17 and, because a run
+either fully succeeds or yields nothing, writing no answers at all.
+
+**200,000 tokens/day/model is the binding constraint**, and at the k=5
+context size that is about **four 17-question runs per model per day** — not
+the 25 the requests-per-day figure implies. Budget experiments in tokens.
+
+The fix is a local ledger, because there is nothing to read:
+`out/token_ledger.json`, keyed by UTC date and `provider:model`, written at
+`complete()` — the one door every call goes through, so a new backend cannot
+forget to account for itself. Before a pinned-model run, `tpd_preflight`
+estimates the run from the calibrated 2.578 chars/token plus the reserved
+`max_tokens` per question and **refuses to start if it cannot finish**:
+
+```
+token budget groq:openai/gpt-oss-120b -- used 197,523/200,000 (99%) today,
+2,477 left; this run needs ~62,671
+  REFUSING TO START. A run that runs out part-way writes NO answers at all ...
+```
+
+Refusing is the point. The failure being prevented is not "the run stops", it
+is "the run stops at question 16 and throws away the 15 that worked". Warns
+at 80%.
+
+### 3. A retry destroyed the only record of the run before it
+
+The BGE-M3 run produced 16 answers and wrote none of them. The retry reused
+the same `--answers` path AND the same shell redirect, so the log went too.
+Their citations survived only because they were still in a terminal
+scrollback — which is not a storage medium.
+
+`--run-id` (default a UTC timestamp) now names a per-invocation log under
+`out/runs/`, and the log carries **the answer text**, written and flushed
+line by line as the run proceeds. A log written at the end is no use to the
+run that does not reach the end.
+
+Verified by killing a run mid-flight: no answers file was produced — exactly
+the BGE failure mode — and the log held the completed answer in full.
+
+**The deeper issue is NOT fixed and is recorded as open.** "A run either
+fully succeeds or yields nothing" is a deliberate invariant, and a partial
+run still writes no answers file. What changed is that the evidence is no
+longer lost with it. Whether the invariant should be relaxed to write partial
+answers is a separate decision and has not been taken.
+
+---
+
+## 4b. Reading an artefact without checking when it was produced
+
+**`out/read_answers.md` was built from a context the code had already
+superseded.** The page reproduces the 17 gpt-oss answers in
+`scratchpad/real/oss.jsonl`, generated **18 Sep 17:10**. The manual-scope fix
+to `retrieve.py` landed **18 Sep 17:33** and `dedupe.py` at 17:57. Re-dumping
+the same 17 questions with today's code reproduces
+`retrieved17_after.jsonl` byte-for-byte and differs from `retrieved17.jsonl`
+on **7 of 17 questions**: a different member of a 1.000 duplicate group
+survives the collapse, so the answer is cited from the other manual.
+
+**Two of the page's four headline findings were already fixed before it was
+written.** Regenerating at k=5 on the current context, same model, same
+prompt:
+
+| | read_answers.md (17:10 context) | current code |
+|---|---|---|
+| citation accuracy | 8/11 = 72.7% | **12/12 = 100%** **[UNVERIFIED]** |
+| G-201 | cited `progoti §1.1.1` — wrong manual | cites `dabi_2025 §1.1.1` |
+| G-206 | cited `dabi_2025 §2.1.1` — wrong manual | cites `progoti §2.1.1` |
+| G-219 | cited `progoti §5.3.1` — wrong manual | cites `dabi_2025 §5.3.1` |
+| G-208 | abstained on an answerable question | answers, with 2 citations |
+| fact recall | 9/15 = 60.0% | 8/15 = 53.3% |
+| language match | 16/17 | 15/17 |
+
+The page's own framing invited this: it states its provenance in a table at
+the top -- `generated 18 Sep 2026` -- and nobody compared that timestamp
+against the mtimes of the code it was describing. **A generated artefact
+carries a date; use it.** `ls -la` on `retrieve.py` was the whole check.
+
+**THE READING WAS STILL WORTH DOING, and the split is the point.** The
+findings that were archaeology are exactly the ones keyed to WHICH CHUNK was
+retrieved -- the three wrong-manual citations and the false abstention.
+Everything the reading found by looking at what the model SAID survives the
+context change:
+
+- **G-222 still concludes that সিডিও and পিও are different posts.** They are
+  one post under two programme names -- `roles_registry.csv` row 2,
+  `field_officer`, `manual_specific_name`. The fabricated expansions are
+  gone, because the new context supplies `CDO/CO Sync Status` and
+  `PO/CO Sync Status` in Latin and the model quoted them instead of inventing
+  সিনিয়র ডিস্ট্রিবিউশন অফিসার. The wrong conclusion did not need the
+  fabrication to survive, and it now argues for itself from the parallel
+  clause numbering -- which is the evidence for the OPPOSITE conclusion.
+- **Metric 3's gap is unchanged and now worse.** G-208 is `answerable: yes`,
+  so abstention accuracy never scored it; its gold chunk is unretrieved, so
+  metric 1 has an empty denominator and metric 2 excludes it. The page said
+  its false abstention "appears in no metric at all". It still appears in no
+  metric -- but it no longer abstains. It now answers **`সর্বোচ্চ স্তরের ঋণ
+  অনুমোদন শাখা ব্যবস্থাপকের অনুমোদন দ্বারা করা হয়।`** and cites
+  `dabi_2025 §2.1.1`, `progoti §2.1.1`. §2.1.2(গ) lists seven tiers topping
+  out at `৪০,০০,০০১ থেকে উপরে — কর্মসূচি প্রধান`; the answer names the
+  BRANCH MANAGER, the bottom of that ladder. The likely source is in its
+  context: `শাখা ব্যবস্থাপক সদস্যর সাক্ষাৎকার গ্রহণ ও ফাইনাল চেক পয়েন্ট (এফসিপি)
+  করবেন` -- a final check point read as a final approval. **Rule 4's failure
+  mode arriving through a ROLE instead of a figure**, which `forbidden.json`
+  holds only figures and therefore cannot see. A false abstention was
+  replaced by a confident wrong answer with two citations, and every metric
+  scored the same.
+
+**The lesson is not "check provenance" in the abstract.** It is that a
+finding keyed to retrieval is invalidated by a retrieval change and a finding
+keyed to generation is not, and you can tell which is which BEFORE re-running
+anything. Sorting the four findings that way would have cost nothing and
+saved the two that were already dead.
+
+---
+
+## 4c. Two changes G-208 forced, one adopted and one rejected
+
+G-208 asks which is the highest loan-approval tier and who approves it.
+§2.1.2(গ) answers it in seven rows, topping out at
+`৪০,০০,০০১ থেকে উপরে — কর্মসূচি প্রধান`. Across two runs the model gave two
+different wrong answers and **not one of the five metrics moved either time.**
+
+| | answer | what the metrics said |
+|---|---|---|
+| 18 Sep | `প্রশ্নে উল্লিখিত তথ্য ম্যানুয়ালে নেই` — declined | all five unchanged |
+| 19 Sep, k=5 | the BRANCH MANAGER approves the top tier | all five unchanged |
+| 19 Sep, k=10 | the AREA MANAGER approves the top tier | all five unchanged |
+
+Metric 1 has an empty denominator (its gold chunk is never retrieved),
+metric 2 excludes it as unachievable for the same reason, and metric 3 only
+ever looked at `answerable: "no"`. Three wrong answers, three different
+failure modes, one of them a refusal, and the scoreboard was flat.
+
+### ADOPTED: metric 3 scores answerable questions too
+
+Two numbers, reported separately and never averaged:
+
+```
+3a. abstained correctly   over answerable:"no"
+3b. answered correctly    over answerable:"yes"/"partial"
+```
+
+Averaging them would let a model buy back a wrongly-declined answerable
+question with a correctly-declined unanswerable one. Those are opposite
+failures: one withholds what the manual has, the other would invent what it
+has not. `partial` counts as answerable — the manual holds part of the
+answer, and refusing the whole thing loses the part it holds.
+
+**A CLARIFICATION REQUEST IS A REFUSAL HERE, and it needed its own detector.**
+Rule 6 tells the model to ask which manual is meant when a question is
+ambiguous, so the behaviour is sometimes right — but `answerable` is the
+gold's judgement that the manual DOES answer it, and handing the question
+back is then a non-answer. It matches no abstention pattern, so it had been
+scoring as a pass. `is_clarification()` is separate from `is_abstention()`
+because the two assert different things: an abstention says the manual does
+not hold the answer, a clarification request asserts nothing at all.
+
+**ONE MARKER, CHOSEN BY MEASUREMENT.** Over all 305 stored answers in the
+scratchpad, `জানতে চান` fires on 10 of the G-* answers and every one is a
+pure refusal with no citations and no content. `উল্লেখ করুন` is a strict
+subset of those 10 and adds nothing.
+
+**AND ONE MARKER DELIBERATELY REJECTED, which is the part worth keeping.**
+`স্পষ্ট নয়` also fires only on refusals in every run on disk — and it is the
+**gold fact for G-215**, `ম্যানুয়ালের নাম ছাড়া ধারা নম্বরটি স্পষ্ট নয়`. An
+answer that says the clause number is ambiguous and then gives both readings
+is CORRECT, and that marker would have failed it. *A marker that is clean on
+the runs you happen to have is not thereby safe; check it against the gold
+as well.* The gold is the list of things a right answer is allowed to say.
+
+The effect at k=5: **3b = 14/16**, catching G-216 and G-223, both of which
+handed an answerable question back. 3a is unchanged at 1/1.
+
+The canary is built from two real 18 Sep failures — G-223's clarification and
+G-208's false abstention — with G-202's real substantive answer as the
+control, all three sliced from `real/oss.jsonl` and escaped by a script, never
+hand-typed (Convention 3, instance 13). It was watched going **MISSED** with
+`CLARIFY_BN` emptied and **DETECTED** with it restored.
+
+### REJECTED: forbidden_roles_from_clause
+
+metric 4 holds figures only, so G-208 naming the branch manager is invisible
+to it. The obvious fix is the figure mechanism applied to roles: the gold
+names a DECOY CLAUSE, `forbidden_build` reads the role literals occurring in
+it out of `roles.py` (no literal typed in the gold file), and an answer
+quoting one of them violates. Roles named in the question's own `gold_facts`
+are exempt at check time, which is what lets G-208's gold span keep
+সহকারী এলাকা ব্যবস্থাপক without the question contradicting itself.
+
+**It works on the case it was built for and fails in both directions, so it
+is off.** Armed with §2.1.1 — the group-loan table the model actually read —
+measured on the 19 Sep runs:
+
+| | result |
+|---|---|
+| the real k=5 answer (wrong) | **fires** on শাখা ব্যবস্থাপক — correct catch |
+| the gold fact verbatim | clean |
+| a natural correct answer | clean |
+| **correct answer that also lists §2.1.2(গ)'s lower rows** | **FIRES on আঞ্চলিক ব্যবস্থাপক — FALSE POSITIVE** |
+| **the real k=10 answer (also wrong)** | **clean — FALSE NEGATIVE** |
+
+The false positive: আঞ্চলিক ব্যবস্থাপক appears in the decoy clause AND in the
+correct one, and it is not in G-208's single gold fact, which covers only the
+top row. The exemption cannot be widened to fix it — the gold fact is one row
+and a complete answer is seven.
+
+The false negative: §2.1.1 writes the area manager only as the abbreviation
+এএম, never in full, so the decoy list does not contain এলাকা ব্যবস্থাপক — the
+surface form the k=10 answer used to give its wrong tier.
+
+**WHY IT CANNOT BE PATCHED INTO WORKING, which is the transferable part.** A
+clause is the right key for FIGURES because a figure is its own identity:
+২০০০০ in the decoy is the same token as ২০০০০ in the answer. A ROLE has
+several surface forms — `roles.py` row `area_manager` declares both
+এলাকা ব্যবস্থাপক and এএম — and the same form appears in the decoy clause and
+the correct one. Keying on role IDENTITY instead of surface form fixes the
+false negative and makes the false positive strictly worse, because identity
+collapses এএম into এলাকা ব্যবস্থাপক and both tables use it. The information
+that discriminates is *which row of which table*, and a clause-level list
+cannot carry it.
+
+**AND THE REPO HAD ALREADY FOUND THIS, BY A DIFFERENT ROUTE.** `validate_gold`
+carries a standing exemption for G-220 whose stated reason is the same one
+measured here: *"the wrong answer names branch posts, but its second gold
+fact says branch posts exist elsewhere -- so a correct answer may name them
+too while redirecting, and must_not_contain_literals seeded with role names
+would flag both alike."* That was written about the hand-written literal
+route; this measurement reached the identical conclusion about the
+clause-derived route. Two independent arrivals at the same wall is the
+strongest evidence available that it is a wall and not a bug — and it is a
+reason to check the existing exemptions before building a mechanism, because
+the answer was already in the repo.
+
+The code is kept, unarmed and documented, in
+`gold_eval.forbidden_role_violations`. No gold question carries
+`forbidden_roles_from_clause`, so it returns `[]` everywhere and
+`forbidden.json`'s `_roles` is empty. Same treatment as `--glossary`: the
+measurement is the artefact, not the feature.
+
+**So G-208 still scores in no metric except 3b, and only when it refuses.**
+Its two confident wrong answers remain invisible, and the honest reason is
+that its gold chunk is never retrieved — that is a retrieval problem wearing
+a metric problem's clothes.
+
+---
+
+## 4d. Raising k: measured at 5, 10 and 20. No k adopted.
+
+Question-level recall says the misses are reachable: recall@5 is 9/17, @10 is
+12/17, @20 is 16/17, and the 8 missing gold chunks sit at fused ranks 6, 9,
+10, 11, 12, 18, 18 and 30. So the material is there. The question is what it
+costs to put it in front of the model, and whether the model uses it.
+
+All three contexts were dumped from **one** `Index()` load, so the only thing
+that differs between them is k. Verified nested: the k=5 chunk list is a
+prefix of k=10's, and k=10's of k=20's, for all 17 questions.
+
+| | k=5 | k=10 | k=20 |
+|---|---|---|---|
+| 1 fact recall | **8/15 = 53%** | **8/20 = 40%** | not runnable |
+| 1b facts unachievable | 14 | 9 | **4** |
+| facts in the denominator | 15 | 20 | **25** |
+| 2 citation accuracy | **12/12 = 100%** **[UNVERIFIED]** | **12/15 = 80%** **[UNVERIFIED]** | not runnable |
+| 2b citation unachievable | 5 | 2 | **1** |
+| 3a abstained correctly | 1/1 | 1/1 | — |
+| 3b answered correctly | 14/16 | 14/16 | — |
+| 4 **violations** | **0/17** | **0/17** | 0/2 |
+| 5 language match | 15/17 | 14/17 | 2/2 |
+| billed prompt tokens | 44,055 | 81,174 | ~154,000 projected |
+| median / max prompt | 2,538 / 3,866 | 4,804 / 6,720 | ~8,600 / ~11,100 |
+| paced sleep | 331 s | 669 s | — |
+
+**THE DECIDING RISK DID NOT MATERIALISE.** Rule 4's whole history is models
+quoting adjacent figures, and k=10 is twice the adjacent material. Violations
+are **0/17 at k=10**, unchanged. On the evidence available, widening the
+window did not make the model quote more of it.
+
+**BUT THE MODEL RECOVERED NOTHING FROM THE EXTRA CONTEXT.** This is the
+result. Going from k=5 to k=10:
+
+- 5 facts moved out of unachievable into the denominator — and the hit count
+  stayed at **8**. Every newly reachable fact was missed.
+- 3 questions' citations became achievable — and the correct count stayed at
+  **12**. Recall and citation both fall as percentages purely because their
+  denominators grew.
+
+Two questions went backwards. G-205 lost a fact it had at k=5
+(`সদস্যকে স্বশরীরে অফিসে উপস্থিত হতে হবে`, 2/3 → 1/3); G-207 and G-216
+acquired rule-7 identifier failures they did not have. One went forwards:
+G-206 recovered its fact, 0/1 → 1/1.
+
+So the honest summary of k=10 is: **1.84x the tokens, 2.0x the wall clock, no
+violations, one fact gained, one fact lost, and three more citations made
+possible and not taken.** The extra chunks are not being read; they are being
+paid for. Raising k does not fix a model that is not using the context it
+already has.
+
+**k=20 IS REFUSED BY THE PROVIDER, on 15 of 17 questions.** Groq returns
+`413 Request too large` and `generate.py` returns 1 on the first provider
+error, so the first attempt wrote nothing at all — it died on G-217, question
+one. The ceiling is the 8,000 TPM window, and it counts the RESERVED
+COMPLETION BUDGET as well as the prompt: `max_tokens=1024` is part of the
+request, so the usable prompt is roughly 7,000 tokens, not 8,000. G-203 was
+refused at an estimated 7,131 while G-215 went through at 7,220 billed, which
+puts the practical boundary just above 7,200 and confirms it is not the
+prompt alone. **Waiting cannot help** — the limit is per minute and a single
+request exceeds one minute's entire budget.
+
+Only G-215 and G-222 fit, and they are the two most informative ones: both
+have facts that become achievable ONLY at k=20. Scored:
+**3/4 facts, citation 1/2, violations 0/2, language 2/2.** So the newly
+reachable facts ARE recovered when they arrive — which is the opposite of
+what happened at k=10, and on a sample of two.
+
+**NO k IS ADOPTED.** k=5 stays. The case against k=10 is that it costs double
+and returned nothing; the case against k=20 is that the provider forbids it.
+The k=20 sample of two is the only sign that more context can help, and two
+questions is not a basis for changing the default. The finding that matters
+more is §4a's: the retrieval floor is low because LaBSE's dense side barely
+works, and raising k is paying to paper over that rather than fixing it.
+
+---
+
+## 4e. The demo page: three defects every check passed, found by rendering it
+
+`app.py` was built, linted and tested, and all four conventions were green.
+Convention 1 passed statically and dynamically. Convention 2 found no product
+literal. Convention 4 reported no raw Bengali literal in a matching operation.
+`pattern_audit.py` was 55/55. The Streamlit `AppTest` harness ran every branch
+without an exception and the extracted HTML contained every element the design
+asked for.
+
+The page was still wrong in three ways, and **not one of them was visible to
+any of that**. They were found by opening the page in a real browser
+(Playwright, Chromium), screenshotting it, looking at it, and asking the
+browser what it had actually done.
+
+**1. The stylesheet said Helvetica Neue and the page rendered Source Sans.**
+
+`BRAND["latin"]` is the brand stack and the rule setting it was real:
+
+```css
+html, body, [data-testid="stAppViewContainer"] { font-family: $latin; }
+```
+
+Streamlit sets its own `font-family` on the markdown container that every
+`.bfa-*` block lives inside. That selector is *more specific and closer to the
+element* than `html`/`body`, so it won every time. The chips, the flags, the
+header tagline and the meta line all rendered in Source Sans while the
+stylesheet, read by eye, plainly said otherwise.
+
+`getComputedStyle` is what settled it:
+
+```
+.bfa-chip   12px / 19.2px / "Source Sans"       <- before
+.bfa-chip   12px / 19.2px / "Helvetica Neue"    <- after naming .bfa-* directly
+```
+
+The fix is one rule naming the `.bfa-*` classes. The lesson is not the fix.
+**A CSS rule that exists is not a CSS rule that applies**, and nothing short
+of measuring the computed style on a rendered page can tell the two apart. A
+reviewer reading the stylesheet would agree the brand font was set. It was
+set. It never arrived.
+
+**2. The token-budget warning rendered inside the answer card.**
+
+It was concatenated into the card body, so it appeared under the model line,
+inside the same white box as the answer — reading as though it were a
+statement about *that answer*. It is a statement about the day. Correct text,
+correct data, wrong container; moved to its own band below the card. No check
+has an opinion about which box a true sentence appears in.
+
+**3. Four magenta bars of equal weight made the refusal unreadable.**
+
+This is the one that mattered. The page's whole purpose is that an abstention
+must not look like an empty answer — §4c and the abstention canary exist for
+exactly that. So a refusal got a flag saying "This is a refusal, not a blank."
+
+It also got a flag for the unarmed post-filter, and a flag for product status,
+and a flag for the token budget. Four bars, same 3px magenta border, same
+size, same weight, stacked. The sentence carrying the system's most important
+guarantee looked exactly like the sentence reporting how many rows are in the
+product registry.
+
+**Everything emphasised is nothing emphasised.** The flags are now two
+weights: magenta and full size for *why this answer is not what the model
+first said* (floor, post-filter, model's own refusal — at most one ever
+shows), grey and quiet for standing conditions true of every query. The
+quiet ones stay on the page; they are disclosures, they are just not the
+headline.
+
+### What this says about the check suite
+
+Every check in this repo answers a question about the **source**. Does this
+module write at import. Does this literal reach a matcher. Does this pattern
+under-match nukta forms. Does this branch raise. They are good checks and they
+have caught real defects.
+
+None of them can answer *what did the user actually see*, because that is a
+property of the rendered page — of CSS cascade, of visual hierarchy, of which
+box a sentence sits in. It is measurable, but only by rendering and then
+measuring, which is a different instrument from reading source.
+
+Two of the three defects above (the font, the placement) are cosmetic in the
+sense that no figure was wrong. The third is not cosmetic at all: it degraded
+the one guarantee this project is built around, and it degraded it *on the
+page only* — the meta row said `floor_fired` correctly the entire time.
+Convention 3's rule generalises: a check must prove it can fail, and a check
+that only reads source cannot fail on a defect that only exists once rendered.
+
+**Carry this forward: if the deliverable is a page, render it and measure it.
+Reading the source is not review.**
+---
+
+## 4f. This machine cannot hold the toolchain and an embedding model at once
+
+Not a tuning problem and not a transient. It is a standing property of the
+development machine, and it decides what can be built here.
+
+**The machine.** 7.9 GB physical. Commit limit 14.4 GB (RAM plus pagefile).
+
+**Measured 19 Sep 2026, across one session.** Free physical memory swung
+between roughly **1.0 and 3.6 GiB** depending on nothing but what else was
+open. Two readings taken twenty minutes apart while diagnosing: **2,741 MB**
+free, then **3,093 MB** free.
+
+**LaBSE loaded, and then stopped loading.** The same `retrieve.Index()` call,
+in the same session, against untouched index files:
+
+```
+14:53   Loading weights: 100%|██████████| 199/199   [ok]
+...
+19:19   MemoryError
+        transformers/core_model_loading.py:1238 in _materialize_copy
+            tensor = tensor[...]
+```
+
+At the point of failure: **commit charge 11,487 MB against a 14,378 MB
+limit** — under 3 GB of headroom — with the convention run's subprocesses,
+two Chromium instances from the Playwright render, and the editors open. No
+single process was large; the largest working set on the machine was 432 MB.
+It is the *sum*, and it is mostly commit that is reserved rather than
+resident, which is why "free memory looks fine" and the load still dies.
+
+The failure is in `transformers`' tensor materialisation, which realises
+weights in parallel worker threads — so the peak is higher than the model's
+nominal fp32 footprint, and it arrives all at once rather than gradually.
+Nothing in the repo caused it and nothing in the repo can avoid it. The index
+files were verified intact afterwards: `dense.faiss` loads, `ntotal 867`,
+`dim 768`.
+
+### THE LIVE INSTANCE, and what it corrected
+
+It happened again during the demo build, this time on the page rather than in
+a terminal — the app rendered fine and died on the first ask. Measured at the
+moment of failure:
+
+| | |
+|---|---|
+| commit charge | **13.4 GB** of a **15.6 GB** limit |
+| free physical | **1.8 GB** |
+| total working sets, all processes | **2.5 GB** |
+
+**Only 2.5 GB was actually resident.** The machine was not short of RAM; it
+was short of *commit*. That distinction is the whole finding, and it changes
+the advice: closing applications frees working set, and working set was never
+the binding constraint. **Raising the page file is the lever that works.**
+Closing things helps only insofar as it drops their commit reservations,
+which are much larger than their footprints.
+
+Note also that the commit **limit itself moves** — 14.4 GB earlier in the
+session, 15.6 GB here, 16.0 GB twenty minutes later. Windows grows the
+pagefile on demand, and it grows it *more slowly than a model load allocates*.
+A limit read before a run does not predict the limit during it.
+
+**AND IT IS NOT ALWAYS `MemoryError`.** The live failure raised:
+
+```
+OSError: The paging file is too small for this operation to complete.
+         (os error 1455)          <- ERROR_COMMITMENT_LIMIT
+  transformers/modeling_utils.py:343 in load_state_dict
+      with safe_open(checkpoint_path, framework="pt") as f:
+```
+
+The commit ceiling surfaces through safetensors' mmap as **WinError 1455**,
+an `OSError`, not a `MemoryError`. A handler written for `MemoryError` alone
+catches the allocator-side failure and misses the commit-side one — which is
+the more likely of the two here. `app.py`'s `_is_memory_exhaustion` now
+recognises both, and recognises 1455 narrowly: `FileNotFoundError` is also an
+`OSError`, and a missing index must never be reported as "out of memory".
+
+### THE RULE
+
+**Any run that loads a model needs a clear machine first.** Close the editors
+and the browser, let the convention run finish, then start it. A model load
+that succeeded an hour ago is not evidence that it will succeed now, so a
+`MemoryError` from `retrieve.Index()` or `embed.py` should be read as *this
+machine is busy*, not as *the index is broken* — check the index files before
+concluding anything about them.
+
+Corollaries that have already cost time:
+
+- **Never run `conventions_check.py` and anything model-loading at the same
+  time.** It spawns one subprocess per module, 45 of them, several loading
+  torch or faiss. It is also the run whose dynamic stage needs a quiescent
+  tree for an unrelated reason — see CONVENTIONS.md, rule 1's known defect.
+- **Playwright leaves commit charge behind.** Two headless Chromium launches
+  were enough to matter.
+- **Budget the machine like the token ledger.** Both are per-day resources
+  that fail late and take the run's output with them.
+
+### This is the same constraint that rejects the reranker
+
+§4a's first surviving reason for rejecting `bge-reranker-v2-m3` is "it cannot
+be resident": loading it beside the embedding model raises `MemoryError` on
+the second load. That reason was written from the same machine and the same
+ceiling, and this session re-measured it from the other direction — **one**
+model now fails to load when the ordinary toolchain is open. Serving needs
+the embedder for the query and the reranker for the pool, in one process, at
+once. It did not fit when the reason was written and it fits less now.
+
+The generalisation worth carrying: **this repo's model choices are
+constrained by the development machine, not only by accuracy.** BGE-M3 is
+preferred over LaBSE-plus-reranker partly because it is one resident model
+instead of two. Any proposal that adds a second model to the serving path has
+to answer this section before it answers a recall number.
+---
+
+## 4g. Banglish retrieval was not weak, it was absent — and the eval could not see it
+
+Two questions an officer typed, both of which answer correctly in Bengali:
+
+```
+progoti loner service charge koto?            top chunk livestock_grow_2026_0006 at 0.42
+Sadharon Shonchoi er upor munafa har koto?    floor fired at 0.3063
+```
+
+### The sparse side returned literally nothing
+
+Measured 20 Sep 2026 on the live index, BM25 only (no model needed, so this
+survives the memory ceiling of §4f):
+
+| | Banglish | Bengali |
+|---|---|---|
+| gold BM25, `progoti_0016_p2` | **0.0000**, rank 11 | 20.5039, **rank 1** |
+| gold BM25, `dabi_2025_0017` | **0.0000**, rank 9 | 9.9041, **rank 1** |
+| corpus chunks scoring above 0 | **10** and **8** of 867 | 196 and 159 |
+
+Rank 11 and rank 9 are not near misses. They are ties at zero with ~855
+other chunks — the rank counts only strictly-greater scores.
+
+Document frequency says why. Not one content word exists in the corpus:
+
+```
+progoti 0   loner 0   service 0   charge 0     Sadharon 0  Shonchoi 0  munafa 0
+প্রগতি 158  লোনের 19  সার্ভিস 49  চার্জ 18      সাধারণ 58   সঞ্চয়ের 33   হার 189
+```
+
+`expand_banglish` **was firing**, and appended exactly one gloss to each
+query — `koto → কত`, the interrogative. Every content word passed through
+untouched. So BM25 scored both queries on a single token.
+
+**Every Banglish query therefore degenerated toward one chunk.** With `কত`
+as the only surviving term, BM25 ranks whichever chunk uses it most:
+`dabi_2025_0251` was top-1 for unrelated queries about service charges and
+about savings alike. The failure was not that Banglish retrieved badly; it
+is that Banglish retrieved *the same thing every time*, and the fused score
+then rested entirely on the dense side, which §4a records as barely working.
+
+### Three candidate fixes. Only one did anything
+
+Gold-chunk BM25, measured cumulatively:
+
+| stage | Q1 `progoti_0016_p2` | Q2 `dabi_2025_0017` |
+|---|---|---|
+| baseline | 0.0000 rank 11 | 0.0000 rank 9 |
+| + registry routing | 3.8217 **rank 24** | 0.0000 rank 9 |
+| + stemming | 3.8217 rank 24 | 0.0000 rank 9 |
+| + vocabulary | 18.2739 rank 5 | 19.4825 rank 1 |
+| **adopted: vocabulary only** | **14.4521 rank 6 raw / 4 collapsed** | **19.4825 rank 1** |
+
+**ROUTING MADE IT WORSE AND IS OFF.** Routing romanised registry names into
+the query — reading every Bengali form and Latin alias out of productmatch,
+the catalogue and roles, so no literal is copied — lifted Q1's score off
+zero and pushed its RANK from 11 to 24. The query gained প্রগতি, and প্রগতি
+occurs in 158 of 867 chunks because one of the two manuals is entirely about
+that programme. A term carried by 18% of the corpus is not evidence about
+which chunk answers the question; it lifts every chunk in that manual past
+the one that does. Q2 gained nothing — it names no product, programme or
+role. Kept behind `ROUTE_REGISTRY_NAMES = False`, because the argument
+against it is specific to a programme name that is a whole manual's subject;
+a rare product name would behave the opposite way and is worth re-testing.
+
+**STEMMING BOUGHT NOTHING BY ITSELF, AND THE REASON IS NOT MORPHOLOGY.**
+`loner` is loan + the genitive `-er`, and `loan` was already a table key —
+but stripping gives `lon`, and the table romanises the stem `loan`:
+
+```
+_stems('loner') -> ['loner', 'lon', 'lone']
+'lon' a key? False        'loan' a key? True
+```
+
+A **romanisation mismatch, not a morphology gap**. Stemming is kept only
+because `lon → লোন` was then added as vocabulary, and stripping is what
+reaches it; on its own it moved neither query. Anyone re-deriving this
+should not conclude that Bengali case endings are the problem.
+
+**VOCABULARY DID ALL THE WORK.** Nine ordinary words the table lacked —
+service, charge, munafa, har, sadharon, shonchoi, upor, lon and spelling
+variants. No product, role or insurer name among them: সাধারণ is "ordinary"
+and সঞ্চয় is "savings"; the *product* সাধারণ সঞ্চয় remains productmatch's.
+
+### An alias column is not all aliases
+
+22 of 43 catalogue rows carry a Latin-bearing alias, but several of those
+entries are prose notes written into the column:
+
+```
+'§5.1.2 excludes its customers from ঋণ নিরাপত্তা বিমা cover'
+'umbrella for ডিপিএস + মাসিক মুনাফা'
+'underwrites ফায়ার সেফটি (Progoti §5.4.6) and গবাদিপ্রাণি সুরক্ষা'
+```
+
+Used as lookup keys those map the ordinary English words *umbrella*,
+*cover*, *underwrites* and *excludes* onto product names — injecting a
+product into a query that never mentioned one. `_alias_shaped` keeps names
+and drops notes (no `§`, no parentheses, ≤4 words). A wrong expansion is
+invisible where a missing one is merely unhelpful.
+
+### A BANGLISH SCORE IS NOT COMPARABLE TO A BENGALI ONE
+
+Q2's Banglish query now scores **19.4825 against its Bengali original's
+9.9041** — nearly double, on the same gold chunk. Not better retrieval. The
+expansion appends *uninflected stems* (সঞ্চয়, মুনাফা) while the Bengali
+question is written with *inflected forms* (সঞ্চয়ের, মুনাফার), which match
+fewer postings. Never read a cross-language BM25 comparison as a quality
+signal; compare rank within one language.
+
+### Measure the pipeline, not the component
+
+Raw BM25 put Q1's gold chunk at rank 6 — outside k=5. After
+`dedupe.collapse`, which `retrieve.search` applies and a component probe
+does not, it is at **rank 4**:
+
+```
+Q1 banglish  collapsed top-5: progoti_0391_p2, dabi_2025_0015_p1,
+                              progoti_0018, progoti_0016_p2, progoti_0391_p1
+Q1 bengali   rank 1      Q2 banglish rank 1      Q2 bengali rank 1
+```
+
+Four of the top six raw hits were cross-manual duplicate pairs occupying two
+slots each. A probe that skips the collapse under-reports every rank.
+
+### The changelog chunk is a decoy, not an attractor
+
+`dabi_2025_0366_p2` / `progoti_0391_p2` — the twin "পরিবর্তন সমূহ" changelog
+rows — take top-1 on Q1. Their text is a list of changed clauses:
+
+```
+পরিবর্তণ: প্রগতি ঋণীর সার্ভিস চার্জ % — ১.১.২ — ৭
+```
+
+It contains প্রগতি, সার্ভিস চার্জ and the clause number ১.১.২, and **not the
+figure**. Maximum lexical overlap with the question, zero answer content —
+the G-210 trap shape, a changelog row citing a clause.
+
+**It is not systematic.** Across ten Banglish queries it was top-1 on
+**0 of 10**; it wins only where the question's exact terms are the terms of
+a changelog line. Worth watching, not worth a rule.
+
+### WHY THE EVAL NEVER SAW ANY OF THIS
+
+**24 of 24 gold questions are written in Bengali.** At the time this broke,
+the set held exactly **one** romanised string — `G-209`'s
+`'PO koto taka loan approve korte pare?'` — and the Banglish path was
+otherwise measured only against a synthetic fixture. A retrieval mode used
+by real officers had no gold coverage at all, so no score could move when it
+broke, and none did — every metric was green throughout.
+
+**FIXED THE SAME DAY, narrowly.** Both live failures are now
+`question_variants` on the questions they belong to — `G-202` and `G-203` —
+so the set carries three romanised strings rather than one. That is a
+regression test, **not coverage**: three variants across 24 questions still
+cannot tell you how Banglish performs in general, only whether these two
+specific failures have returned.
+
+**Only the retrieval harness sees them.** `retrieval_eval.py` scores every
+variant separately and tags each with `variant_language` (bn | banglish), so
+a return to BM25 0.0000 shows up as recall@k on those lines. **`gold_eval.py`
+does not read `question_variants` at all** — it scores `question_bn` only, so
+the answer-quality side of the report is still entirely Bengali and adding
+variants buys it nothing. Worth knowing before anyone reads a gold_eval
+number as evidence about romanised input.
+
+The general form is §4e's, one layer down: **a check can only fail on
+inputs it is given.** The conventions checks read source and cannot see a
+rendered page; the gold set is Bengali and cannot see a romanised query.
+Both were green while the thing they were meant to protect was broken.
+---
+
+## 4h. The selector and the validator disagreed, and it cost 18,019 tokens
+
+The quiz builder has two places that decide whether a chunk can carry a role
+question: `candidates()` picks them, and `recheck_kind()` validates what came
+back from the model. The role rule was relaxed — from "the chunk names
+exactly one role" to "some segment scopes one role to a task" — and it was
+relaxed in the selector only.
+
+`recheck_kind` still held the old chunk-level count. So the selector admitted
+the responsibilities tables, the model wrote questions about them, the tokens
+were billed, and the validator then refused the same chunks for naming more
+than one role:
+
+```
+role questions added : 6
+refused              : 26
+  Q-149 dabi_2025_0262: chunk names 3 roles; ambiguous
+  Q-152 dabi_2025_0232: chunk names 3 roles; ambiguous
+  ...
+tokens spent         : 18,019
+```
+
+**26 of 32 questions discarded after being paid for.** 18,019 tokens for six
+keepers, out of a 200,000/day budget — 9% of a day, spent on output that was
+generated correctly, validated by a rule its own selector no longer used, and
+thrown away.
+
+### The same shape as every other divergence in this repo
+
+| | one thing | the second copy | what it cost |
+|---|---|---|---|
+| `embed.py` vs `validate_gold` | gold-ref resolution | embed filtered TODOs before counting | ২.৪০% attributed to a chunk it is not in |
+| `locate_gold_chunks` vs `resolve_ref` | which chunk a fact names | two resolution paths | recall counted against the wrong chunk |
+| `canon` vs `display_norm` | which normaliser | one folds digits, one does not | 27/80 matches went to 0/80 |
+| `generate.post_filter` vs `gold_eval` | what counts as a leak | shared deliberately | *prevented* — the one that was designed not to diverge |
+| **selector vs validator** | **which chunks can carry a role question** | **relaxed in one place** | **18,019 tokens** |
+
+Every previous instance cost correctness and was invisible until something
+was measured. This one was visible immediately — the refusal list printed
+itself — and is the first with a **direct, countable token cost**. That makes
+it the cheapest instance to learn from and the easiest to explain: the two
+copies did not drift over weeks, they disagreed the moment one was edited.
+
+### What fixed it
+
+`recheck_kind` now calls `role_scoped_facts` — the same function the selector
+calls — and asks whether the correct answer is among the roles that function
+admits. There is no second statement of the rule to fall out of step:
+
+```python
+askable = {r for r, _seg in role_scoped_facts(text, names, heading)}
+if q["correct"] not in askable:
+    bad.append("role not scoped to a task in any segment ...")
+```
+
+The re-run kept 22 of 30.
+
+### Carry this
+
+**One rule, one place — and when you relax a rule, grep for who else
+enforces it.** The convention this repo already has ("one definition of every
+shared thing") is usually stated about data: one fold table, one chunk
+schema, one product matcher. This instance is about a *predicate*. A
+selection rule and a validation rule that describe the same admissibility are
+one thing wearing two hats, and editing one hat is how you pay for output
+twice.
+
+It is also an argument for making the validator call the selector's function
+rather than re-stating its test, even when re-stating is two lines and
+calling is a refactor. Two lines is exactly how long it takes to diverge.
+---
+
+## 4i. A character range that omits the virama, and the near-miss with rule 4
+
+Instance 16 in Convention 3's table is worth its own note, because of what
+it says about where Convention 4 stops.
+
+The quiz builder's rule 4 asks whether a question names something that
+distinguishes its own evidence from a sibling question's. It split both into
+Bengali words with
+
+```python
+_re.findall(r"[অ-হ়-ৌ]{4,}", text)
+```
+
+That range covers Bengali letters (অ–হ) and the vowel signs (় – ৌ). It
+**omits U+09CD, the virama** — the hasant, the character that joins
+consonants into conjuncts. Bengali cannot be written without it.
+
+So every conjunct split the word:
+
+```
+আঞ্চলিক      ->  ['চলিক']
+ব্যবস্থাপক   ->  ['থাপক']
+```
+
+Fragments like `চলিক` appear in no real question, so the test found no
+distinctive token in any question, concluded that every question was
+adequately scoped, and refused nothing. **Rule 4 ran on every revalidate,
+printed its line, and enforced nothing.** Measured: it should have dropped
+four questions — two §7.1 authority-table pairs, each giving the same role a
+different approval limit — and dropped zero. Widening to the full Bengali
+block `[ঀ-৿]` fired all four.
+
+### The near-miss with Convention 4
+
+Convention 4 exists for exactly this family of failure: *a Bengali literal
+and the text it matches must agree on nukta form*. Its whole subject is
+character-level assumptions in Bengali patterns that fail silently and
+under-match. It has a lint, two tiers, and a canary.
+
+**It would not have caught this.** The rule covers a LITERAL reaching a
+matcher — `গার্ডিয়ান লাইফ` written with a precomposed য় where the corpus has
+the decomposed form. This was not a literal. It was a character **RANGE**,
+containing no Bengali word at all, dropping a character that Bengali
+requires. The lint's advisory tier even lists this file's other raw ranges
+and says they "work today"; this one did not work today and was not on the
+list, because a range with no nukta in it is exactly what the advisory tier
+is designed to consider harmless.
+
+The generalisation the convention is missing: **rule 4 is about the
+characters you wrote; this is about the characters you left out.** A
+matcher can be wrong by including the wrong form of a character, which
+Convention 4 covers, or by excluding a character the script cannot do
+without, which nothing covers.
+
+### Whether the lint can be extended — measured before deciding
+
+Candidate rule: *a character class containing a Bengali LETTER range must
+admit U+09CD*. Counted over every string literal in the repo:
+
+```
+character classes with ANY Bengali-block range : 56
+  of those, with a LETTER range                :  4
+  of those, omitting U+09CD  -> would flag     :  4
+```
+
+**Four, not the thirty-five the advisory tier holds.** The noise worry was
+unfounded: almost every Bengali range in this repo is a digit range
+(`[০-৯]`) or the whole block (`[ঀ-৿]`), and neither is touched.
+
+But three of the four flags would be **false positives**:
+
+| site | pattern | verdict |
+|---|---|---|
+| `page_audit.py:78` | `[ক-হ]` inside `\(\s*(?:[ক-হ]|[০-৯\d]{1,3})\s*\)` | correct — a single-letter list marker `(ক)`, where a conjunct cannot occur |
+| `pdf_structure.py:78` | `\(?[ক-হ]\)` | correct — same list marker |
+| `products.py:99` | `[ক-ঞa-z0-9]{1,3}` | correct — same, an enumerator |
+| `quiz_build.py:178` | `[অ-হ়-ৌড়-য়]` | **a real bug**, same family: a tail test that would not recognise a virama as part of a word |
+
+So the rule is 1-for-4 as a blocking check and would need a `# noqa` on
+three sites the day it landed. **Not adopted.** Recorded here with its
+measurement so the next person does not re-derive the count. If it is ever
+added it belongs in the advisory tier, where a reader decides, not in the
+tier that fails a build — and the three list-marker sites are the argument
+for that placement, not against the rule existing.
+---
+
+## 4j. A number in a report and not in a file is a memory, not a result
+
+`12/12 = 100%` citation accuracy was quoted in five places in this journal,
+including the current-status summary — the line someone reads to know where
+the project stands. It was never written to a file.
+
+Searched 22 Sep 2026: the string `12/12` appears in `PROJECT_JOURNAL.md` and
+**in no `.json`, `.jsonl` or `.csv` anywhere in the tree**. Every artefact
+the entries name is gone:
+
+```
+scratchpad/real/oss.jsonl       the answers          absent
+scratchpad/retrieved17.jsonl    the k=5 context      absent
+out/answers.jsonl               the gold-run answers absent
+out/answers_meta.jsonl                               absent
+out/runs/                                            empty
+```
+
+`out/` is gitignored — deliberately and correctly, it holds regenerable
+artefacts and ~15 MB of them — so `git log -- out/` is empty and there is
+nothing to recover. The run happened. Its result is unreconstructible.
+
+**This is the second time.** The BGE-M3 comparison lost its answers the same
+way when a log path was reused: §4a-2 records "the answer text is lost but
+the emitted citations were printed", and that run was then scored from what
+had scrolled past in a terminal. Twice now, a number that a later decision
+leaned on existed only in prose.
+
+### What survives, and why it does not match
+
+`out/eval_report.json` (19 Sep) is the only eval artefact on disk. Under the
+metric's own rule it gives **7/11 = 63.6%**, not 12/12. It is not the same
+run re-scored:
+
+| | eval_report.json | journal's k=5 column |
+|---|---|---|
+| fact recall | 8/15 | 8/15 |
+| violations | 0/17 | 0/17 |
+| **citation** | **7/11 = 63.6%** | **12/12 = 100%** |
+| citation unachievable (2b) | 6 | 5 |
+| language match | 17/17 | 15/17 |
+
+Recall and violations agree exactly; citation, 2b and language do not. So it
+is a different scoring pass over the same 17 questions — close enough to be
+mistaken for the same run, different enough that it cannot stand in for it.
+
+### The rule
+
+**Anything a report will cite has to be written where it survives.** Either
+the number goes into a tracked file, or the report names the file that holds
+it and that file still exists when someone checks. A figure quoted in prose
+with no path beside it is a memory, and memories are what this journal exists
+to replace.
+
+`out/` being gitignored is not the defect and should not change; the defect
+is quoting from it as though it were permanent. Two cheap habits follow:
+
+* **Name the file in the sentence.** "citation 12/12" is unciteable;
+  "citation 12/12, `out/eval_report.json`" is checkable and would have
+  failed loudly the first time someone looked.
+* **A number that will be quoted gets copied out of `out/`.** The eval
+  report behind a headline figure belongs beside the claim, not in the
+  directory whose whole purpose is to be disposable.
+
+### The same shape, one layer up
+
+§4h recorded a predicate restated in two places and drifting. This is the
+same failure in the other direction: a result **stated once and stored
+nowhere**. Both are the single-source rule — one definition of every shared
+thing — and both cost the same way, by making a later reader confident in a
+number nobody can check.
+
+It cost again while this was being written: `app.py`'s stat card restated
+metric 2's aggregation instead of importing it, filtered on
+`citation_achievable` alone, and rendered **60%** where the metric's own
+rule gives **63.6%** — because a pass is proof of achievability and the
+restatement dropped demonstrated successes. The card now imports
+`gold_eval.citation_accuracy`, which is the only place that rule is written.
+---
+
+## 4k. A clause number is not a topic identifier
+
+The product registry arrived with four rules to enforce (see `registry.py`),
+and two of them key on the clause of a retrieved chunk: rule 2 rewrites a
+rule the field team has changed, rule 4 withholds a figure they have
+withdrawn. Clause looked like the natural key -- it is what the manual
+numbers, what the manifest records, and what a citation names.
+
+**It is not a key, because one clause can carry more than one topic.**
+
+### The case that found it
+
+`ডিপিএস এর বয়সসীমা কত?` -- what is the DPS age limit. §5.2.3 was retrieved,
+and §5.2.3 appears twice in the registry:
+
+| row | topic | verdict |
+|---|---|---|
+| `not_available` item 7 | insurance on more than one DPS | withdrawn |
+| `rule_updates` rule 23 | the DPS age limit, ১৮-৬২ / ১৮-৬০ | changed to "এখন যেকোনো বয়সে" |
+
+Rule 4 outranks rule 2, so the clause match fired first and the answer was
+**"বর্তমান নিয়মের তথ্য পাওয়া যায়নি"** -- the current rule is not known.
+That passed the test it was written against ("must not say 18-62 as
+current") and was still wrong: the registry holds the answer, and the system
+refused to give it. A refusal that looks like caution is the most expensive
+kind of wrong answer here, because nothing about it reads as a defect.
+
+### Why it is the same shape as §5.4
+
+`corpus_gaps.md` §3.1 records that **§5.4 is ফায়ার সেফটি ইন্স্যুরেন্স in
+Progoti and গবাদিপ্রাণি সুরক্ষা বিমা in Dabi** -- one number, two different
+insurance products, different underwriters and premiums. That was filed as a
+citation hazard: cite manual + clause together or the reference is ambiguous.
+
+This is the same defect one level in. There the clause is ambiguous ACROSS
+manuals; here it is ambiguous WITHIN one. Both say the same thing:
+
+> A clause number locates a passage. It does not identify what the passage is
+> about, and nothing enforces that one clause holds one topic -- the manuals
+> were not written to be indexed.
+
+### What routes it instead
+
+The topic, taken from the registry's own Bengali text. Each row already
+carries a statement of its subject -- `rule_summary` and `current_rule_bn`
+for a rule update, `bot_says_bn` for a withheld one -- so the row whose words
+the question actually shares is the row the question is about. Measured on
+the case above: rule 23 shares ডিপিএস and বয়সসীমা with the question, item 7
+shares nothing, and the answer becomes **"এখন যেকোনো বয়সে।"** with §5.2.3
+cited as outdated.
+
+Two guards came out of it, both in `registry.apply_rules`:
+
+- **Withholding wins a tie.** If no row matches the question better than any
+  other, the withheld row keeps the clause. Silence is the safe direction
+  when the system cannot tell which fact is being asked for.
+- **Best fit, not any fit.** Both §5.2.3 rules mention ডিপিএস, so "keep every
+  row that overlaps" kept both and answered a question about the age limit
+  with the one-policy rule stapled on. Only the best-scoring row survives; a
+  genuine tie keeps both, which is honest when the question does not separate
+  them.
+
+### The general form
+
+This is the cheap-property failure from 5.3 instance 17 again, in a different
+place. The guard reads the property that is easy to compare -- a clause
+string -- and passes while the property that matters, what the question is
+about, disagrees. Clause equality is necessary and not sufficient, and the
+sufficient test has to touch the content.
+
+---
+
 ## 5. The four conventions, and why they are checks rather than prose
 
 All four exist because they were broken repeatedly — **fifteen times between
@@ -1269,7 +2619,7 @@ not report "clean".
 
 > A green result means nothing unless you have watched the same code go red.
 
-Twelve instances of a check passing on data it could not see:
+Seventeen instances of a check passing on data it could not see:
 
 | # | What | How it looked |
 |---|---|---|
@@ -1286,7 +2636,11 @@ Twelve instances of a check passing on data it could not see:
 | 11 | the gold-span **extractor**, verified against its own copy | it sliced facts out of a body built with `.replace("\n", " ")`, then asserted `literal in that same flattened body` -- so the check agreed with the bug and passed. The stored fact was NOT byte-exact in the chunk: G-216's span glued the heading line `১. প্রত্যাশা লোন:` to the following sentence across a newline. `validate_gold` caught it only because it reads the RAW `display_text` independently. Same shape as instance 3 -- a check that imports the thing it is asserting against verifies self-consistency, not correctness |
 | 12 | ad-hoc acronym **counting**, going around a guard that already existed | a one-off `str.count` reported **440** occurrences of the four programme acronyms where the guarded figure is **282** across 134 chunks; `সিডিপি` alone read 180 against a true 22, because it is a substring of `এনসিডিপি` and `এসসিডিপি`. NOT a new collision -- row 4 of §6.3, guarded in `productmatch` since Phase 6 by `(?<![নস])সিডিপি`. The script simply never reached the registry. Nothing threw, and the number was written into a gold-file note as evidence. Fixed by `bn_shared.count_literal`, which is shorter than the loop it replaces; Convention 2 was NOT extended, because a rule costing more than the wrong thing collects exemptions |
 | 13 | a **canary fixture** hand-typed instead of sliced from the stored run | A DISTINCT CLASS from every row above: not a check blind to its data, but a check **passing on data that resembled the real data**. `language_match_ids` was given qwen's answer as hand-typed codepoints and got two wrong -- `\u0938` (Devanagari `स`) for `\u09b8` (Bengali `স`), and composed `\u09df` where qwen emits `য়` **decomposed** as `\u09af\u09bc`. Both render identically; neither is visible by re-reading. It went green on a string no model ever produced, satisfying Convention 3's letter (a real failure, watched going red) while breaking its intent. Surfaced only because a hit printed as `িনথেটিক_এ` -- the Devanagari character sat outside the Bengali range being scanned, so the token started one character late. Fixture now generated from the saved answer and asserted to be a verbatim prefix of it; rule recorded in CONVENTIONS.md under Convention 3 |
-| 14 | the **class-A classifier** I proposed, which scored a fabricated figure as a paraphrase | G-207's gold fact is `নতুন ঋণ: ২০০০০-৭০০০০ — বিএম`; **both** models answered `১৫,০০০-৭০,০০০`, and `১৫,০০০` appears in NEITHER manual -- both print `২০০০০-৭০০০০ — বিএম`. Token overlap scored it **0.8** and the classifier filed it under class A, "information present, verbatim match failed". A fabricated figure reads as HIGH overlap whenever the surrounding tokens match: `৭০০০০`, `বিএম`, `নতুন`, `ঋণ` all matched and only the operative lower bound was invented. The llm judge caught it where my proxy did not. **Class A cannot be trusted without reading the fact**, and a similarity proxy must never be the last word on whether a figure is right -- the one token that decides correctness is the one most easily outvoted |
+| 14 | the **class-A classifier** I proposed -- and then the correction to my own correction | G-207's gold fact is `নতুন ঋণ: ২০০০০-৭০০০০ — বিএম`; **both** models answered `১৫,০০০-৭০,০০০`. I recorded this as a fabricated figure on the grounds that `১৫,০০০` "appears in NEITHER manual". **THAT IS FALSE, and checking it took one query.** `১৫০০০` occurs 12 times in 4 chunks, and `progoti_0057` / `dabi_2025_0050` -- a declared twin pair in the SAME clause §2.1.1(চ) -- print the row `নতুন ঋণ: ১৫০০০-৭০০০০ — বিএম` verbatim. §2.1.1(চ) carries TWO approval tables: one split by branch demand category (`উচচ চাহিদা` → `২০০০০-৭০০০০`, `সাধারণ চাহিদা` → `১৫০০০-৬০০০০`, chunks `progoti_0056`/`dabi_2025_0049`) and one that is not (`১৫০০০-৭০০০০`, chunks `progoti_0057`/`dabi_2025_0050`). **`progoti_0057` was IN the model's context and `progoti_0056` was not** -- so the model quoted its context correctly and the gold ref points at the other table. Not a fabrication: a corpus ambiguity, now in `corpus_gaps.md`. The classifier's 0.8 overlap was *right* and my reading of it was wrong. What survives is the narrower lesson -- **a similarity proxy cannot be the last word on a figure** -- and a new one that cost more: **I asserted a negative about the corpus without running the count.** `bn_shared.count_literal` answers it in one line and exists for exactly this |
+
+| 15 | the **reranker measurement**, which scored a model whose tokenizer never loaded | `AutoTokenizer.from_pretrained("BAAI/bge-reranker-v2-m3", local_files_only=True)` **did not raise** against a cache holding only `config.json`, `model.safetensors`, `adapter_config.json` and `modules.json` -- **no `tokenizer.json`, no `sentencepiece.bpe.model`, no `tokenizer_config.json`**. It silently built an `XLMRobertaTokenizer` with **`vocab_size 5`**. Every real token became `<unk>` (id 3), so Bengali text and ASCII gibberish of the same token count produce **byte-identical `input_ids`** -- verified: `tok([q],['গোলাপ ফুল সুন্দর'])` and `tok([q],['xyzzy plugh frobnitz'])` both give `[0,3,3,2,2,3,3,3,2]`. The ONLY surviving signal is token count, so the "reranker" was ranking by **sequence length**. Every recall figure produced from it is void. It went undetected because the load was run through `grep -vE "Warning|warn"`, which removed the one line that said so -- see CONVENTIONS.md rule 3, "never filter the output of a check you have not read once in full". **A model that loads is not a model that works, and `local_files_only=True` will assemble a tokenizer out of nothing rather than tell you the files are missing** |
+| 16 | the **quiz builder's rule 4**, disabled entirely while reporting clean | The distinguishing-token test split questions and evidence into Bengali words with `[অ-হ়-ৌ]{4,}` -- a range that covers letters and vowel signs and **omits the virama U+09CD**. Bengali cannot be written without it: every conjunct broke, so `আঞ্চলিক` came out as `চলিক` and `ব্যবস্থাপক` as `থাপক`. Fragments match nothing in a real question, so the test found no distinctive token anywhere, concluded every question was adequately scoped, and **refused nothing**. Rule 4 ran, printed clean, and enforced nothing -- measured: it should have dropped 4 questions (Q-003/Q-024 and Q-031/Q-037, two §7.1 authority rows each giving the same role a different limit) and dropped 0. Widening to the full Bengali block `[ঀ-৿]` fired all four. **A character class over Bengali that omits U+09CD does not match Bengali words, it matches the pieces between their conjuncts** |
+| 17 | the **document-matrix cache**, guarded by a count | `embed.build()` reused `out/benchmark/<slug>.docs.npy` behind one line -- `if D.shape[0] != len(docs)`. On 2026-09-25 the R1 heading fix rewrote **80 of 867** chunks' `display_text` and left the count at **867 on both sides**, so the guard saw `867 == 867` and would have handed back the pre-fix matrix. `build()` would then have written a *rebuilt* index carrying **stale vectors for those 80 chunks**, printed `index -> out/index (867 chunks, dim 768)`, and returned 0. Nothing raises, nothing logs, and every later retrieval number is scored against text that no longer exists. Caught by hand while planning the rebuild -- by no check. Now keyed on **content**: `sha256` of each chunk's `display_text` (imported from `dedupe.manifest_sha`, so the cache and the manifest cannot drift), plus one digest over the exact strings handed to the encoder, which also catches a change in `display_norm` or the digit twin that leaves `display_text` alone. A refusal **names the chunks** |
 
 **Number 5 is why this is a convention rather than a habit.** The check was
 written *specifically* to catch silent failures, and it failed silently.
@@ -1306,6 +2660,35 @@ and it was wrong in two independent ways at once: the metric could not see the
 thing it named, and the finding it appeared to confirm had been carried over
 from a different code path. Everything in section 3 is a measurement. Treat a
 number with no stated denominator and no stated code path as unverified.
+
+**Number 17 is the mechanism, stated plainly, and it is the one that
+generalises.** A guard tests the property that is cheap to check and passes
+while the property that is expensive to check is wrong. Counting rows is free;
+comparing 867 chunks of text is not, so the guard counted rows -- and a change
+that holds the count constant walks straight through it. Rewriting text is
+exactly such a change, and so is renaming, reordering, or re-normalising.
+
+Every entry above shares that shape once you look for it. Number 10 counted
+distinct `chunk_id`s because that is cheap, when the question was whether the
+CONTENT was distinct and twins always carry different ids. Number 3 validated
+freshly regenerated registries because reading them was cheap, when the
+question was what was on disk. Number 15 asked whether a tokenizer loaded,
+which is cheap, when the question was whether it had a vocabulary.
+
+**The test: name the property the guard actually reads, and the property you
+meant. If they differ, the guard is decorative.** For a cache the meant
+property is "is this the same content", and the only honest key is a hash of
+the content. It costs one pass over the corpus, against twenty minutes of
+re-encoding and an index nobody can trust.
+
+**Its canary is the near-miss itself**, not a stand-in: the live corpus with
+one chunk's sha put back to the value the manifest held before R1, count
+identical on both sides. It asserts four things -- a clean cache is ACCEPTED
+(a guard that refuses everything is equally broken and far less likely to be
+noticed), the pre-R1 sha is REFUSED, the refusal NAMES `dabi_2025_0034`, and a
+changed count is still refused so the old guard's one real power is not lost.
+It refuses to run at all if that chunk is missing, or if its sha has drifted
+back to the fixture value, because then the fixture would be testing nothing.
 
 **Numbers 6-12 all sit in the EVALUATION layer, not the ingestion layer.** The
 checks that guard extraction were hardened first, and the gold/scoring path
@@ -1379,15 +2762,51 @@ Highlights:
 - Hybrid index built on LaBSE with digit twins
 - Retrieval filters implemented; retrieval evaluated at recall@5 = 16/17
 - Two gold sets drafted; corpus gaps documented for the programme team
+- **Generation has run** on `openai/gpt-oss-120b` over the 17-question gold
+  set at k=5 and k=10. Current numbers, k=5, current code (§4b explains why
+  the 18 Sep figures in `out/read_answers.md` differ): fact recall 8/15,
+  citation **7/11 = 63.6% (file-backed)**, abstained correctly 1/1, answered
+  correctly 14/16, violations 0/17, language 15/17.
+  <br>**The citation figure previously written here was 12/12 = 100% and is
+  UNVERIFIED** — it came from a chat report whose answer files no longer
+  exist and cannot be re-scored. 7/11 is what `out/eval_report.json` holds.
+  See §4j.
+- **The k sweep is measured.** k=10 doubles the token cost and converts 5
+  facts and 3 citations from unachievable to achievable while recovering
+  none of them; violations stay 0/17. k=20 is refused by the provider on 15
+  of 17 questions. See §4d.
+- **The embedding benchmark is finished.** BGE-M3 dense beats LaBSE hybrid
+  at k=5 (10/16 vs 9/16); LaBSE dense finds the gold chunk first on 1 of 16.
+  See §4a.
+- **Metric 3 scores both directions** — declining an answerable question is
+  no longer invisible. See §4c.
 
 **Not done**
 
-- **Generation has not run.** No `answers.jsonl` exists, so fact recall,
-  citation accuracy, abstention accuracy and violation rate are all unmeasured.
-- **`gold_eval.py`'s abstention canary is empty** — to be backfilled from the
-  first real generation failure, not invented.
-- **The BGE-M3 benchmark did not finish.** LaBSE is the incumbent by default,
-  not by measurement.
+- **The abstention floor 0.4044 was derived on LaBSE's score distribution**
+  and BGE-M3's fused scores run materially higher (G-217 0.7113 vs 0.5531),
+  so the floor is effectively looser under it. It must be re-derived before
+  BGE-M3 is adopted. **Deliberately not re-derived yet** — doing so before
+  the end-to-end comparison would change two things at once.
+- **BGE-M3 is built and switchable but NOT adopted.** `out/index` is still
+  LaBSE; `out/index_bge_m3` holds the dim-1024 candidate and
+  `BFA_INDEX_DIR` switches. Measured on the retrieval side: +1 fact into the
+  denominator, +1 citation-achievable question, and G-222's correct citation
+  LOST. The generation side is **not measured** — the run stopped 16 of 17 in
+  on Groq's per-day token limit. See §4a-2 for what remains.
+- **Groq's real budget is 200,000 tokens/day/model**, which the response
+  headers do not carry — about four 17-question runs per model per day, not
+  the 25 the requests-per-day figure implies. Now tracked locally in
+  `out/token_ledger.json`; a run that cannot finish in the remainder refuses
+  to start. See §4a-2 and §4a-3.
+- **`gold_eval.py --baseline`** anchors achievability across an A/B, so a
+  regression INTO unachievability is scored rather than excluded. See §4a-3.
+- **`generate.py --run-id`** writes a per-invocation log carrying the answer
+  text, flushed per question, so an aborted run leaves its evidence.
+- **`gold_eval.py`'s abstention canary is no longer empty** — it carries
+  G-223's real clarification refusal and G-208's real false abstention, with
+  G-202's substantive answer as the control. Backfilled from real failures,
+  as intended.
 - **The livestock figure worklist is unverified.** Someone other than the
   transcriber must read `out/livestock_grow_2026/figure_worklist.html` against
   the renders and flip `extraction_confidence` to `verified` before that manual
@@ -1421,8 +2840,9 @@ python ex.py            data/processed/dabi_manual_2025_unicode.docx dabi_2025
 python retag.py         data/processed/chunks_dabi_2025.jsonl    # expect 0 changed
 python resplit.py       data/processed/chunks_dabi_2025_retagged.jsonl
 
-# PDF ingestion
-./run_livestock_grow.sh data/raw/livestock_grow.pdf livestock_grow_2026
+# PDF ingestion -- quote the path, the filename has spaces and brackets
+./run_livestock_grow.sh "data/raw/Operational Manual_Livestock (2026).pdf" \
+    livestock_grow_2026
 
 # Cross-manual
 python dupscan.py dabi_2025 progoti 0.95
@@ -1430,20 +2850,61 @@ python dedupe.py --check
 
 # Index and retrieval
 python embed.py --benchmark
-python embed.py --build sentence-transformers/LaBSE
+python embed.py --build sentence-transformers/LaBSE      # the live index
+# out/index_bge_m3 IS STALE: it holds the pre-R1 corpus (see 8.1). Re-encode
+# before any BGE-vs-LaBSE comparison, or the comparison measures the heading
+# change and not the model.
+python embed.py --build BAAI/bge-m3 --out-dir out/index_bge_m3
 python retrieve.py "দুগ্ধজাত গাভীর প্রিমিয়াম কত?" --insurer green_delta_insurance
 python retrieve.py --selftest
 
 # Evaluation
-python validate_gold.py gold/bootstrap.yaml
+python validate_gold.py --gold gold/bootstrap.yaml   # --gold, NOT positional
 python gold_status.py --show
 python retrieval_eval.py
+# --answers is whatever your run produced. out/answers.jsonl is a placeholder
+# and is not in the repo; the real ones are out/answers_synth.jsonl and
+# out/demo_answers.jsonl.
 python gold_eval.py --gold gold/bootstrap.yaml \
-    --answers out/answers.jsonl --forbidden-numbers out/forbidden.json
+    --answers out/answers_synth.jsonl --forbidden-numbers out/forbidden.json
 
 # Reading a chunk by eye
 python show_chunk.py progoti_0062 dabi_2025_0033
 ```
+
+### 8.1 `out/index_bge_m3` is stale, deliberately
+
+**State as of 2026-09-25:** `out/index` and `out/index_labse` hold the current
+corpus. `out/index_bge_m3` holds the corpus **as it was before the R1 heading
+fix** — 80 of its 867 vectors are for text that no longer exists, and its
+`meta.jsonl` carries the old `heading_path` for those chunks.
+
+It was left that way on purpose. It is a benchmark artefact, not the live
+index, and re-encoding BGE-M3 costs ~20 minutes on a machine that had already
+run out of memory once that day loading the smaller LaBSE (7.7G total, ~2.4G
+free; the first LaBSE build died in `materialize_tensors` with `MemoryError`
+and succeeded only on a retry with nothing else running).
+
+**The trap, which is the reason this section exists.** A BGE-vs-LaBSE
+comparison run now would put a **pre-R1 candidate** against a **post-R1
+baseline**. Any difference it reported would be dominated by 80 chunks gaining
+an ancestor heading, not by the models. It would look exactly like a model
+result: two numbers, one bigger. Same family as instance 17 in 5.3 — the
+cheap property (both directories exist, both hold 867 vectors) agrees while
+the expensive one (same corpus) does not.
+
+**So: re-encode before comparing.** One command, and the cache now refuses to
+help you skip it:
+
+```bash
+python embed.py --build BAAI/bge-m3 --out-dir out/index_bge_m3
+```
+
+The stale `.docs.npy` matrices for both models were moved out of
+`out/benchmark/` when the corpus changed, so nothing can silently reuse them.
+Since 2026-09-25 the cache is content-keyed and would refuse them anyway,
+naming the 80 chunks — but the cache guard is a second line of defence here,
+not the reason this is safe.
 
 ---
 
@@ -1486,9 +2947,14 @@ python show_chunk.py progoti_0062 dabi_2025_0033
     figures; a plausible wrong one passes everything. Saying so is what makes
     the human verification step non-optional instead of merely recommended.
 
-11. **One definition of every shared thing.** One fold table, one chunk schema,
+11. **A clause number locates a passage; it does not say what the passage is
+    about.** §5.4 is a different insurance in each manual, and §5.2.3 carries
+    two topics inside one manual. Any routing keyed on clause alone is
+    reading the cheap property -- see 4k.
+
+12. **One definition of every shared thing.** One fold table, one chunk schema,
     one product matcher, one normaliser per job. Every duplicate in this repo
     became a divergence, and every divergence was silent.
 
-12. **Convention that is enforced survives; convention that is written down
+13. **Convention that is enforced survives; convention that is written down
     does not.** Fifteen breakages by people who knew the rule is the evidence.
