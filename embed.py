@@ -860,6 +860,107 @@ GEMINI_TASK = {"query": "RETRIEVAL_QUERY", "passage": "RETRIEVAL_DOCUMENT"}
 GEMINI_CHARS_PER_REQ = 9_000
 GEMINI_PAUSE = 2.5          # keeps a long build under 100 requests/minute
 
+# THE DAILY QUOTA, AND THE UNIT IT COUNTS.
+#
+#   quotaId   EmbedContentRequestsPerDayPerProjectPerModel-FreeTier
+#   value     1000
+#
+# IT COUNTS CONTENTS, NOT HTTP CALLS. Measured the hard way on 2026-10-18:
+# the corpus build made 191 HTTP requests carrying 867 chunks, roughly 260
+# HTTP calls were made all day, and the 1000 quota was still exhausted. The
+# only reading consistent with that is that each item in a batch counts.
+#
+# So batching buys fewer round trips and less per-minute token pressure --
+# it buys NOTHING against the daily cap. A ledger counting HTTP calls would
+# have read 260 against a limit of 1000, declared 74% headroom, and refused
+# nothing on the day the quota ran out.
+#
+# Both numbers are recorded. `items` is what the preflight spends, because
+# over-counting fails safe; `requests` is kept so that one experiment after
+# a reset can settle it, rather than another day of inference.
+EMBED_RPD = {GEMINI_EMBED_MODEL: 1000}
+EMBED_WARN_AT = 0.80
+EMBED_LEDGER_KEY = "gemini-embed"
+
+
+def ledger_read_embed(path=None):
+    """Today's embedding spend. -> {"items": int, "requests": int}
+
+    SAME FILE as the Groq token ledger (out/token_ledger.json), different
+    key and a different unit. The key is namespaced and the unit is named
+    in the stored object so nobody can add tokens to requests and get a
+    number that looks like either.
+    """
+    from generate import LEDGER, ledger_read, _today
+    doc = ledger_read(path or LEDGER)
+    day = doc.get(_today()) or {}
+    rec = day.get(EMBED_LEDGER_KEY) or {}
+    if not isinstance(rec, dict):
+        return {"items": 0, "requests": 0}
+    return {"items": int(rec.get("items", 0)),
+            "requests": int(rec.get("requests", 0))}
+
+
+def ledger_add_embed(model, items, requests=1, path=None):
+    """Record one call. Never raises: a ledger write must not lose an
+    embedding that was already paid for."""
+    import json as _json
+    from generate import LEDGER, ledger_read, _today
+    try:
+        p = Path(path or LEDGER)
+        doc = ledger_read(p)
+        day = doc.setdefault(_today(), {})
+        rec = day.get(EMBED_LEDGER_KEY)
+        if not isinstance(rec, dict):
+            rec = {"items": 0, "requests": 0, "unit": "contents embedded; "
+                   "the daily quota counts these, not HTTP calls"}
+        rec["items"] = int(rec.get("items", 0)) + int(items)
+        rec["requests"] = int(rec.get("requests", 0)) + int(requests)
+        rec["model"] = model
+        day[EMBED_LEDGER_KEY] = rec
+        for old in sorted(doc)[:-14]:
+            doc.pop(old, None)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(_json.dumps(doc, ensure_ascii=False, indent=1) + "\n",
+                     encoding="utf-8")
+    except Exception:                                    # noqa: BLE001
+        pass
+
+
+def embed_preflight(model, n_items, out=print):
+    """-> (ok, message). Refuse a batch that cannot finish inside today.
+
+    WHY REFUSE RATHER THAN LET THE 429 DECIDE. A build that dies two thirds
+    through has spent two thirds of a day's quota and written no index --
+    and because the quota is daily, the retry is not in a minute, it is
+    tomorrow. The demo is on this index, so exhausting it takes the app down
+    until the reset. Better to not start.
+
+    The ledger is a LOWER BOUND on what the provider has counted: it sees
+    only calls made through this process. So it refuses only when what it
+    has already recorded is by itself enough to blow the limit -- it will
+    never refuse a run the provider would have allowed.
+    """
+    limit = EMBED_RPD.get(model)
+    if not limit:
+        return True, "no daily quota recorded for %r" % model
+    used = ledger_read_embed()["items"]
+    left = limit - used
+    pct = used / limit
+    msg = ("embedding quota %s -- used %d/%d (%.0f%%) today, %d left; "
+           "this run needs %d" % (model, used, limit, pct * 100, left, n_items))
+    if n_items > left:
+        return False, (msg + "\n  REFUSING TO START. The quota is DAILY: a "
+                       "run that exhausts it takes the demo down until the "
+                       "reset, and a partial build writes no index at all. "
+                       "Wait for the reset, or build against a smaller "
+                       "corpus.")
+    if pct >= EMBED_WARN_AT:
+        out("  WARNING: " + msg)
+    else:
+        out("  " + msg)
+    return True, msg
+
 
 class GeminiEmbedder:
     """Duck-typed stand-in for a SentenceTransformer, API-backed."""
@@ -912,6 +1013,7 @@ class GeminiEmbedder:
                 r = self.client.models.embed_content(
                     model=self.name, contents=batch, config=cfg)
                 self.requests += 1
+                ledger_add_embed(self.name, items=len(batch), requests=1)
                 return [e.values for e in r.embeddings]
             except Exception as exc:                      # noqa: BLE001
                 # generate._status_of owns "where does this provider put the
@@ -1355,6 +1457,9 @@ def build(name, corpus, use_cache=True, out_dir=None):
         m = load_model(name)
         if hasattr(m, "max_attempts"):
             m.max_attempts = m.ATTEMPTS_BATCH   # a build can afford to wait
+            ok, msg = embed_preflight(name, len(docs))
+            if not ok:
+                raise EmbeddingUnavailable(msg)
         D = _encode(m, docs, "passage")
     out = Path(out_dir) if out_dir else OUT_DIR
     out.mkdir(parents=True, exist_ok=True)
