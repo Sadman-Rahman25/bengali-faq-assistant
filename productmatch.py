@@ -77,6 +77,45 @@ def programmes_in(text):
     return [k for k, rx in PROGRAMMES if rx.search(t)]
 
 
+def products_in(text):
+    """Product keys named in `text`, in NAMED order.
+
+    The lookup every consumer was writing for itself. products.py compiled
+    NAMED's patterns inline, and anything else that wanted the question's
+    products had no choice but to do the same -- which is how the four
+    defects in the module docstring happened. One table, one matcher, one
+    entry point.
+    """
+    t = canon(text)
+    return [k for k, _n, _a, rx in _NAMED_RX if rx.search(t)]
+
+
+def compile_names(names):
+    """Compile arbitrary display names into one alternation pattern.
+
+    FOR DATA-DRIVEN NAME LISTS -- the product registry carries name_bn,
+    name_en and name_banglish per row, and the registry is edited by the
+    field team, not by this module. Those names still must not become a
+    pattern anywhere else: the caller supplies the STRINGS, this supplies
+    the matching semantics, so Convention 2 keeps exactly one owner of what
+    a product name looks like.
+
+    Names are escaped (a display name is a literal, never a regex),
+    whitespace is made flexible, and the result is matched case-insensitively
+    so a romanised name like "Projukti Loan" matches a question typed
+    "projukti loan ki ache?". Case folding is safe here because it touches
+    only Latin: Bengali has no case.
+    """
+    parts = []
+    for n in sorted({(n or "").strip() for n in names if (n or "").strip()},
+                    key=len, reverse=True):
+        esc = re.escape(canon(n))
+        parts.append(re.sub(r"(?:\\[ ])+", r"\\s+", esc))
+    if not parts:
+        return None
+    return re.compile("|".join(parts), re.IGNORECASE)
+
+
 # --------------------------------------------------------------------------
 # Named products: (key, name_bn, aliases, pattern)
 # --------------------------------------------------------------------------
@@ -133,8 +172,17 @@ NAMED = [
      r"এককালীন\s*স্থায়ী\s*সঞ্চয়"),
 
     # --- insurance (ch. 5)
-    ("loan_security_insurance", "ঋণ নিরাপত্তা বিমা", "",
-     r"ঋণ\s*নিরাপত্তা\s*বিমা"),
+    # ক্রেডিট শিল্ড ইন্স্যুরেন্স was carried as a separate key
+    # (credit_shield_insurance) with no defining chunk, because §সূচনা names
+    # it once and neither manual says whether it is this product under its
+    # English name. corpus_gaps.md §1.3 asked the question; the field team
+    # answered it in review on 2026-10-17 -- one product, two names. Folded
+    # in here as an alias so the alternation finds it, and so nothing
+    # downstream can treat it as a product in its own right again.
+    ("loan_security_insurance", "ঋণ নিরাপত্তা বিমা",
+     "ক্রেডিট শিল্ড ইন্স্যুরেন্স; Credit Shield Insurance "
+     "(confirmed the same product, field-team review 2026-10-17)",
+     r"ঋণ\s*নিরাপত্তা\s*বিমা|ক্রেডিট\s*শিল্ড"),
     ("chaya_savings_insurance", "ছায়া-সঞ্চয় নিরাপত্তা বিমা", "",
      r"ছায়া\s*-?\s*সঞ্চয়\s*নিরাপত্তা\s*বিমা"),
     # the source misspells নিরাপত্তা as নিাপত্তা in §5.3.1 -- see corpus_gaps
@@ -154,11 +202,13 @@ NAMED = [
     ("bishesh_savings", "বিশেষ সঞ্চয়",
      "ডিপিএস; umbrella for ডিপিএস + মাসিক মুনাফা; collateral for প্রত্যাশা লোন",
      r"বিশেষ\s*সঞ্চয়|ডিপিএস"),
-    ("credit_shield_insurance", "ক্রেডিট শিল্ড ইন্স্যুরেন্স",
-     "named once in সূচনা only; may be the English name for "
-     "ঋণ নিরাপত্তা বিমা -- CONFIRM before treating as distinct",
-     r"ক্রেডিট\s*শিল্ড"),
+    # credit_shield_insurance was here. Removed 2026-10-17: it is
+    # loan_security_insurance under its English name, confirmed by the field
+    # team, and is now an alias on that entry above.
 ]
+
+_NAMED_RX = [(k, n, a, compile_pat(p)) for k, n, a, p in NAMED]
+
 
 # --------------------------------------------------------------------------
 # Non-product entities: (key, entity_type, name_bn, aliases, pattern)

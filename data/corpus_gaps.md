@@ -88,13 +88,39 @@ them.
 | Name | Type | Chunks | Note |
 |---|---|---|---|
 | বিশেষ সঞ্চয় | product | 36 | Used as collateral for প্রত্যাশা লোন and referenced as "বিশেষ সঞ্চয় (ডিপিএস এবং মাসিক মুনাফা)", but never defined as a product in its own right |
-| ক্রেডিট শিল্ড ইন্স্যুরেন্স | product | 2 | Named once in সূচনা only. **May be the English name for ঋণ নিরাপত্তা বিমা — please confirm.** If so it should be recorded as an alias, not a separate product |
+| ক্রেডিট শিল্ড ইন্স্যুরেন্স | product | 2 | **ANSWERED — see §1.4. It is the English name for ঋণ নিরাপত্তা বিমা, and is now an alias rather than a separate product** |
 | গার্ডিয়ান লাইফ ইন্স্যুরেন্স লিমিটেড | underwriter | 12 | Carries the risk on ঋণ নিরাপত্তা বিমা and ছায়া-সঞ্চয় নিরাপত্তা বিমা; never introduced |
 | পাইওনিয়ার ইন্স্যুরেন্স কোম্পানি | underwriter | 4 | Co-underwrites ফায়ার সেফটি with সেনা; never introduced |
 | ব্র্যাক মাইক্রোইন্স্যুরেন্স | BRAC unit | 18 | Receives claim documents; its role is never stated in one place |
 
 The two underwriters matter operationally: an officer asking where to file a
 claim needs to know which company carries the policy.
+
+### 1.4 ক্রেডিট শিল্ড ইন্স্যুরেন্স — answered, 2026-10-17
+
+**The open question in §1.3 is closed.** ক্রেডিট শিল্ড ইন্স্যুরেন্স and
+ঋণ নিরাপত্তা বিমা are **one product under two names**, not two products.
+
+| | |
+|---|---|
+| Source | BRAC field-team review of the product registry, 2026-10-17 |
+| Recorded in | `data/registry/products.csv`, row `loan_security_insurance` (`name_en: Credit Shield Insurance`) |
+| Applied in | `productmatch.NAMED` — folded into `loan_security_insurance` as an alias; the separate `credit_shield_insurance` key is gone |
+
+**Why it mattered more than a naming tidy.** The two keys were not equal
+halves of an ambiguity. `loan_security_insurance` carried
+`defining_chunk_id: progoti_0210`; `credit_shield_insurance` carried none,
+because সূচনা names it once and never describes it. Anything joining on the
+English name reached a row with no definition behind it, and anything joining
+on the Bengali name reached the real one. The registry as first delivered
+keyed the product on the empty one, so an id join and a name join disagreed
+about the same insurance. That is now a single row.
+
+**Still open, and not the same question:** `পাইওনিয়ার ইন্স্যুরেন্স` and
+`চার্টার্ড লাইফ` remain undescribed. The field team added চার্টার্ড লাইফ to
+`insurers.csv` and it appears in neither manual, so it has no catalogue row
+at all — `python registry.py --check` reports it, by design, rather than
+inventing one.
 
 ---
 
@@ -237,6 +263,43 @@ name the পরিপত্র. Until then, an answer to "how much can a সি�
 should be a pointer to the circular, not a figure. This case is carried in
 `data/eval/bootstrap_eval.json` as category `unanswerable_in_corpus`, with a
 seeded `must_not` against quoting the §7.1 procurement limits.
+
+---
+
+## 3.4 §2.1.1(চ) carries two different group-loan approval tables
+
+Both manuals print **two** new-loan approval tables under the same clause
+§2.1.1(চ), and they disagree about the branch manager's lower bound. Neither
+table is labelled in a way that tells a reader which one applies to them.
+
+| chunks | new-loan row for বিএম |
+|---|---|
+| `progoti_0056` / `dabi_2025_0049` (twins) | `২০০০০-৭০০০০` under `উচচ চাহিদা`, and `১৫০০০-৬০০০০` under `সাধারণ চাহিদা` |
+| `progoti_0057` / `dabi_2025_0050` (twins) | `১৫০০০-৭০০০০`, with no demand category given |
+
+The first table is split by branch demand category (`উচচ চাহিদা` /
+`সাধারণ চাহিদা`); the second is not, and its band is neither of the first
+table's. An officer asking "who approves a new loan up to ৭০,০০০?" gets
+**বিএম** from both, so the authority is unambiguous — but the lower bound
+they would quote is ২০,০০০ or ১৫,০০০ depending on which chunk they happen to
+read, and nothing in either chunk says which table governs.
+
+**How it surfaced.** The retriever returned `progoti_0057` for G-207 and the
+model answered `১৫,০০০ – ৭০,০০০ — বিএম`, quoting it verbatim. That was
+recorded in the project journal as a fabricated figure on the grounds that
+`১৫,০০০` appears in neither manual. It appears 12 times in 4 chunks. The
+journal entry is corrected; this is the underlying document defect.
+
+**Suggested action.** Label the second table, or state which branch types it
+covers. Medium priority — the authority is right either way, but a quoted
+lower bound can be wrong by ৫,০০০ with no way for the reader to tell.
+
+Reproduce:
+
+```
+python -c "import sys;sys.path.insert(0,'.');from bn_shared import count_literal;from embed import load_corpus;print(count_literal('১৫০০০',[c['display_text'] for c in load_corpus()],warn=False))"
+python show_chunk.py progoti_0056 progoti_0057
+```
 
 ---
 
@@ -412,6 +475,76 @@ G-212, G-213 and G-214, all three on §3.9.6.
 
 ---
 
+## 8. The table of contents is not in the corpus — known, and deliberate by accident
+
+Not a gap in the manuals. A **coverage** fact about the corpus, recorded here
+because anyone auditing what was ingested will find several hundred paragraphs
+missing from each manual and should not have to work out why from scratch.
+
+**What is missing.** Every table-of-contents line in both manuals.
+
+| Manual | Paragraphs in the ToC block | ToC-styled, with text | Appearing in any chunk |
+|---|---|---|---|
+| Dabi 2025 | 234 | 232 | **0** |
+| Progoti 2025 | 247 | 245 | **0** |
+
+(Progoti shows one apparent match on a naive substring test. It is a ToC line
+whose entire text is the page number `1`, which trivially occurs inside other
+chunks. No ToC *entry* is ingested in either manual.)
+
+**Why.** The whole ToC sits inside a single `w:sdt` — a Word content control,
+the element Word writes around a generated field — and that `w:sdt` is a
+direct child of `w:body`. `ex.py` walks the body's children and handles two
+tags:
+
+```python
+for ch in d.element.body.iterchildren():
+    if ch.tag == qn("w:p"):      ...
+    elif ch.tag == qn("w:tbl"):  ...
+```
+
+`w:sdt` is neither, so the block is skipped whole. Nobody decided to exclude
+the ToC; it falls out of the walk. Hence *deliberate by accident* — the
+outcome is right, the reason it happens is not a reason anyone chose.
+
+**Why it is not a retrieval loss, and should stay excluded.** A ToC line is a
+heading plus a page number, and both halves are already handled better
+elsewhere:
+
+- The heading half is a **duplicate**. 225 of Dabi's 232 ToC lines and 235 of
+  Progoti's 245 are, once the trailing page number is removed, exactly a
+  `heading_path` value already carried by the chunks of that section. Ingesting
+  them would add several hundred chunks of bare heading text with no body —
+  strong lexical matches that answer nothing, competing in the top-k with the
+  sections they name.
+- The page-number half is **actively misleading**. As recorded elsewhere in
+  this repo, a `.docx` has no pagination until it is rendered, and 831 of 867
+  chunks carry no page number for exactly that reason. The ToC's numbers come
+  from whatever Word last computed, which is why the field team's marked copy
+  of Dabi prints `৯.১.৬ … 84` where the corpus source prints `… 90` for the
+  same line. A retrievable chunk asserting a page number that does not match
+  the printed manual is the plausible-wrong-answer failure this project is
+  built around.
+
+The remainder — 7 Dabi and 10 Progoti ToC lines that are *not* an exact
+heading duplicate — differ only by the heading defects already catalogued
+above (the missing `র` in §2.1, trailing colons, and the headings in
+`out/heading_loss.md` that reach no chunk).
+
+**If anyone ever does ingest it,** the fix is to descend into `w:sdt` in the
+body walk, and it should be accompanied by a rule that drops ToC-styled
+paragraphs rather than chunking them. Ingesting the block without that rule is
+the harmful version of this change.
+
+**Confirm it:**
+
+```
+python -c "import zipfile,re;d=zipfile.ZipFile('data/processed/dabi_manual_2025_unicode.docx').read('word/document.xml').decode();print('sdt blocks in body:',d.count('<w:sdt>'))"
+python -c "import json;print(sum(1 for c in map(json.loads,open('data/processed/chunks_dabi_2025_final.jsonl',encoding='utf-8')) if 'ঊর্ধ্বতন পরিচালকের বাণী 3' in c['display_text']))"   # -> 0
+```
+
+---
+
 ## Summary of suggested actions
 
 | Priority | Item | Owner |
@@ -421,9 +554,10 @@ G-212, G-213 and G-214, all three on §3.9.6.
 | High | Always cite manual + clause; §5.4 differs between manuals | All authors |
 | Medium | Glossary for বিসিইউপি / সিডিপি / এনসিডিপি / এসসিডিপি | Product team |
 | Medium | Resolve the §5.1.8 / §5.1.9 duplicate passage | Insurance unit |
-| Medium | Confirm whether ক্রেডিট শিল্ড is ঋণ নিরাপত্তা বিমা | Insurance unit |
+| ~~Medium~~ DONE | ~~Confirm whether ক্রেডিট শিল্ড is ঋণ নিরাপত্তা বিমা~~ — answered 2026-10-17, see §1.4 | Field team |
 | High | Re-run `dedupe.py` over `*_final.jsonl` so `dup_*` survives (see §6) | Pipeline |
 | Medium | Decide whether the Dabi manual should state the Progoti bill-voucher rule in §3.9.6 (see §7) | Operations |
+| Medium | Label the second §2.1.1(চ) approval table, or say which branches it covers (see §3.4) | Operations |
 | Low | Fix শস্য নি**া**পত্তা in §5.3.1 | Copy-edit |
 | Low | Decide on অরগানোগ্রাম vs অর্গানোগ্রাম | Copy-edit |
 | Low | Introduce the underwriters where first named | Insurance unit |
