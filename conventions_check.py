@@ -18,10 +18,13 @@ Usage:  python conventions_check.py
 Exit:   0 clean, 1 violations
 """
 import ast
+import re
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+from bengali_literal_lint import scan_paths as scan_bengali_literals
 
 ROOT = Path(__file__).resolve().parent
 MATCHER = "productmatch.py"          # the one module allowed product literals
@@ -33,7 +36,24 @@ LITERAL_EXEMPT = {
                  "come out of the docx at all'. Not product identification, "
                  "so substring semantics do not matter.",
     "conventions_check.py": "names the words it searches for",
+    "probe_words.py": "CANARY_CORRUPT / CANARY_CLEAN / CANARY_PROBES are "
+                      "ENCODING PROBES in dcheck.py's sense -- 'did the "
+                      "right Bengali come out of this text layer'. They are "
+                      "matched only against the two canary constants in this "
+                      "module, never against the corpus. Corpus-side product "
+                      "probes come from registry_vocabulary(), which pulls "
+                      "the literals from productmatch and roles at runtime.",
+    "role_exclusions.py": "the dabi_inside_bimadabi canary matches দাবি and "
+                          "বিমাদাবি on purpose, to prove a plain matcher "
+                          "over-counts a programme name inside a compound. "
+                          "It runs only against CANARY_CLAIM in this module, "
+                          "never against the corpus, and productmatch still "
+                          "owns দাবি's real exclusion -- EXCLUSIONS here is "
+                          "restricted to role literals. If this canary ever "
+                          "stops firing, a caller is matching দাবি directly "
+                          "again.",
 }
+
 
 # Statement types allowed at module level. Anything else is work-on-import.
 ALLOWED_TOP = (ast.Import, ast.ImportFrom, ast.Assign, ast.AnnAssign,
@@ -220,6 +240,64 @@ print("work at import time")
 '''
 
 
+# LINE-LEVEL EXEMPTION, and why it exists alongside LITERAL_EXEMPT.
+#
+# LITERAL_EXEMPT switches rule 2 off for a WHOLE MODULE. That is right for
+# productmatch, which owns the tables, and for the encoding probes, whose
+# every literal is a probe. It is wrong for a module that holds one or two
+# output labels and a great deal of ordinary code: exempting dedupe.py so
+# that MANUAL_DISPLAY can name two manuals would also stop the check ever
+# noticing a real matcher added to that file later, which is precisely the
+# failure mode this convention was written for.
+#
+# So: a per-line marker, carrying a REASON. Same shape and same rule as
+# bengali_literal_lint's `# noqa: BN4` -- one idiom for suppressing a lint
+# in this repo, not two. A reasonless marker suppresses NOTHING and is
+# reported, because "why" is the only part of an exemption that survives
+# contact with the next reader.
+NOQA_RX = re.compile(r"#\s*noqa:\s*C2(?P<reason>[^\n]*)")
+
+
+def noqa_lines(src):
+    """-> ({line_no: reason}, [line_no with a reasonless marker])."""
+    excused, bare = {}, []
+    for i, line in enumerate(src.splitlines(), 1):
+        m = NOQA_RX.search(line)
+        if not m:
+            continue
+        reason = m.group("reason").strip(" \t-:")
+        if reason:
+            excused[i] = reason
+        else:
+            bare.append(i)
+    return excused, bare
+
+
+def literals_with_noqa(path):
+    """check_product_literals, minus lines carrying a reasoned marker.
+
+    -> (findings, {line: reason}, [reasonless line]).
+    """
+    src = Path(path).read_text(encoding="utf-8-sig")
+    excused, bare = noqa_lines(src)
+    found = [f for f in check_product_literals(parse(path))
+             if f[0] not in excused]
+    return found, excused, bare
+
+
+# A module-level fixture, so the canary below tests the real function on a
+# real file rather than a re-implementation of it. Line 3 carries a marker
+# with a reason; line 4 carries one without; line 5 carries none. Only the
+# first may be suppressed.
+NOQA_CANARY = (
+    "# fixture\n"
+    "BARE = দাবি_PLACEHOLDER\n"
+    "A = \"দাবি\"  # noqa: C2 a stated reason\n"
+    "B = \"দাবি\"  # noqa: C2\n"
+    "C = \"দাবি\"\n"
+)
+
+
 def self_check():
     """The check must catch a synthetic violation, or it is testing nothing."""
     tree = parse(CANARY, "<canary>")
@@ -228,11 +306,25 @@ def self_check():
     ok_lit = any(w == "দাবি" for _, w, _ in lits)
     ok_doc = not any("prose" in s for _, _, s in lits)
     ok_work = bool(work)
+
+    # THE MARKER MUST BE LINE-LEVEL, NOT FILE-LEVEL. A suppression that
+    # silently covers the rest of the file is worse than no suppression: it
+    # reports clean while the module it was added to stops being checked.
+    # Measured on NOQA_CANARY, which carries all three cases at once.
+    excused, bare = noqa_lines(NOQA_CANARY)
+    hits = [ln for ln, _w, _s in check_product_literals(
+        parse(NOQA_CANARY, "<noqa-canary>")) if ln not in excused]
+    ok_noqa = (excused.keys() == {3} and bare == [4]
+               and 3 not in hits and {4, 5} <= set(hits))
+
     print("SELF-CHECK")
     print(f"  product literal in code detected : {'yes' if ok_lit else 'NO'}")
     print(f"  docstring prose correctly ignored: {'yes' if ok_doc else 'NO'}")
     print(f"  module-level work detected       : {'yes' if ok_work else 'NO'}")
-    return ok_lit and ok_doc and ok_work
+    print(f"  noqa is line-level, reason needed: "
+          f"{'yes' if ok_noqa else 'NO'}  "
+          f"(excused={sorted(excused)} reasonless={bare} still_flagged={hits})")
+    return ok_lit and ok_doc and ok_work and ok_noqa
 
 
 def main():
@@ -280,17 +372,50 @@ def main():
     for p in files:
         if p.name in LITERAL_EXEMPT:
             continue
-        bad = check_product_literals(parse(p))
+        bad, excused, reasonless = literals_with_noqa(p)
+        for line in reasonless:
+            lit_fails += 1
+            print(f"  FAIL {p.name}")
+            print(f"         line {line}: '# noqa: C2' with no reason "
+                  f"suppresses nothing")
         if bad:
             lit_fails += 1
             print(f"  FAIL {p.name}")
             for line, word, snippet in bad[:4]:
                 print(f"         line {line}: {word!r} in {snippet!r}")
+        for line, why in sorted(excused.items()):
+            print(f"    line-exempt: {p.name}:{line} -- {why[:58]}")
     if not lit_fails:
         print(f"  none outside {MATCHER} and the listed exemptions")
     for name, why in sorted(LITERAL_EXEMPT.items()):
         print(f"    exempt: {name} -- {why[:62]}")
     fails += lit_fails
+
+    print("\n4. BENGALI LITERALS -- every one goes through canon_pattern()")
+    print("-" * 78)
+    hits = scan_bengali_literals(files)
+    errs = [h for h in hits if h["nukta"]]
+    warns = [h for h in hits if not h["nukta"]]
+    if errs:
+        print(f"  FAIL {len(errs)} broken pattern(s) -- nukta present, so NFC "
+              f"cannot unify the\n       two forms and the pattern finds "
+              f"nothing without telling you:")
+        for h in errs:
+            print(f"         {Path(h['file']).name}:{h['line']}  "
+                  f"{h['kind']}  {h['literal']!r}")
+    else:
+        print("  no nukta-bearing literal reaches a matching operation")
+    if warns:
+        print(f"\n  ADVISORY {len(warns)} raw literal(s) with no nukta "
+              f"character. These work\n  today and do not fail the build; "
+              f"they break the day the literal changes.")
+        for h in warns[:8]:
+            print(f"         {Path(h['file']).name}:{h['line']}  "
+                  f"{h['kind']}  {h['literal']!r}")
+        if len(warns) > 8:
+            print(f"         ... and {len(warns) - 8} more "
+                  f"(bengali_literal_lint.py lists all)")
+    fails += len(errs)
 
     print("\n" + "=" * 78)
     print("CLEAN" if not fails else f"{fails} VIOLATION(S)")

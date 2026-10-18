@@ -47,7 +47,11 @@ import sys
 import unicodedata
 from pathlib import Path
 
-from bnnorm import canon, canon_pattern
+from bnnorm import canon
+# bn_shared.canon_pattern COMPILES a literal (and emits the nukta
+# alternation); bnnorm.canon_pattern returns a normalised pattern STRING
+# and adds no alternation. Different contracts, aliased apart on purpose.
+from bn_shared import canon_pattern as canon_literal
 # retag.PROD is the authority on programme-name matching. A naive
 # re.escape("দাবি") matches inside বিমাদাবি and made §5.2.6 (insurance claim
 # procedure) look like the defining section for the দাবি programme -- the same
@@ -68,10 +72,27 @@ OUT = Path(_args[0] if _args else "products_catalogue.csv")
 # heading, or introduces the name as a labelled list item, or is followed by
 # one of the manual's stock definition verbs. Rate tables, the changelog and
 # the intro are mentions however often they name the product.
+# Convention 4: the two nukta-bearing words are built by canon_pattern and
+# spliced in, so the pattern matches either spelling of হয় / আওতায়.
+#
+# Step-0 measurement, 14 Sep 2026: this was NOT a live bug. Both ingestion
+# paths NFC-normalise (ex.py nm(), ex_pdf.py canon()), and NFC decomposes
+# U+09DF because it is a composition exclusion, so chunks are 100% decomposed
+# on both paths -- 10,017 decomposed য় and 0 precomposed across docx chunks,
+# 296 and 0 across ocr chunks. DEF_VERB matched fine (57 hits Progoti, 2
+# livestock) and products.py was not under-tagging anything.
+#
+# It is fixed anyway because the invariant it relies on is the corpus being
+# canon()'d, and nothing enforces that at this call site. The precomposed
+# form does exist upstream -- raw PDF text layers emit it -- so any future
+# path that reaches these patterns before normalisation would break silently.
+_HOY = canon_literal("হয়").pattern
+_AOTAY = canon_literal("আওতায়").pattern
 DEF_VERB = re.compile(
-    r"(?:সূচিত\s*হয়|সূচনা\s*হয়|প্রদান\s*করা\s*হয়|চালু\s*করা\s*হয়"
-    r"|যাত্রা\s*শুরু|শুরু\s*হয়|বলা\s*হয়|খুলতে\s*পারেন|কি\s*\?"
-    r"|কি\s*ও\s*কিভাবে|প্রকল্পের\s*আওতায়|এ\s*লোনটি|নামেও\s*পরিচিত)")
+    rf"(?:সূচিত\s*{_HOY}|সূচনা\s*{_HOY}|প্রদান\s*করা\s*{_HOY}"
+    rf"|চালু\s*করা\s*{_HOY}"
+    rf"|যাত্রা\s*শুরু|শুরু\s*{_HOY}|বলা\s*{_HOY}|খুলতে\s*পারেন|কি\s*\?"
+    rf"|কি\s*ও\s*কিভাবে|প্রকল্পের\s*{_AOTAY}|এ\s*লোনটি|নামেও\s*পরিচিত)")
 
 
 MIN_DEF_SCORE = 3          # below this, every hit is a mention

@@ -18,6 +18,77 @@ UNUM = re.compile(r"([\d০-৯][\d০-৯,\.]*)\s*(%|শতাংশ|টাক�
 # 0 changes and stands as a check that the two still agree.
 from productmatch import programmes_in as prods
 
+HEAD_RX = re.compile(r"Heading (\d)")
+# A clause number at the start of a heading, and the (ক)/(খ)/… that may
+# follow it. Digits only on both sides of the fold -- no Bengali letter is
+# matched, so rule 4 does not arise.
+CLAUSE_RX = re.compile(r"[\d০-৯]+(?:\.[\d০-৯]+)*")
+SUBCLAUSE_RX = re.compile(r"^[\d০-৯]+(?:\.[\d০-৯]+)*\s*(\([^)]{1,4}\))")
+
+def head_lvl(p):
+    """The Word heading level of a paragraph, or None. One definition, used
+    by the pre-scan and by the walk, so the two cannot disagree about what a
+    heading is."""
+    sn = p.style.name if p.style else ""
+    tx = p.text.strip()
+    m = HEAD_RX.match(sn or "")
+    return int(m.group(1)) if (m and tx) else None
+
+def clause_of(t):
+    m = CLAUSE_RX.match((t or "").strip())
+    return m.group(0) if m else ""
+
+def letter_of(t):
+    m = SUBCLAUSE_RX.match((t or "").strip())
+    return m.group(1) if m else ""
+
+def subclause_demotions(d):
+    """Heading ordinals to push one level deeper: lettered sub-clauses whose
+    own parent is printed at the SAME Word level.
+
+    WHY THIS EXISTS. `path[L] = tx` keeps one slot per heading level, so a
+    heading survives into a chunk only while its slot is occupied when a
+    content block is emitted. Both manuals print
+
+        ২.১.১ গ্রুপভিত্তিক সেবা …      Heading 3
+        ২.১.১(ক) শাখার কর্মএলাকা …     Heading 3
+
+    -- a parent and its child at the same level. The child overwrites the
+    slot before any content is emitted, and the parent never reaches the
+    corpus at all. Measured 2026-09-25: 13 headings across the two manuals
+    were lost this way, 5 of them to this pattern.
+
+    THE TEST IS ASYMMETRIC ON PURPOSE. It fires only when a bare numeric
+    clause exists as its own heading and another heading carries that same
+    clause WITH a letter. ২.১.১ -> ২.১.১(ক) is parent-and-child; ২.১.২(ক) ->
+    ২.১.২(খ) is two siblings, and nesting those would invent a structure the
+    manual does not have. A lettered heading with no bare parent heading is
+    therefore left alone -- Dabi prints ২.১.২(ক) through (ঘ) but never prints
+    ২.১.২ itself, so there is nothing to nest it under and a level would be a
+    guess.
+
+    EVERY lettered child moves, not only the one printed next to the parent.
+    Demoting just the adjacent one recovers 4 of the 13 rather than 5,
+    because the next sibling is still at the parent's level and overwrites
+    the slot again.
+
+    Costed before it was applied: 0 chunks added or removed, 0 chunk_ids
+    changed, 0 chunk bodies changed, 80 of 867 display_texts lengthened by
+    one ancestor heading. dup_group re-derives identical, because
+    dedupe.norm_body peels the heading path off before hashing.
+    """
+    heads = []
+    for ch in d.element.body.iterchildren():
+        if ch.tag != qn("w:p"):
+            continue
+        p = Paragraph(ch, d)
+        L = head_lvl(p)
+        if L is not None:
+            heads.append(nm(p.text.strip()))
+    bare = {clause_of(t) for t in heads if clause_of(t) and not letter_of(t)}
+    return {i for i, t in enumerate(heads)
+            if letter_of(t) and clause_of(t) in bare}
+
 def nm(s):
     s = ZW.sub("", unicodedata.normalize("NFC", s or "")).replace("৷","।")
     return re.sub(r"[ \t ]+"," ",s).strip()
@@ -51,6 +122,10 @@ def serial(rs, cap):
 blocks, path, st = [], {}, Counter()
 def cp(): return [path[k] for k in sorted(path) if path.get(k)]
 def etab(tb, cap, nest, i, d):
+    # nest is a DEPTH, not a flag: 0 for a top-level table, parent+1 for a
+    # table living inside a cell. Truthiness is unchanged, so the counter
+    # below and the NESTED marker in the extract still read the same.
+
     rs = rows_of(tb, d)
     if not any(any(c for c in r) for r in rs): return
     st["tables_nested" if nest else "tables"] += 1
@@ -59,7 +134,7 @@ def etab(tb, cap, nest, i, d):
     for tr in tb._tbl.tr_lst:
         for tc in tr.tc_lst:
             for sub in [Table(c,d) for c in tc.iterchildren() if c.tag==qn("w:tbl")]:
-                etab(sub, " — ".join(x for x in (cap,pt,ctext(tc,d)[:100]) if x)[:300], True, i, d)
+                etab(sub, " — ".join(x for x in (cap,pt,ctext(tc,d)[:100]) if x)[:300], nest + 1, i, d)
 
 
 def main(src, tag):
@@ -71,17 +146,22 @@ def main(src, tag):
     os.makedirs(OUT, exist_ok=True)
 
     d = Document(src)
+    demote = subclause_demotions(d)   # see its docstring
     ti = 0
+    hn = -1
     for ch in d.element.body.iterchildren():
         if ch.tag == qn("w:p"):
-            p = Paragraph(ch, d); sn = p.style.name if p.style else ""; tx = p.text.strip()
-            m = re.match(r"Heading (\d)", sn or "")
-            if m and tx:
+            p = Paragraph(ch, d); tx = p.text.strip()
+            L = head_lvl(p)
+            if L is not None:
                 # Normalise at write time so heading_path matches display_text, which
                 # is stored as nm(head + "\n" + body). Kept raw, heading_path carries
                 # tabs and pre-NFC ড়/য়, so any consumer that compares, groups or
                 # hashes on it silently misses -- see resplit.recover_caption.
-                L = int(m.group(1)); tx = nm(tx); path[L] = tx
+                hn += 1
+                if hn in demote:
+                    L += 1; st["h_demoted"] += 1
+                tx = nm(tx); path[L] = tx
                 for k in [k for k in path if k > L]: path.pop(k)
                 st[f"h{L}"] += 1; blocks.append(dict(type="head", lvl=L, text=tx, hp=cp()))
             elif tx:
@@ -99,16 +179,16 @@ def main(src, tag):
                         st["textbox"] += 1
                         blocks.append(dict(type="prose", lvl=None, hp=cp(), text=z, tb=True))
         elif ch.tag == qn("w:tbl"):
-            ti += 1; etab(Table(ch, d), "", False, ti, d)
+            ti += 1; etab(Table(ch, d), "", 0, ti, d)
 
     ck, buf = [], []
-    def add(hp, body, kind, tb=False, rows=None):
+    def add(hp, body, kind, tb=False, rows=None, nest=0):
         head = " > ".join(hp); full = (head+"\n"+body) if head else body
         nb = nm(body)
         ck.append(dict(chunk_id=f"{TAG}_{len(ck)+1:04d}", doc=TAG, block_type=kind,
             heading_path=hp, heading_depth=len(hp), product=prods(full),
             text=fold(nm(full)), display_text=nm(full), table_rows=rows,
-            in_textbox=tb, n_chars=len(nm(full)),
+            in_textbox=tb, nest_depth=nest, n_chars=len(nm(full)),
             numbers=[fold(m.group(0)).rstrip(".").replace(",","") for m in NUM.finditer(nb)],
             unit_numbers=[f'{fold(m.group(1)).replace(",","")} {m.group(2)}' for m in UNUM.finditer(nb)],
             source="docx"))
@@ -122,7 +202,7 @@ def main(src, tag):
         if b["type"] == "head": flush(); continue
         if b["type"] == "table":
             flush(); s = serial(b["rows"], b["cap"])
-            if s.strip(): add(b["hp"], s, "table", False, b["rows"])
+            if s.strip(): add(b["hp"], s, "table", False, b["rows"], b["nest"])
             continue
         if buf and b["hp"] != buf[0]["hp"]: flush()
         buf.append(b)

@@ -1,21 +1,24 @@
 # Project conventions
 
-Three rules:
+Four rules:
 
 1. `main()` behind `__main__`. Importing must never write files.
 2. No module matches a product name directly.
 3. Every check must prove it can fail.
+4. A Bengali literal and the text it matches must agree on nukta form.
+   Canon the text where you can; canon_pattern the literal where you can't.
 
-Rules 1 and 2 are enforced by `conventions_check.py`, which exits non-zero on
-a violation. Rule 3 is enforced by each check's own self-check. Run before
+Rules 1, 2 and 4 are enforced by `conventions_check.py`, which exits non-zero
+on a violation. Rule 3 is enforced by each check's own self-check. Run before
 committing:
 
 ```
-python conventions_check.py     # rules 1 and 2, plus its own canary
-python pattern_audit.py         # product/role patterns, plus its canary
+python conventions_check.py       # rules 1, 2 and 4, plus its own canary
+python pattern_audit.py           # product/role patterns, plus its canary
+python bengali_literal_lint.py *.py tests/*.py   # rule 4, with all advisories
 ```
 
-All three exist because they were broken repeatedly — twelve times between
+All four exist because they were broken repeatedly — fifteen times between
 them — by people who knew the rule. Prose in a README does not survive that.
 A check that fails does.
 
@@ -69,6 +72,46 @@ Anything else — a loop, a `with`, a bare call — is a violation. Pure library
 modules such as `bnnorm.py` and `productmatch.py` need no `main()`; they
 define things and stop.
 
+### KNOWN DEFECT: the dynamic stage misattributes concurrent writes
+
+`check_import_writes` snapshots the mtime of every file in the tree, imports
+one module in a subprocess, snapshots again, and reports every file that
+changed as "written on import" **by that module**. It does not verify that
+the module caused the change. Any write by anything else — another terminal,
+an editor saving, a pipeline step, a second check running in parallel — lands
+on whichever module happened to be importing at that moment.
+
+**Four false positives so far, all confirmed concurrent writes by the session
+itself, none of them real:**
+
+| Module blamed | File it "wrote" | What actually wrote it |
+|---|---|---|
+| `bijoy_scan.py` | `PROJECT_JOURNAL.md` | the journal being edited during the run |
+| `resplit.py` | `out/index_labse/*` | an index build running alongside |
+| `pdf_shootout.py` | `generate.py` | an edit to `generate.py` mid-run |
+| `app.py` | `out/forbidden.json` | `forbidden_build.py` run in another terminal |
+
+Each was re-checked in isolation afterwards and came back `([], 0, …)`.
+
+**THE RULE: the dynamic stage's result is only meaningful on a quiescent
+tree.** Nothing else may be writing anywhere under the repo while
+`conventions_check.py` runs — and it runs for roughly 18 minutes, because it
+spawns one subprocess per module and several of them load torch or faiss. A
+FAIL from this stage is a *reason to re-check that module alone*, never a
+finding on its own. The static stage has no such weakness; it parses source
+and is always meaningful.
+
+**The fix, stated and NOT applied:** hash each file before and after a single
+import and compare hashes rather than watching the whole tree for mtime
+changes — an unrelated write then has to collide with the specific file the
+module touched, and a rewrite that restores identical content stops counting
+as a write at all. It is not applied because `conventions_check.py` is
+currently uncommitted along with a dozen other modified files, and changing a
+check while its own output is the thing being trusted is how a check quietly
+stops testing anything. Apply it on a clean tree, with a canary that writes a
+file from a *different* process during an import and requires the check not
+to blame the module.
+
 ---
 
 ## 2. No module matches a product name directly.
@@ -117,9 +160,11 @@ belongs in one place, with the reasoning attached.
   four" becomes "exactly four". That cost গার্ডিয়ান লাইফ all 12 of its
   matches.
 - allow for NFC decomposition. য় ড় ঢ় are composition exclusions, so NFC
-  splits them into base + nukta. A pattern written as if য় were one character
-  silently under-matches — `গার্ডিয়ান লাইফ` found 2 of 12 chunks that way.
-  `pattern_audit.py` probes for this.
+  splits them into base + nukta — consistently, on both sides, so a pattern
+  matched against `canon`'d text is safe. A pattern written as if য় were one
+  character under-matches only against text that was NOT canon'd, silently:
+  `গার্ডিয়ান লাইফ` found 2 of 12 chunks that way. `pattern_audit.py` probes
+  for this; rule 4 generalises it.
 
 ### What is not a violation
 
@@ -138,6 +183,31 @@ rather than an English sentence.
 | `conventions_check.py` | names the words it searches for |
 
 Add an exemption only with a reason, in `LITERAL_EXEMPT`.
+
+### Line-level exemptions
+
+`LITERAL_EXEMPT` switches the rule off for a **whole module**. That is right
+for `productmatch.py` and for the encoding probes, where every literal is one.
+It is wrong for a module holding one or two output labels and a lot of
+ordinary code — exempting the file would also stop the check noticing a real
+matcher added to it later, which is the failure this convention exists for.
+
+For those, mark the line:
+
+```python
+MANUAL_DISPLAY = {
+    "dabi_2025": "দাবি অপারেশন ম্যানুয়াল ২০২৫",  # noqa: C2 output label, never a matcher
+}
+```
+
+Same shape and same rule as rule 4's `# noqa: BN4` — one suppression idiom in
+this repo, not two. **A marker with no reason suppresses nothing and is
+reported as a failure**, because "why" is the only part of an exemption that
+survives contact with the next reader. `self_check` proves the marker is
+line-level: its fixture carries a reasoned marker, a reasonless one and an
+unmarked line, and only the first may be suppressed. A suppression that
+silently covered the rest of the file would report clean while the module
+stopped being checked.
 
 ### Roles are a separate vocabulary
 
@@ -207,6 +277,33 @@ Both exit non-zero if the canary stops firing.
 Use a **real** historical failure, not an invented one. The গার্ডিয়ান canary
 is the exact pattern that was in the repo. A synthetic canary tests what you
 imagined the bug was; a real one tests what actually happened.
+
+### Never filter the output of a check you have not read once in full
+
+A check's output is designed by someone who decided what you need to see.
+Piping it through `grep` on the first run replaces their judgement with a
+guess about which lines matter, and the lines you did not think of are
+exactly the ones that carry the failure.
+
+**Two instances in one session, 2026-09-19, both of them mine.**
+
+| What was run | What it hid |
+|---|---|
+| `... 2>&1 \| grep -vE "Warning\|warn"` around a model load | the tokenizer warning that said the tokenizer had not loaded. Everything downstream scored a reranker that was ranking by sequence length |
+| `conventions_check.py \| grep -E "CLEAN\|VIOLATION"` | all four sections. A one-word verdict cannot say WHICH module failed or whether the self-check even ran |
+
+The first one cost a whole measurement. The second was recoverable only
+because the run was repeated unfiltered.
+
+**The rule.** Run it clean once, read all of it, and only then filter — and
+when you filter, keep the failure vocabulary (`Warning`, `Error`, `Traceback`,
+`FAIL`, `MISSED`) in the pattern rather than excluding it. A filter written
+before you have seen the unfiltered output is a hypothesis about where the
+bug is, and it is applied to the evidence rather than tested against it.
+
+This is Convention 3's own logic turned on the operator: a check that cannot
+fail is worthless, and a check whose failure output you have filtered away
+cannot fail *in your terminal*, which is the only place it matters.
 
 ### A Bengali canary fixture must be sliced from a stored artefact
 
@@ -360,12 +457,17 @@ ever reports a non-zero change count again, two matchers have diverged.
 
 ## The check
 
-`conventions_check.py` runs three things:
+`conventions_check.py` runs four things:
 
 1. **static** — AST scan for module-level work
 2. **dynamic** — imports each module in a subprocess and fails if any file's
    mtime changed, which catches writes the AST scan cannot see
 3. **literals** — AST scan for product names in matching contexts
+4. **bengali literals** — `bengali_literal_lint.scan_paths`, failing on the
+   ERROR tier only. Exemptions live in `LINT_EXEMPT`, which is deliberately
+   separate from `LITERAL_EXEMPT`: rule 2 is about *which words* a module may
+   name, rule 4 is about *how* a literal reaches a matcher, and a module can
+   be innocent of one and guilty of the other.
 
 It begins with a **self-check**: a synthetic module containing a known
 violation is run through the checks, which must catch it. That guard exists
