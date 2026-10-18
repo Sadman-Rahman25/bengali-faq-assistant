@@ -303,12 +303,42 @@ def assets():
     return {
         "logo": _data_uri(ASSETS / "brac-logo.png", "image/png"),
         "logo_white": _data_uri(ASSETS / "brac-logo-white.png", "image/png"),
-        # The FAQ header photo. The WEB version, never the full-size file in
-        # assets/originals/, which is not in git. Absent -> no photo, rather
-        # than a broken image.
-        "members": (_data_uri(ASSETS / "brac-members.webp", "image/webp")
-                    if (ASSETS / "brac-members.webp").exists() else None),
     }
+
+
+# PHOTOGRAPHS, by file name. Web versions only -- each is already a single
+# WebP encode, and re-encoding one again is a second lossy pass.
+#   brac-enterprise.webp  FAQ header       textile workshop
+#   brac-river.webp       Ask, welcome     woman rowing on a narrow river
+#   brac-members.webp     Test yourself    members' meeting -- NOT YET SUPPLIED
+PHOTOS = {"enterprise": "brac-enterprise.webp", "river": "brac-river.webp",
+          "members": "brac-members.webp"}
+
+
+@st.cache_data(show_spinner=False)
+def _photo_uri(path, mtime):
+    """Inline one photo. `mtime` is in the cache key on purpose: a photo
+    that is added or replaced is picked up on the next run, not after a
+    restart -- assets()'s cache would keep serving 'absent' forever."""
+    return _data_uri(path, "image/webp")
+
+
+def photo(key):
+    """data URI for PHOTOS[key], or None when the file is not there. None
+    means NO <img> at all -- never a broken-image icon in a slot whose
+    photo has not arrived."""
+    p = ASSETS / PHOTOS[key]
+    return _photo_uri(str(p), p.stat().st_mtime) if p.exists() else None
+
+
+def photo_html(key, lang):
+    """The one way a photo reaches the page: same class, same alt-text
+    source. '' when the file is absent."""
+    uri = photo(key)
+    if not uri:
+        return ""
+    return (f'<img class="bfa-photo photo-{key}" src="{uri}" '
+            f'alt="{esc(t(f"{key}_photo_alt", lang))}">')
 
 
 # --------------------------------------------------------------------- CSS
@@ -557,6 +587,13 @@ details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
              border-radius: 16px;
              box-shadow: 0 2px 6px rgba(0,0,0,.08), 0 12px 28px rgba(0,0,0,.10); }
 @media (max-width: 700px) { .bfa-photo { height: 220px; } }
+/* THE CROP'S FOCAL POINT IS PER PHOTO. One shared value fitted the
+   textile workers (faces mid-frame) and, measured on the rendered page, cut
+   the rower's head off: her head sits in the top tenth of the frame. */
+.bfa-photo.photo-river { object-position: 50% 10% !important; }
+/* The quiz container already carries the 22px gutter; without this the
+   photo would sit 22px further in than the cards below it. */
+.st-key-quiz .bfa-photo { width: 100%; margin-left: 0; margin-right: 0; }
 .bfa-soon { background: var(--card); border: 1px solid var(--card-line);
             border-radius: 10px; padding: 22px; margin: 4px 22px 22px;
             font-size: 14px; line-height: 1.7; color: var(--ink); }
@@ -1529,6 +1566,15 @@ def render_ask(a, lang):
                 path=esc(DEMO_META.as_posix()))
             + '</div>')
 
+    # THE WELCOME PHOTO, AND ONLY ON WELCOME. Shown while nothing has been
+    # asked; gone the moment any card state replaces the empty one -- an
+    # answer, a refusal, an error. The answer area is copy-heavy, and the
+    # brand guidance is to keep images out of it.
+    if result is None:
+        welcome = photo_html("river", lang)
+        if welcome:
+            st.markdown(welcome, unsafe_allow_html=True)
+
     st.markdown(
         '<div class="bfa-section"><div class="bfa-card">'
         f'<div class="bfa-label">{esc(t("answer_label", lang))}</div>'
@@ -1589,11 +1635,9 @@ def render_faq(lang):
     The header photo sits above the card, alone: one photograph per screen,
     and never inside the FAQ list or a citation.
     """
-    photo = assets().get("members")
-    if photo:
-        st.markdown(f'<img class="bfa-photo" src="{photo}" '
-                    f'alt="{esc(t("members_photo_alt", lang))}">',
-                    unsafe_allow_html=True)
+    header = photo_html("enterprise", lang)
+    if header:
+        st.markdown(header, unsafe_allow_html=True)
     st.markdown(
         f'<div class="bfa-soon"><span class="k">{esc(t("faq_state", lang))}'
         f'</span><b>{esc(t("faq_head", lang))}</b><br>'

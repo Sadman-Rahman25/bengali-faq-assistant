@@ -274,15 +274,26 @@ STRINGS = {
     "fused": {"en": "fused {score}", "bn": "স্কোর {score}"},
 
     # ------------------------------------------------------------- the FAQ
-    # Alt text for assets/brac-members.webp. What is IN the photo, not what
-    # it is meant to say: a screen reader user should learn what a sighted
-    # reader sees.
-    "members_photo_alt": {
+    # PHOTO ALT TEXT, keyed "<PHOTOS key>_photo_alt" (app.photo_html). What
+    # is IN the photo, not what it is meant to say: a screen-reader user
+    # should learn what a sighted reader sees.
+    "enterprise_photo_alt": {
         "en": ("Two people lean across a long table in a textile workshop, "
                "smoothing a length of yellow fabric together. One of them is "
                "smiling."),
         "bn": ("একটি কাপড়ের কারখানায় লম্বা টেবিলের ওপর ঝুঁকে দুজন মানুষ "
                "একসঙ্গে একটি হলুদ কাপড় সমান করছেন। তাঁদের একজন হাসছেন।")},
+    "river_photo_alt": {
+        "en": ("A woman, seen from behind, rows a wooden boat along a narrow "
+               "river between muddy banks."),
+        "bn": ("পেছন থেকে দেখা একজন নারী কাদামাটির পাড়ের মাঝে একটি সরু নদীতে "
+               "কাঠের নৌকা বাইছেন।")},
+    # PLACEHOLDER, for a photo not yet supplied. Rewrite it to describe the
+    # actual picture when brac-members.webp arrives; until then it is never
+    # shown, because the slot draws nothing without the file.
+    "members_photo_alt": {
+        "en": "Members sitting together at a group meeting.",
+        "bn": "একটি দলীয় সভায় সদস্যরা একসঙ্গে বসে আছেন।"},
     "faq_state": {"en": "Not started", "bn": "শুরু হয়নি"},
     "faq_head": {
         "en": "Fifty questions field officers actually ask, with reviewed answers.",

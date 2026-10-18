@@ -227,6 +227,13 @@ def render_quiz(lang=None):
               for q in qs if q["id"] == qid]
 
     with st.container(key="quiz"):
+        # THE INTRO PHOTO SLOT, for brac-members.webp. That file has not been
+        # supplied yet; until it is, photo_html returns '' and NOTHING is
+        # drawn -- no frame, no broken-image icon. Dropping the file into
+        # assets/ is enough: app.photo() keys its cache on the file's mtime.
+        intro_photo = app.photo_html("members", lang)
+        if intro_photo:
+            st.markdown(intro_photo, unsafe_allow_html=True)
         # A SHORT DRAW IS REPORTED, NOT ABSORBED. draw() returns fewer than
         # ten only when the cap and the bank together cannot do better, and a
         # quiz that quietly serves eight looks like a quiz with two questions
