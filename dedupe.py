@@ -48,7 +48,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from bnnorm import canon
+from bnnorm import canon, fold_digits, nfc
 
 P = Path("data/processed")
 CORPORA = ("progoti", "dabi_2025", "livestock_grow_2026")
@@ -61,6 +61,22 @@ CORPORA = ("progoti", "dabi_2025", "livestock_grow_2026")
 DOC_PRIORITY = {tag: i for i, tag in enumerate(CORPORA)}
 CLAUSE = re.compile(r"\d+(?:\.\d+)+")
 
+# WHAT A HUMAN CALLS EACH MANUAL. `dabi_2025` is a filename -- it identifies
+# the corpus and names nothing an officer holds. A citation that reads
+# "dabi_2025 §1.1.2" cannot be followed by the person it is addressed to.
+#
+# NOT A MATCHER, AND NEVER USED AS ONE. These are output labels: they are
+# written into the manifest and rendered, and nothing is ever searched for
+# them. Product identification stays where it belongs -- productmatch owns
+# every pattern, and Convention 2's rule is about matching, not mentioning.
+# The keys are the corpus tags above, so a manual with no label here is
+# visible as a missing label rather than silently falling back to its tag.
+MANUAL_DISPLAY = {
+    "dabi_2025": "দাবি অপারেশন ম্যানুয়াল ২০২৫",  # noqa: C2 output label, never a matcher; productmatch owns every pattern
+    "progoti": "প্রগতি অপারেশন ম্যানুয়াল ২০২৫",  # noqa: C2 output label, never a matcher; productmatch owns every pattern
+    "livestock_grow_2026": "লাইভস্টক গ্রো ২০২৬",
+}
+
 
 def norm_body(c):
     """The chunk's body with its heading line peeled off, canonicalised."""
@@ -70,10 +86,48 @@ def norm_body(c):
     return re.sub(r"\s+", " ", canon(unicodedata.normalize("NFC", body))).strip()
 
 
+def clause_pair(c):
+    """-> (clause, clause_display). ONE parse, two forms of the same clause.
+
+    clause          digit-folded: 1.1.2. What everything MATCHES on --
+                    must_cite, gold resolution, the manifest, cite_ok. A
+                    citation written ২.১.১ has to match 2.1.1, and that is
+                    exactly what the fold is for. Unchanged, by construction:
+                    the canary below asserts it against the previous
+                    implementation over the whole corpus.
+    clause_display  the same clause AS PRINTED: ১.১.২. What a human reads.
+
+    WHY BOTH, AND WHY FROM ONE PASS. The manual prints ১.১.২ and the folded
+    form is 1.1.2, so a citation rendered from `clause` sends an officer to
+    look for a number their manual does not contain -- measured on the demo
+    page, where every chip read "progoti §1.1.2". The fix is a second FORM,
+    never a second PARSER: two parsers would drift, and the drift would be
+    silent, because each would look right on its own.
+
+    HOW THE TWO STAY ALIGNED. fold_digits is a 1:1 character translation, so
+    a match span in the folded string indexes the same characters in the
+    unfolded one. strip_groups is deliberately NOT applied here -- it deletes
+    commas and so changes length, which would break that correspondence. It
+    cannot change the result either way: it only ever removes a separator
+    BETWEEN digits, and a clause number has none. The canary proves that
+    claim over all 867 chunks rather than asserting it.
+    """
+    head = nfc(" > ".join(c["heading_path"]))
+    last = None
+    for last in CLAUSE.finditer(fold_digits(head)):
+        pass
+    if last is None:
+        return "", ""
+    return last.group(0), head[last.start():last.end()]
+
+
 def clause_of(c):
-    """Deepest numbered clause in the heading path, digit-folded."""
-    nums = CLAUSE.findall(canon(" > ".join(c["heading_path"])))
-    return nums[-1] if nums else ""
+    """Deepest numbered clause in the heading path, digit-folded.
+
+    The matching form. Delegates to clause_pair so there is one parser; every
+    existing caller keeps the string it has always had.
+    """
+    return clause_pair(c)[0]
 
 
 def load():
@@ -178,6 +232,52 @@ def collapse(ranked, k=5, prefer_manual=None):
     return out
 
 
+def clause_display_canary(corpora):
+    """Convention 3. Prove the two forms are BOTH real and still agree.
+
+    Three conditions, all measured in this run over the corpus on disk:
+
+      1. The two forms DIFFER on a Bengali-numbered chunk. If they came out
+         equal everywhere, clause_display would be a decoration that had
+         silently stopped working, and every chip would be back to printing
+         a number the manual does not contain -- which is the defect this
+         exists to fix, restored invisibly.
+      2. MATCHING STILL SUCCEEDS ON THE FOLDED FORM. A citation written in
+         Bengali digits must still resolve: canon(display) == clause. This
+         is the property must_cite, gold resolution and cite_ok depend on,
+         and it is the one a "nicer display" change would break.
+      3. clause_of is UNCHANGED against the previous implementation, over
+         every chunk. Re-derived here rather than trusted, because the
+         whole point of routing both forms through one parser is that the
+         folded form must not move.
+
+    -> (ok, [lines]).
+    """
+    prev = lambda c: (CLAUSE.findall(canon(" > ".join(c["heading_path"])))
+                      or [""])[-1]
+    rows = [c for tag in CORPORA for c in corpora[tag]]
+    differ = [c for c in rows
+              if clause_pair(c)[0] and clause_pair(c)[0] != clause_pair(c)[1]]
+    mismatch = [c["chunk_id"] for c in rows
+                if clause_pair(c)[1]
+                and canon(clause_pair(c)[1]) != clause_pair(c)[0]]
+    moved = [c["chunk_id"] for c in rows if clause_of(c) != prev(c)]
+    ok = bool(differ) and not mismatch and not moved
+    ex = differ[0] if differ else None
+    return ok, [
+        f"  1. display differs from folded : {len(differ)} of {len(rows)} "
+        f"chunks" + (f"  e.g. {ex['chunk_id']} "
+                     f"{clause_pair(ex)[0]} -> {clause_pair(ex)[1]}"
+                     if ex else "   NONE -- display form is not working"),
+        f"  2. folded form still matches   : {len(mismatch)} mismatch(es)"
+        + ("" if not mismatch else f"  {mismatch[:4]}"),
+        f"  3. clause_of unchanged         : {len(moved)} moved"
+        + ("" if not moved else f"  {moved[:4]}"),
+        "  " + ("DETECTED -- both forms present, matching intact"
+                if ok else "FAILED"),
+    ]
+
+
 def main(write):
     corpora = load()
     groups = group(corpora)
@@ -185,6 +285,16 @@ def main(write):
     total = sum(len(cs) for cs in corpora.values())
 
     print("=" * 76)
+    print("CANARY -- clause vs clause_display")
+    print("=" * 76)
+    ok_canary, lines = clause_display_canary(corpora)
+    for ln in lines:
+        print(ln)
+    if not ok_canary:
+        print("\nFATAL: the clause forms are not behaving. Writing nothing.")
+        return 2
+
+    print("\n" + "=" * 76)
     print("DUPLICATE GROUPING AT similarity == 1.000")
     print("=" * 76)
     dup_chunks = sum(len(m) for m in groups.values())
@@ -300,11 +410,16 @@ def write_manifest():
                 continue
             c = json.loads(line)
             dt = c.get("display_text") or ""
+            clause, clause_display = clause_pair(c)
             rows.append({
                 "chunk_id": c["chunk_id"],
                 "sha256": manifest_sha(dt),
                 "manual_id": tag,
-                "clause": clause_of(c),
+                "clause": clause,
+                # THE SAME CLAUSE, AS PRINTED. Persisted beside the folded
+                # form, from one parse, so a renderer never has to re-derive
+                # it and never has to guess which form it is holding.
+                "clause_display": clause_display,
                 "heading_path": list(c.get("heading_path") or []),
                 "n_chars": len(dt),
                 # THE TWIN RELATION, and it is not the sha above. The sha is
@@ -321,7 +436,12 @@ def write_manifest():
                 rows[-1]["exclusion_reason"] = why
     rows.sort(key=lambda r: r["chunk_id"])
     MANIFEST.write_text(
-        json.dumps({"version": 1, "n_chunks": len(rows), "chunks": rows},
+        # version 2 adds clause_display per chunk and the manuals map.
+        # Both are additive: every version-1 key is still present and
+        # unchanged, so a reader that ignores them is unaffected.
+        json.dumps({"version": 2, "n_chunks": len(rows),
+                    "manuals": {t: MANUAL_DISPLAY.get(t, "") for t in CORPORA},
+                    "chunks": rows},
                    ensure_ascii=False, indent=1) + "\n",
         encoding="utf-8")
     n_excl = sum(1 for r in rows if r.get("excluded_from_retrieval"))

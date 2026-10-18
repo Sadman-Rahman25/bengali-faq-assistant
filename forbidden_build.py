@@ -56,6 +56,42 @@ PAGE_NOTE = ("the .docx path records no page number; chunk_id is given "
              "instead")
 
 
+ROLES_NOTE = (
+    "role literals occurring in the clause, from roles.py via "
+    "bn_shared.count_literal so role_exclusions' guards apply. "
+    "gold_eval.answer_violations subtracts the roles named in the "
+    "question's own gold_facts before judging, so a correct answer that "
+    "names a co-occurring role does not fire.")
+
+
+def role_literals():
+    """Every role surface form the registry declares. -> [str]
+
+    Both per-manual columns and the short form, deduplicated. Convention 2:
+    read from roles.ROLES, never retyped here.
+    """
+    import roles
+    out = []
+    for row in roles.ROLES:
+        for surface in (row[1], row[2], row[3]):
+            t = (surface or "").strip()
+            if t and t not in out:
+                out.append(t)
+    return out
+
+
+def roles_in_clause(chunks):
+    """-> sorted role literals that occur in `chunks`' display text."""
+    from bn_shared import count_literal
+    texts = [c.get("display_text") or "" for c in chunks]
+    hit = []
+    for lit in role_literals():
+        occ, _n = count_literal(lit, texts, warn=False)
+        if occ:
+            hit.append(lit)
+    return sorted(hit)
+
+
 def manifest_manual_ids(path=MANIFEST):
     """-> set of manual ids the corpus actually uses."""
     if not Path(path).exists():
@@ -94,6 +130,29 @@ def clauses_from_gold(paths):
         g = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
         for q in g.get("questions") or []:
             for c in q.get("forbidden_numbers_from_clause") or []:
+                c = str(c).strip()
+                if c and c not in keys:
+                    keys.append(c)
+    return sorted(keys)
+
+
+def role_clauses_from_gold(paths):
+    """Clause keys named by forbidden_roles_from_clause. -> [str], sorted.
+
+    Separate from clauses_from_gold because the two arm different things: a
+    figure clause is a DECOY whose numbers must not be quoted, a role clause
+    is a DECOY whose role names must not be quoted. A question may name one,
+    the other, or both.
+    """
+    import yaml
+    keys = []
+    for p in paths:
+        f = Path(p)
+        if not f.exists():
+            continue
+        g = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+        for q in g.get("questions") or []:
+            for c in q.get("forbidden_roles_from_clause") or []:
                 c = str(c).strip()
                 if c and c not in keys:
                     keys.append(c)
@@ -195,6 +254,21 @@ def build(gold_paths=None, out_path=OUT):
         units[key] = prs
         prov[key] = pv
         dropped[key] = dr
+    # ROLE CLAUSES. Same source-of-truth rule as the figure clauses: the
+    # armed set is whatever the gold names, and a clause naming an unknown
+    # manual is a hard error in build_clause rather than an empty entry.
+    role_keys = role_clauses_from_gold(gold_paths)
+    roles_doc = OrderedDict()
+    for key in role_keys:
+        manual, clause = split_key(key)
+        if manual not in known:
+            raise SystemExit(
+                f"forbidden_roles_from_clause names manual {manual!r}, which "
+                f"the manifest does not have. Known: {sorted(known)}")
+        exact, subs = chunks_for(clause, corpus.get(manual) or [])
+        roles_doc[key] = roles_in_clause(exact or subs)
+    doc["_roles"] = roles_doc
+    doc["_roles_note"] = ROLES_NOTE
     doc["_provenance"] = prov
     doc["_note"] = CONSUMER_NOTE
     doc["_units"] = units

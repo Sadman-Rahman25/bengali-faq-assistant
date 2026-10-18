@@ -332,7 +332,79 @@ def answer_violations(q, answer, forbidden_numbers=None):
     for clause in q.get("forbidden_numbers_from_clause", []) or []:
         for pair in forbidden_violations(clause, answer, forbidden_numbers):
             out.append(("clause_figure", f"{clause}:{pair}"))
+    for clause in q.get("forbidden_roles_from_clause", []) or []:
+        for role in forbidden_role_violations(clause, q, answer,
+                                              forbidden_numbers):
+            out.append(("clause_role", f"{clause}:{role}"))
     return out
+
+
+def forbidden_role_violations(clause, q, answer, forbidden):
+    """Role names from `clause` that this answer quotes and must not. -> [str]
+
+    MEASURED 19 Sep 2026 AND NOT ADOPTED. Nothing arms it: no gold question
+    carries forbidden_roles_from_clause, so this returns [] everywhere. It is
+    kept, unarmed, because the measurement is the useful artefact and the
+    next person to have this idea should not have to re-run it.
+
+    WHAT IT WAS FOR. G-208 answered that the highest loan-approval tier is the
+    BRANCH MANAGER when §2.1.2(গ) tops out at কর্মসূচি প্রধান. metric 4 holds
+    figures only, so rule 4's failure mode arriving through a ROLE is
+    invisible. Arming §2.1.1 -- the group-loan table the model actually read
+    -- does catch it: the real k=5 answer fires on শাখা ব্যবস্থাপক.
+
+    WHY IT IS OFF ANYWAY. Two measured failures, in opposite directions:
+
+      FALSE POSITIVE. An answer giving the right top tier AND correctly
+      enumerating §2.1.2(গ)'s lower rows fires on আঞ্চলিক ব্যবস্থাপক, because
+      that role appears in the decoy clause too and is not in G-208's single
+      gold fact (which covers only the top row). The gold-fact exemption
+      cannot fix this: the gold fact is one row and a complete answer is
+      seven.
+
+      FALSE NEGATIVE. The k=10 answer -- also wrong, naming এলাকা ব্যবস্থাপক
+      as the highest tier -- does NOT fire, because §2.1.1 writes that role as
+      the abbreviation এএম and never in full, so the decoy list does not
+      contain the surface form the answer used.
+
+    THE REASON IT CANNOT BE PATCHED INTO WORKING. A clause is the right key
+    for figures because a figure is its own identity: ২০০০০ in the decoy is
+    the same token as ২০০০০ in the answer. A role has SEVERAL surface forms
+    (roles.py row area_manager: এলাকা ব্যবস্থাপক and এএম) and the same form
+    appears in the decoy clause and the correct one. Keying on role identity
+    instead of surface form fixes the false negative and makes the false
+    positive strictly worse, because identity collapses এএম into
+    এলাকা ব্যবস্থাপক and both tables use it. The discriminating information
+    is WHICH ROW of WHICH table, which a clause-level list cannot carry.
+
+
+    THE SAME SHAPE AS forbidden_violations, for the same reason: metric 4 and
+    generate.py's post-filter call one function, so a filter miss is also a
+    metric miss instead of a silent zero.
+
+    EXEMPT: any role the question's own gold_facts name. An approval row
+    reads "সহকারী এলাকা ব্যবস্থাপক (ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে):
+    কর্মসূচি প্রধান" -- three roles, all of them part of the correct answer.
+    Without this subtraction the filter would fire on the right answer, which
+    is the failure mode that gets a check switched off.
+    """
+    roles_for = (forbidden or {}).get("_roles", {}).get(clause) or []
+    if not roles_for:
+        return []
+    allowed = canon(" ".join(fact_text(f) for f in (q.get("gold_facts") or [])
+                             if fact_text(f)))
+    a = canon(answer)
+    hits = []
+    for role in roles_for:
+        p = canon_pattern(role)
+        if p.search(a) and not p.search(allowed):
+            hits.append(role)
+    # A longer role containing a shorter one would double-report:
+    # আঞ্চলিক ব্যবস্থাপক contains ব্যবস্থাপক only as a suffix, but
+    # এলাকা ব্যবস্থাপক is a substring of সহকারী এলাকা ব্যবস্থাপক. Keep the
+    # longest match at each position and drop the ones it subsumes.
+    return [r for r in hits
+            if not any(r != o and r in o for o in hits)]
 
 
 def forbidden_violations(clause, answer, forbidden):
@@ -576,6 +648,28 @@ def citation_achievable(q, ctx_ids, twins):
 CITE_MODES = ("all", "any")
 
 
+def citation_accuracy(rows):
+    """-> (hit, scored, unachievable) over scored report rows.
+
+    THE ONE DEFINITION OF METRIC 2. Extracted so a second caller cannot
+    restate it: app.py's stat card did restate it, filtered on
+    `citation_achievable` alone, and reported 6/10 where this returns
+    7/11 -- because a PASS IS PROOF OF ACHIEVABILITY and the card's
+    version dropped demonstrated successes. That is journal 4h's shape
+    exactly: a predicate copied into a second place drifts, and the drift
+    is invisible because both numbers look plausible.
+
+    Only FAILURES can be unachievable. Excluding a demonstrated success
+    distorts the rate as much as charging for the impossible.
+    """
+    cited = [r for r in rows if r.get("citation") is not None]
+    unach = [r for r in cited
+             if r.get("citation_achievable") is False and not r["citation"]]
+    scored = [r for r in cited if r not in unach]
+    hit = sum(1 for r in scored if r["citation"])
+    return hit, len(scored), len(unach)
+
+
 def cite_ok(expected, got, mode="all"):
     """Manual name and clause both required. Missing manual name = wrong.
 
@@ -644,6 +738,46 @@ ABSTAIN_BN = [
     "উল্লেখ করেনি",
     "তথ্য দেয় না",
 ]
+# ----------------------------------------------------------- clarification
+# A DIFFERENT NON-ANSWER FROM AN ABSTENTION, and it needs its own name.
+# An abstention asserts the manual does not hold the answer. A clarification
+# request asserts nothing and asks the reader to narrow the question. Rule 6
+# tells the model to do exactly this when a question is ambiguous across
+# manuals, so it is correct behaviour SOMETIMES -- but on a question the gold
+# says the manual answers, it is a refusal, and until now it scored as a pass
+# because it matches no abstention pattern.
+#
+# ONE MARKER, AND IT IS ENOUGH. Measured over all 305 stored answers across
+# every run in the scratchpad: this fires on 10 of the G-* answers and every
+# one of them is a pure refusal carrying no citations and no content.
+# "উল্লেখ করুন" is a strict subset of those 10, so it adds nothing.
+#
+# WHAT IS DELIBERATELY NOT HERE. "স্পষ্ট নয়" also fires only on refusals in
+# the stored runs -- and it is the GOLD FACT for G-215,
+# "ম্যানুয়ালের নাম ছাড়া ধারা নম্বরটি স্পষ্ট নয়". An answer that says the clause
+# number is ambiguous and then gives both readings is CORRECT, and that
+# marker would fail it. A marker that is clean on the runs you happen to have
+# is not thereby safe: check it against the gold as well.
+#
+# The literal is a verbatim slice of the saved G-223 refusal, escaped by
+# scratchpad/m3_split.py. Not hand-typed -- see Convention 3, instance 13.
+CLARIFY_BN = [
+    "\u099c\u09be\u09a8\u09a4\u09c7 \u099a\u09be\u09a8",
+]
+
+_CLARIFY_PATS = None
+
+
+def is_clarification(answer):
+    """True when the answer asks the reader to narrow the question instead of
+    answering it."""
+    global _CLARIFY_PATS
+    if _CLARIFY_PATS is None:                 # lazily; no import-time work
+        _CLARIFY_PATS = [canon_pattern(p) for p in CLARIFY_BN]
+    a = canon(answer)
+    return any(p.search(a) for p in _CLARIFY_PATS)
+
+
 ABSTAIN_EN = re.compile(
     r"not stated|not in the manual|does not (state|contain|specify)|"
     r"no information|is not specified", re.I)
@@ -673,8 +807,35 @@ def norm_answerable(v):
     return str(v).strip().lower()
 
 
+def load_baseline(path):
+    """A prior eval report -> {qid: row}. -> {} when no path given.
+
+    The baseline is a REPORT, not a retrieval dump, deliberately: what counts
+    is what the baseline was actually SCORED as reaching, which is the number
+    the comparison is being made against.
+    """
+    if not path:
+        return {}
+    rows = json.loads(Path(path).read_text(encoding="utf-8"))
+    return {r["id"]: r for r in rows}
+
+
+def baseline_reachable(base_row):
+    """Could the baseline have cited this question? -> True/False/None.
+
+    A PASS COUNTS AS REACHABLE whatever the baseline's context held -- the
+    same rule gold_eval already applies within a run, for the same reason: a
+    demonstrated success is proof that the citation was producible.
+    """
+    if not base_row:
+        return None
+    if base_row.get("citation"):
+        return True
+    return base_row.get("citation_achievable")
+
+
 def score_one(q, ans, forbidden_numbers=None, judge=None,
-              ctx_ids=None, twins=None):
+              ctx_ids=None, twins=None, base_row=None):
     answer = ans.get("answer", "")
     twins = twins or {}
     raw_facts = q.get("gold_facts", []) or []
@@ -722,6 +883,7 @@ def score_one(q, ans, forbidden_numbers=None, judge=None,
 
     answerable = norm_answerable(q.get("answerable", "yes"))
     abstained = is_abstention(answer)
+    clarified = is_clarification(answer)
 
     # ABSTENTION AND VIOLATIONS ARE INDEPENDENT. They used to be conjoined
     # (`abstained and not violations`), which meant a single false violation
@@ -737,6 +899,28 @@ def score_one(q, ans, forbidden_numbers=None, judge=None,
         abstention = None            # judged by fact recall, not abstention
     else:
         abstention = not abstained   # abstaining on an answerable question fails
+
+    # METRIC 3, BOTH DIRECTIONS, NEVER AVERAGED.
+    #
+    # The old metric scored answerable:"no" only, so declining a question the
+    # manual DOES answer was invisible. G-208 is the case that forced it: on
+    # 18 Sep it answered "the information is not in the manual" to a question
+    # §2.1.2(গ) answers in seven rows, and on 19 Sep it replaced that with a
+    # confidently wrong tier. Neither move changed any number in this file.
+    #
+    # Two counts, reported separately. Averaging them would let a model buy
+    # back a wrongly-declined answerable question with a correctly-declined
+    # unanswerable one, and those are opposite failures: one withholds what
+    # the manual has, the other would invent what it has not.
+    #
+    # A CLARIFICATION REQUEST COUNTS AS A REFUSAL HERE. Rule 6 asks for one
+    # when a question is genuinely ambiguous, but `answerable` is the gold's
+    # judgement that the manual does answer it, so handing the question back
+    # is a non-answer. `partial` counts as answerable: the manual holds part
+    # of it, and refusing the whole thing loses the part it holds.
+    non_answer = abstained or clarified
+    abstained_correctly = abstained if answerable == "no" else None
+    answered_correctly = (None if answerable == "no" else not non_answer)
 
     return {
         "id": q["id"],
@@ -762,10 +946,18 @@ def score_one(q, ans, forbidden_numbers=None, judge=None,
         # None when no context was supplied, so an eval run without
         # --retrieved reports citation exactly as it did before.
         "citation_achievable": citation_achievable(q, ctx_ids, twins or {}),
+        # ANCHORED: what the BASELINE could reach. None when no --baseline.
+        # A question the baseline could cite stays in this run's denominator
+        # even if this run's own context cannot reach it, so a regression
+        # INTO unachievability is scored instead of excluded.
+        "citation_achievable_baseline": baseline_reachable(base_row),
         "citations": ans.get("citations", []),
         # Fifth number. Never folded into the four above.
         "language": language_match(q, answer),
         "abstention": abstention,
+        "abstained_correctly": abstained_correctly,
+        "answered_correctly": answered_correctly,
+        "clarified": clarified,
         # the raw signal, so a row can be read without re-deriving it
         "abstained": abstained,
         "violation_free": not violations,
@@ -974,6 +1166,77 @@ def canary_selftest(verbose=True):
               f"  [{'PASS' if ok7 else 'FAIL'}]")
     ok = ok and ok7
 
+    # ---- metric 3 must fail an answerable question that was refused ------
+    # TWO REAL FAILURES, BOTH FROM THE 18 Sep gpt-oss-120b RUN, both of which
+    # the old metric scored as passes because it looked only at
+    # answerable:"no".
+    #   G-223 answerable:yes -- handed the question back: "which manual?"
+    #   G-208 answerable:yes -- said the information is not in the manual,
+    #         when §2.1.2(গ) answers it in seven rows.
+    # The control is G-202's real answer, which must NOT trip either detector.
+    #
+    # The fixtures are verbatim slices of scratchpad/real/oss.jsonl, escaped
+    # by scratchpad/m3_report.py. NOT hand-typed: see Convention 3 instance
+    # 13, where a hand-typed fixture carried a Devanagari स and a composed য়
+    # and went green on a string no model produced.
+    _g223 = "\u0986\u09aa\u09a8\u09bf \u0995\u09cb\u09a8 \u09ae\u09cd\u09af\u09be\u09a8\u09c1\u09af\u09bc\u09be\u09b2 (progoti \u09a8\u09be\u0995\u09bf\u202fdabi_2025) \u09b8\u09ae\u09cd\u09aa\u09b0\u09cd\u0995\u09c7 \u099c\u09be\u09a8\u09a4\u09c7 \u099a\u09be\u09a8?"
+    _g208 = "\u09aa\u09cd\u09b0\u09b6\u09cd\u09a8\u09c7 \u0989\u09b2\u09cd\u09b2\u09bf\u0996\u09bf\u09a4 \u09a4\u09a5\u09cd\u09af \u09ae\u09cd\u09af\u09be\u09a8\u09c1\u09af\u09bc\u09be\u09b2\u09c7 \u09a8\u09c7\u0987\u0964"
+    _g202 = "\u09aa\u09cd\u09b0\u0997\u09a4\u09bf \u09b2\u09cb\u09a8\u09c7\u09b0 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u099a\u09be\u09b0\u09cd\u099c (\u0995\u09cd\u09b0\u09ae\u09b9\u09cd\u09b0\u09be\u09b8\u09ae\u09be\u09a8) \u09a8\u09bf\u09ae\u09cd\u09a8\u09b0\u09c2\u09aa:\u000a\u000a- \u098b\u09a3\u09c7\u09b0 \u09aa\u09b0\u09bf\u09ae\u09be\u09a3\u202f<\u202f\u09eb,\u09e6\u09e6,\u09e6\u09e6\u09e6\u202f\u099f\u09be\u0995\u09be \u09b9\u09b2\u09c7\u202f\u09e8\u09ea\u202f%\u000a- \u098b\u09a3\u09c7\u09b0 \u09aa\u09b0\u09bf\u09ae\u09be\u09a3\u202f\u09eb,\u09e6\u09e6,\u09e6\u09e6\u09e6\u202f\u099f\u09be\u0995\u09be\u202f\u09a5\u09c7\u0995\u09c7\u202f<\u202f\u09e7\u09e6,\u09e6\u09e6,\u09e6\u09e6\u09e6\u202f\u099f\u09be\u0995\u09be \u09b9\u09b2\u09c7\u202f\u09e8\u09e8\u202f%\u000a- \u098b\u09a3\u09c7\u09b0 \u09aa\u09b0\u09bf\u09ae\u09be\u09a3\u202f\u2265\u202f\u09e7\u09e6,\u09e6\u09e6,\u09e6\u09e6\u09e6\u202f\u099f\u09be\u0995\u09be \u09b9\u09b2\u09c7\u202f\u09e8\u09e6\u202f%"
+    _c223 = is_clarification(_g223)
+    _c202 = is_clarification(_g202)
+    _a208 = is_abstention(_g208)
+    _a202 = is_abstention(_g202)
+    # what the metric makes of them
+    _yes = {"id": "x", "answerable": "yes"}
+    _ok223 = not (_c223 or is_abstention(_g223))     # -> answered_correctly
+    _ok208 = not (_a208 or is_clarification(_g208))
+    _ok202 = not (_a202 or _c202)
+    ok8 = (_c223 is True and _a208 is True
+           and _c202 is False and _a202 is False
+           and _ok223 is False and _ok208 is False and _ok202 is True)
+    if verbose:
+        print(f"  canary answerable_refusal   real G-223 clarification -> "
+              f"scored {_ok223} (want False); real G-208 false abstention -> "
+              f"{_ok208} (want False); real G-202 substantive -> {_ok202} "
+              f"(want True)  [{'DETECTED' if ok8 else 'MISSED'}]")
+    ok = ok and ok8
+
+    # ---- a regression INTO unachievability must be scored, not excluded --
+    # THE REAL CASE, 19 Sep 2026. G-222 asks whether সিডিও and পিও are
+    # different posts. must_cite is the bare manual ids, mode all.
+    #   LaBSE k=5   cited dabi_2025 §4.2.5 and progoti §4.2.5 -> PASS
+    #   BGE-M3 k=5  cited nothing, and its gold chunks are unretrieved
+    # Within one run that second case is correctly excluded: no correct
+    # citation was producible from that context. Across the A/B it is a
+    # REGRESSION, and excluding it made both runs read 100%.
+    #
+    # The canary asserts three things: the baseline pass counts as reachable
+    # even though the baseline's own context did not hold the gold chunk
+    # (a pass is proof of achievability); the candidate's failure is
+    # therefore scored rather than dropped; and with NO baseline the old
+    # behaviour is unchanged.
+    _base222 = {"id": "G-222", "citation": True,
+                "citation_achievable": False}
+    _nobase = baseline_reachable(None)
+    _reach = baseline_reachable(_base222)
+    _reach_fail = baseline_reachable({"id": "x", "citation": False,
+                                      "citation_achievable": False})
+    # the candidate row, as score_one would build it
+    _cand = {"id": "G-222", "citation": False, "citation_achievable": False,
+             "citation_achievable_baseline": _reach}
+    _excluded_self = (_cand["citation_achievable"] is False
+                      and not _cand["citation"])
+    _scored_anchored = bool(_cand["citation_achievable_baseline"])
+    ok9 = (_nobase is None and _reach is True and _reach_fail is False
+           and _excluded_self and _scored_anchored)
+    if verbose:
+        print(f"  canary baseline_anchor      real G-222: baseline pass -> "
+              f"reachable {_reach}; candidate excluded from 2 "
+              f"{_excluded_self}; scored in 2c {_scored_anchored}; "
+              f"no baseline -> {_nobase}"
+              f"  [{'DETECTED' if ok9 else 'MISSED'}]")
+    ok = ok and ok9
+
     # ---- citation must not be charged for a retrieval miss ---------------
     # A REAL CASE: G-216. The gold chunk is progoti_0021, the same passage as
     # dabi_2025_0014 (one dup_group, printed at 1.1.3 in Progoti and 1.1.2 in
@@ -1105,12 +1368,12 @@ def report(rows):
         # Excluding a demonstrated success distorts the number exactly as much
         # as charging for the impossible, so only FAILURES can be
         # unachievable.
+        chit, n_scor, n_unach = citation_accuracy(rs)
         unach = [r for r in cited
                  if r.get("citation_achievable") is False and not r["citation"]]
         scor = [r for r in cited if r not in unach]
-        chit = sum(1 for r in scor if r["citation"])
-        print(f"  2. citation accuracy .. {chit}/{len(scor)}"
-              + (f" = {chit / len(scor):.1%}" if scor else " (none scored)")
+        print(f"  2. citation accuracy .. {chit}/{n_scor}"
+              + (f" = {chit / n_scor:.1%}" if n_scor else " (none scored)")
               + ("   (gold chunk was in context)" if unach else ""))
         if unach:
             print(f"  2b. citation unachievable  {len(unach)}"
@@ -1120,11 +1383,50 @@ def report(rows):
                   f"failure)")
             for r in unach:
                 print(f"       {r['id']:<8} cited {r.get('citations') or []}")
-        print(f"  3. abstention accuracy  "
+        # METRIC 3 IS TWO NUMBERS AND THEY ARE NEVER AVERAGED. Declining a
+        # question the manual answers and answering one it does not are
+        # opposite failures; a single figure lets one pay for the other.
+        ansbl = [r for r in rs if r.get("answered_correctly") is not None]
+        anshit = sum(1 for r in ansbl if r["answered_correctly"])
+        # ANCHORED CITATION, printed separately. Only questions the baseline
+        # could reach are added back; nothing is removed.
+        anch = [r for r in cited
+                if r.get("citation_achievable_baseline") is not None]
+        if anch:
+            keep = [r for r in anch
+                    if r["citation"] or r["citation_achievable"] is not False
+                    or r["citation_achievable_baseline"]]
+            ahit = sum(1 for r in keep if r["citation"])
+            lost = [r for r in anch
+                    if r["citation_achievable"] is False and not r["citation"]
+                    and r["citation_achievable_baseline"]]
+            print(f"  2c. citation, BASELINE-ANCHORED  {ahit}/{len(keep)}"
+                  + (f" = {ahit / len(keep):.1%}" if keep else "")
+                  + "   (NOT merged into 2: a question the baseline could\n"
+                    "      cite is scored here even where this run's "
+                    "retrieval cannot reach it)")
+            if lost:
+                print(f"      {len(lost)} question(s) REGRESSED INTO "
+                      f"unachievability -- excluded from 2, failed here:")
+                for r in lost:
+                    print(f"       {r['id']:<8} cited {r.get('citations') or []}")
+        print(f"  3a. abstained correctly  "
               f"{sum(1 for r in abst if r['abstention'])}/{len(abst)}"
               + (f" = {sum(1 for r in abst if r['abstention']) / len(abst):.1%}"
                  if abst else " (no unanswerable questions)")
-              + "   (independent of 4)")
+              + "   (answerable:no; independent of 4)")
+        print(f"  3b. answered correctly .. {anshit}/{len(ansbl)}"
+              + (f" = {anshit / len(ansbl):.1%}" if ansbl else " (none)")
+              + "   (answerable:yes/partial -- a refusal or a"
+                "\n      \"which manual?\" on a question the manual answers"
+                " is a FAILURE here)")
+        _refused = [r for r in ansbl if not r["answered_correctly"]]
+        if _refused:
+            print(f"      refused {len(_refused)} answerable question(s):")
+            for r in _refused:
+                why = ("asked which manual/programme" if r.get("clarified")
+                       else "said the manual does not have it")
+                print(f"       {r['id']:<8} {why}")
         print(f"  4. violations ......... {len(viol)}/{len(rs)}"
               + ("   <-- REPORT STOPPER" if viol else ""))
         # the cross-tab, because the interesting cell is abstained-AND-violated
@@ -1250,6 +1552,13 @@ def main():
                          "over questions whose gold chunk was in context and "
                          "a count of those where it was not. Without it, "
                          "citation is reported exactly as before")
+    ap.add_argument("--baseline", metavar="REPORT",
+                    help="a prior eval report to anchor achievability "
+                         "against. A question the baseline could cite stays "
+                         "in this run's citation denominator even if this "
+                         "run's retrieval cannot reach it -- so a regression "
+                         "into unachievability is scored, not excluded. "
+                         "Reported as a SECOND number, never merged.")
     ap.add_argument("--out", default="out/eval_report.json")
     args = ap.parse_args()
 
@@ -1289,8 +1598,12 @@ def main():
     if args.retrieved:
         print(f"context {args.retrieved}: {len(ctx)} question(s); "
               f"{len(twins)} chunk(s) in a declared twin group")
+    base = load_baseline(args.baseline)
+    if args.baseline:
+        print(f"baseline {args.baseline}: {len(base)} question(s). A question "
+              f"the baseline could cite stays in this run's denominator.")
     rows = [score_one(qs[i], answers[i], forbidden, judge,
-                      ctx.get(qs[i].get("id")), twins)
+                      ctx.get(qs[i].get("id")), twins, base.get(i))
             for i in qs if i in answers]
     code = report(rows)
     if args.require_render:

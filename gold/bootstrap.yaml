@@ -530,6 +530,14 @@ questions:
   type: simple_lookup
   provenance: chunk_derived
   question_bn: "প্রগতি লোনের সার্ভিস চার্জ কত?"
+  # Romanised variant. Added 20 Sep 2026 as a REGRESSION TEST, not for
+  # coverage: this exact query returned BM25 0.0000 for the gold chunk
+  # with only 10 of 867 chunks scoring at all, because expand_banglish
+  # glossed one token of it. retrieval_eval scores each variant
+  # separately and tags its language, so a return to that failure shows
+  # up as recall@k on this line. See journal 4g.
+  question_variants:
+    - "progoti loner service charge koto?"
   manual_scope: progoti
   answerable: "yes"
   gold_facts:
@@ -553,6 +561,14 @@ questions:
   type: simple_lookup
   provenance: chunk_derived
   question_bn: "সাধারণ সঞ্চয়ের উপর মুনাফার হার কত?"
+  # Romanised variant. Added 20 Sep 2026 as a REGRESSION TEST, not for
+  # coverage: this exact query returned BM25 0.0000 for the gold chunk
+  # with only 10 of 867 chunks scoring at all, because expand_banglish
+  # glossed one token of it. retrieval_eval scores each variant
+  # separately and tags its language, so a return to that failure shows
+  # up as recall@k on this line. See journal 4g.
+  question_variants:
+    - "Sadharon Shonchoi er upor munafa har koto?"
   manual_scope: any
   answerable: "yes"
   gold_facts:
