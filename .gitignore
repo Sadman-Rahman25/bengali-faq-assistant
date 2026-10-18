@@ -25,3 +25,7 @@ bucket_*.json
 # manual chunks it used. Manual bodies stay out of git (see data/processed
 # above), and the data-protection decision is still pending.
 quiz/_sent_to_model.jsonl
+
+# full-size photo originals: large, and the app serves the web versions in
+# assets/ (e.g. assets/brac-members.webp), which ARE tracked.
+assets/originals/

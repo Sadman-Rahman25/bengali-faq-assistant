@@ -303,6 +303,11 @@ def assets():
     return {
         "logo": _data_uri(ASSETS / "brac-logo.png", "image/png"),
         "logo_white": _data_uri(ASSETS / "brac-logo-white.png", "image/png"),
+        # The FAQ header photo. The WEB version, never the full-size file in
+        # assets/originals/, which is not in git. Absent -> no photo, rather
+        # than a broken image.
+        "members": (_data_uri(ASSETS / "brac-members.webp", "image/webp")
+                    if (ASSETS / "brac-members.webp").exists() else None),
     }
 
 
@@ -538,6 +543,20 @@ details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
 .bfa-stat .n { font-size: 11px; color: var(--muted); margin-top: 3px;
                overflow-wrap: anywhere; }
 
+/* PHOTOGRAPHS. One per screen, as a header and never inside a list or a
+   citation: a photo beside an answer would read as evidence for it. 16px
+   corners and a soft shadow. Cropped, not squashed, to a header height --
+   object-position keeps the two faces and the hands in frame. */
+.bfa-photo { display: block; width: calc(100% - 44px); margin: 8px 22px 18px;
+             height: 360px; max-width: none !important;
+             /* !important, MEASURED: Streamlit's markdown image rule won
+                and letterboxed the photo inside a correctly sized, rounded,
+                shadowed box -- the corners were on the frame, not the
+                picture. */
+             object-fit: cover !important; object-position: 50% 48% !important;
+             border-radius: 16px;
+             box-shadow: 0 2px 6px rgba(0,0,0,.08), 0 12px 28px rgba(0,0,0,.10); }
+@media (max-width: 700px) { .bfa-photo { height: 220px; } }
 .bfa-soon { background: var(--card); border: 1px solid var(--card-line);
             border-radius: 10px; padding: 22px; margin: 4px 22px 22px;
             font-size: 14px; line-height: 1.7; color: var(--ink); }
@@ -1566,7 +1585,15 @@ def render_faq(lang):
     here is a placeholder number or a fake row -- there is no data yet,
     so there is nothing to render but the sentence saying what will go
     here and what it will take.
+
+    The header photo sits above the card, alone: one photograph per screen,
+    and never inside the FAQ list or a citation.
     """
+    photo = assets().get("members")
+    if photo:
+        st.markdown(f'<img class="bfa-photo" src="{photo}" '
+                    f'alt="{esc(t("members_photo_alt", lang))}">',
+                    unsafe_allow_html=True)
     st.markdown(
         f'<div class="bfa-soon"><span class="k">{esc(t("faq_state", lang))}'
         f'</span><b>{esc(t("faq_head", lang))}</b><br>'

@@ -274,6 +274,15 @@ STRINGS = {
     "fused": {"en": "fused {score}", "bn": "স্কোর {score}"},
 
     # ------------------------------------------------------------- the FAQ
+    # Alt text for assets/brac-members.webp. What is IN the photo, not what
+    # it is meant to say: a screen reader user should learn what a sighted
+    # reader sees.
+    "members_photo_alt": {
+        "en": ("Two people lean across a long table in a textile workshop, "
+               "smoothing a length of yellow fabric together. One of them is "
+               "smiling."),
+        "bn": ("একটি কাপড়ের কারখানায় লম্বা টেবিলের ওপর ঝুঁকে দুজন মানুষ "
+               "একসঙ্গে একটি হলুদ কাপড় সমান করছেন। তাঁদের একজন হাসছেন।")},
     "faq_state": {"en": "Not started", "bn": "শুরু হয়নি"},
     "faq_head": {
         "en": "Fifty questions field officers actually ask, with reviewed answers.",
