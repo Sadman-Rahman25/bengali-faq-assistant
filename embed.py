@@ -49,10 +49,13 @@ Usage:
 """
 
 import argparse
+import hashlib
+import os
 import json
 import math
 import re
 import sys
+import time
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -84,7 +87,9 @@ CORPUS_FILES = [
     "data/processed/chunks_livestock_grow_2026_final.jsonl",
 ]
 
-OUT_DIR = Path("out/index")
+# The live index. Overridable so two models' indexes can coexist and be
+# switched without re-encoding -- see --out-dir and BFA_INDEX_DIR.
+OUT_DIR = Path(os.environ.get("BFA_INDEX_DIR", "out/index"))
 
 # e5 is trained with asymmetric prefixes and degrades measurably without
 # them. Applied per model rather than globally, because prefixing BGE-M3 or
@@ -98,6 +103,18 @@ PREFIX = {
 # stated, and the benchmark prints both so the effect is visible.
 W_DENSE_TOPIC, W_SPARSE_TOPIC = 0.8, 0.2
 W_DENSE_FIGURE, W_SPARSE_FIGURE = 0.4, 0.6
+
+# PER-MODEL FUSION WEIGHTS (dense share; sparse is the remainder).
+# Measured per index, because the right split depends on how good the dense
+# side is. Gemini: swept over the 23 gold questions and the 2 Banglish
+# variants at 1.0/0.8/0.6 for topic and figure independently, 2026-10-18.
+# 1.0/1.0 -- pure dense -- was best at k=5 (21 of 25 against 20 for every
+# alternative), best on the 5 figure queries (3 hits against 2), and held
+# Banglish at 2/2. It is also the simplest cell in the grid, which is the
+# tie-break at n=23: a one-question difference is not evidence.
+INDEX_WEIGHTS = {
+    "gemini-embedding-001": (1.0, 1.0),
+}
 
 CLAUSE_IN_QUERY_RX = re.compile(r"[০-৯0-9]+\.[০-৯0-9]")
 
@@ -298,8 +315,197 @@ BANGLISH = {
     "grahok": "গ্রাহক", "sodosso": "সদস্য", "shakha": "শাখা",
     "gorur": "গরুর", "goru": "গরু", "chagol": "ছাগল",
     "kivabe?": "কিভাবে",
+    # CHANGE 3. Content words the two measured live queries needed and the
+    # table did not have. Ordinary vocabulary -- a rate, a profit, a service
+    # charge -- owned by nobody, so they belong here rather than in a
+    # registry. Still no product, role or insurer name: সাধারণ is "ordinary"
+    # and সঞ্চয় is "savings"; the PRODUCT সাধারণ সঞ্চয় is productmatch's and
+    # is reached by the registry routing above, not by these two entries.
+    "service": "সার্ভিস", "charge": "চার্জ",
+    "munafa": "মুনাফা", "har": "হার", "hare": "হারে",
+    "sadharon": "সাধারণ", "shadharon": "সাধারণ",
+    "shonchoi": "সঞ্চয়", "sonchoy": "সঞ্চয়", "sanchay": "সঞ্চয়",
+    "upor": "উপর", "opor": "উপর",
+    # `loan` is already above; `lon` is the spelling that the genitive
+    # `loner` strips to. Without it CHANGE 2's stemming cannot reach the
+    # stem, because the table romanises it "loan" and the inflected form
+    # romanises it "lon" -- measured, not assumed.
+    "lon": "লোন",
+    # THE ONE PRODUCT WORD IN THIS TABLE, AND IT IS DELIBERATE.
+    # Everything else here is vocabulary owned by nobody. ওয়াশ is not: it is
+    # half of the product ওয়াশ লোন and it is in conventions_check's
+    # PRODUCT_WORDS. It is here because routing (ROUTE_REGISTRY_NAMES, off
+    # above) bought exactly one thing vocabulary did not cover -- without it
+    # `wash loan er meyad koto mas?` and an unrelated role query collapse to
+    # the same top-1 chunk. One entry is a smaller price than re-enabling a
+    # mechanism that moved Q1 from rank 5 to rank 24.
+    #
+    # SAFE HERE IN A WAY দাবি WOULD NOT BE. The matching side is the LATIN
+    # key "wash"; the Bengali is only ever appended to a query as a gloss,
+    # never used as a pattern. And ওয়াশ carries none of the substring hazard
+    # that Convention 2 was written for -- দাবি matches inside বিমাদাবি and
+    # গতি inside প্রগতি, whereas ওয়াশ is not a fragment of another word in
+    # this corpus. A product name needing a real pattern still belongs to
+    # productmatch.
+    "wash": "ওয়াশ",  # noqa: C2 gloss value, never a matcher; the key is Latin
 }
 _WORD_RX = re.compile(r"[A-Za-z][A-Za-z'?]*")
+
+# ------------------------------------------- romanised names, from registries
+# CHANGE 1. A romanised PRODUCT, PROGRAMME or ROLE can never be glossed by
+# BANGLISH above, and that is deliberate: Convention 2 forbids a product
+# literal here. The consequence, measured on two live queries, is that
+# `progoti loner service charge koto?` reaches BM25 with no corpus vocabulary
+# at all and the gold chunk scores 0.0000.
+#
+# So the names are ROUTED, not copied: every Bengali form and every Latin
+# alias below is read out of productmatch, products_catalogue.csv and
+# roles.py at call time. Nothing is typed here, and a rename in a registry
+# reaches the expansion without anyone editing this file.
+#
+# AN ALIAS COLUMN IS NOT ALL ALIASES. Measured 20 Sep 2026: 22 of the 43
+# catalogue rows carry a Latin-bearing alias, but several of those entries
+# are prose notes rather than names --
+#     '§5.1.2 excludes its customers from ঋণ নিরাপত্তা বিমা cover'
+#     'umbrella for ডিপিএস + মাসিক মুনাফা'
+#     'underwrites ফায়ার সেফটি (Progoti §5.4.6) and গবাদিপ্রাণি সুরক্ষা'
+# Using those as lookup keys would map the ordinary English words
+# "umbrella", "cover", "underwrites" and "excludes" onto product names, and
+# inject a product into a query that never mentioned one. That is worse than
+# no expansion: a wrong expansion is invisible, where a missing one is only
+# unhelpful. _alias_shaped keeps names and drops notes.
+# OFF, AND THE MEASUREMENT IS WHY. Routing romanised registry names into the
+# query was built, measured on the two live Banglish failures, and not
+# adopted. Gold-chunk BM25 on today's index:
+#
+#   Q1 progoti_0016_p2   baseline 0.0000 rank 11  ->  routing 3.8217 rank 24
+#   Q2 dabi_2025_0017    baseline 0.0000 rank  9  ->  routing 0.0000 rank  9
+#
+# Q1's SCORE rose and its RANK got worse, which is the whole finding. The
+# query gained প্রগতি, and প্রগতি appears in 158 of 867 chunks because one of
+# the two manuals is entirely about that programme. A term carried by 18% of
+# the corpus is not evidence about which chunk answers the question; it just
+# lifts every chunk in that manual past the one that does. Q2 gained nothing
+# at all -- it names no product, programme or role.
+#
+# KEPT, NOT DELETED, because the argument against it is specific: a
+# programme name that is a whole manual's subject. A product name that is
+# NOT -- ওয়াশ লোন, আরোগ্য ঋণ, a named insurer -- is rare in the corpus and
+# would behave the opposite way. Turn this on to test that, and re-measure
+# rank rather than score.
+ROUTE_REGISTRY_NAMES = False
+
+_ALIAS_MAX_WORDS = 4
+
+
+def _alias_shaped(s):
+    """Is this alias field a NAME, or a note someone wrote in the column?"""
+    s = (s or "").strip()
+    if not s or not re.search(r"[A-Za-z]", s):
+        return False
+    if "§" in s or "(" in s or ")" in s:
+        return False
+    return len(s.split()) <= _ALIAS_MAX_WORDS
+
+
+def _role_latin(name, bengali):
+    """[(latin key, bengali)] for ONE English role name, plus its initials.
+
+    The initials are DERIVED, not typed -- "Branch Manager" gives BM. That is
+    how officers write these, and it keeps roles.py the owner of the name.
+    """
+    name = re.sub(r"\(.*?\)", "", name).strip()
+    if not name:
+        return []
+    out = [(name.lower(), bengali)]
+    initials = "".join(w[0] for w in name.split() if w)
+    if len(initials) >= 2:
+        out.append((initials.lower(), bengali))
+    return out
+
+
+# CHANGE 2. Bengali case endings, carried into the romanisation. `loner` is
+# loan + the genitive -er; the table holds stems, so every inflected form
+# misses. Longest suffix first, and a stripped form is used ONLY when it is
+# already a key -- never a guess, so a word that strips to nothing known is
+# left exactly as it was.
+_CASE_SUFFIXES = ("tir", "der", "er", "ta", "r", "e")
+
+
+def _stems(w):
+    """[w, then each stripping that might be a key]. Longest suffix first."""
+    out = [w]
+    for suf in _CASE_SUFFIXES:
+        if len(w) > len(suf) + 1 and w.endswith(suf):
+            out.append(w[: -len(suf)])
+    return out
+
+
+def _lookup(word, gloss):
+    """Bengali for one romanised word, via the registries then the table,
+    trying the word itself before any stripped form."""
+    for cand in _stems(word):
+        if cand in gloss:
+            return gloss[cand]
+        if cand in BANGLISH:
+            return BANGLISH[cand]
+    return None
+
+
+_REG_GLOSS = None
+
+
+def registry_glossary():
+    """{lowercased latin name: bengali form}. Built once, from the registries.
+
+    Convention 1: built on first call, never at import.
+    """
+    global _REG_GLOSS
+    if _REG_GLOSS is not None:
+        return _REG_GLOSS
+    import csv
+    from pathlib import Path as _P
+    gloss = {}
+
+    def add(latin, bengali):
+        if latin and bengali and _alias_shaped(latin):
+            gloss.setdefault(latin.strip().lower(), bengali.strip())
+
+    import productmatch as pm
+    for key, name_bn, alias, _pat in pm.NAMED:
+        for a in (alias or "").split(";"):
+            add(a, name_bn)
+    for key, _t, name_bn, alias, _pat in pm.ENTITIES:
+        for a in (alias or "").split(";"):
+            add(a, name_bn)
+    # The catalogue carries the PROGRAMMES' Latin aliases -- Dabi, Progoti,
+    # BCUP -- which productmatch holds only as patterns, so it is the one
+    # source that covers a romanised programme name.
+    cat = _P("products_catalogue.csv")
+    if cat.exists():
+        for r in csv.DictReader(cat.open(encoding="utf-8-sig")):
+            for a in (r.get("aliases") or "").split(";"):
+                add(a, r.get("name_bn"))
+    # ROLES: (key, dabi_name, progoti_name, abbrev, english, note).
+    #
+    # সিডিও AND পিও ARE NEVER MERGED. roles.py records them as one role named
+    # differently per manual, and states that the equivalence is metadata and
+    # never query expansion -- the term tells you which manual the asker works
+    # under, so expanding one to the other would erase the thing it carries.
+    # Where the English field names both variants they are separated by "/"
+    # in manual order (Dabi first), so each variant is paired with ITS OWN
+    # Bengali form. Explicitly, not by relying on list order.
+    import roles
+    for row in roles.ROLES:
+        dabi_bn, progoti_bn, english = row[1], row[2], row[4]
+        parts = [p for p in (english or "").split("/")
+                 if re.sub(r"\(.*?\)", "", p).strip()]
+        bns = [dabi_bn, progoti_bn] if len(parts) > 1 else [dabi_bn]
+        for part, bn in zip(parts, bns):
+            for latin, b in _role_latin(part, bn):
+                add(latin, b)
+    _REG_GLOSS = gloss
+    return gloss
 
 
 def expand_banglish(q):
@@ -310,10 +516,31 @@ def expand_banglish(q):
     would lose it.
     """
     hits = []
-    for m in _WORD_RX.finditer(q):
-        w = m.group(0).lower().strip("?'")
-        if w in BANGLISH:
-            hits.append(BANGLISH[w])
+    toks = [m.group(0) for m in _WORD_RX.finditer(q)]
+    words = [t.lower().strip("?'") for t in toks]
+
+    # CHANGE 1: registry names first, longest phrase first, so "goti loan"
+    # wins over "loan" and a multi-word product name is not shredded into
+    # two unrelated glosses. Bengali forms come from productmatch, the
+    # catalogue and roles -- see registry_glossary.
+    gloss = registry_glossary() if ROUTE_REGISTRY_NAMES else {}
+    used = [False] * len(words)
+    for size in (4, 3, 2, 1):
+        for i in range(len(words) - size + 1):
+            if any(used[i:i + size]):
+                continue
+            phrase = " ".join(words[i:i + size])
+            if phrase in gloss:
+                hits.append(gloss[phrase])
+                for j in range(i, i + size):
+                    used[j] = True
+
+    for i, w in enumerate(words):
+        if used[i]:
+            continue
+        bn = _lookup(w, gloss)          # CHANGE 2: stems tried after the word
+        if bn:
+            hits.append(bn)
     return (q + " " + " ".join(hits)) if hits else q
 
 
@@ -485,7 +712,7 @@ def report_gold_scoreability(questions, corpus, verbose=True):
 
 # ------------------------------------------------------------------- canary
 
-def canary_selftest(verbose=True):
+def canary_selftest(verbose=True, corpus=None):
     """Convention 3. Both canaries are failures observed IN THIS REPO.
 
     1. canon() erases Bengali digits. Measured 14 Sep 2026: a matcher moved
@@ -530,18 +757,266 @@ def canary_selftest(verbose=True):
         print(f"  canary figure_query_routing figure={fig} topic={top}  "
               f"[{'PASS' if fig and not top else 'FAIL'}]")
     ok &= fig and not top
+
+    if corpus is not None:
+        ok &= cache_guard_canary(corpus, verbose=verbose)
     return ok
+
+
+def cache_guard_canary(corpus, verbose=True):
+    """Convention 3, from the near-miss of 2026-09-25 -- not an invented one.
+
+    The fixture is the real thing: the live corpus, with ONE chunk's sha put
+    back to the value the manifest held before the R1 heading fix. Chunk
+    count identical on both sides, which is exactly why the old count guard
+    would have waved it through.
+
+    Four conditions, and the positive control is not optional. A guard that
+    refuses every cache is as broken as one that accepts every cache, and
+    only the second kind gets noticed -- the first just looks slow.
+
+      1. the unmodified fingerprint is ACCEPTED        (positive control)
+      2. the observed pre-R1 sha is REFUSED            (the real failure)
+      3. the refusal NAMES the chunk                   (a count is not enough)
+      4. a changed chunk count is still REFUSED        (keep the old power)
+
+    Condition 0, checked first: the fixture must actually differ from
+    today's value. If R1 were ever reverted the two would coincide, the
+    canary would go green on a no-op, and it would be testing nothing.
+    """
+    cid, old_sha = CACHE_NEAR_MISS
+    docs = [index_text(c) for c in corpus]
+    want = cache_fingerprint(corpus, docs)
+    if cid not in want["chunk_ids"]:
+        if verbose:
+            print(f"  canary cache_guard       CANNOT RUN -- {cid} is not in "
+                  f"this corpus, so the fixture is not the observed failure "
+                  f"[FAIL]")
+        return False
+    i = want["chunk_ids"].index(cid)
+    if want["sha256"][i] == old_sha:
+        if verbose:
+            print(f"  canary cache_guard       CANNOT RUN -- {cid} still has "
+                  f"its pre-R1 sha, so the fixture tests nothing  [FAIL]")
+        return False
+
+    accept, _, _ = cache_diff(dict(want), want)
+    stale = dict(want, sha256=list(want["sha256"]))
+    stale["sha256"][i] = old_sha
+    refuse, why, moved = cache_diff(stale, want)
+    named = cid in moved
+    short = dict(want, chunk_ids=want["chunk_ids"][:-1],
+                 sha256=want["sha256"][:-1])
+    refuse_count, _, _ = cache_diff(short, want)
+
+    good = accept and not refuse and named and not refuse_count
+    if verbose:
+        print(f"  canary cache_guard       same count ({len(want['chunk_ids'])}"
+              f"=={len(stale['chunk_ids'])}), 1 sha differs -> "
+              f"{'REFUSED' if not refuse else 'ACCEPTED'} ({why}); "
+              f"names {cid}={named}; clean cache accepted={accept}; "
+              f"short cache refused={not refuse_count}  "
+              f"[{'DETECTED' if good else 'MISSED'}]")
+    return good
 
 
 # ---------------------------------------------------------------- benchmark
 
 def _encode(model, texts, kind, batch=BATCH):
     import numpy as np
+    # An API model carries its own batching, pacing and task types.
+    if hasattr(model, "encode_task"):
+        return model.encode_task(texts, kind)
     pre = PREFIX.get(getattr(model, "_bfa_name", ""), ("", ""))
     p = pre[0] if kind == "query" else pre[1]
     v = model.encode([p + t for t in texts], batch_size=batch,
                      normalize_embeddings=True, show_progress_bar=False)
     return np.asarray(v, dtype="float32")
+
+
+# ------------------------------------------------------- the Gemini backend
+# WHY A HOSTED EMBEDDER AT ALL. This machine has 7.7G and cannot hold the
+# toolchain and an embedding model at once (see the journal, 4f): LaBSE needs
+# ~2G to load and the first index rebuild of 2026-09-25 died in
+# materialize_tensors with MemoryError, succeeding only on a retry with
+# nothing else running. An API embedder moves that cost off the box entirely
+# and lets the app start without torch.
+#
+# IT IS A DROP-IN, NOT A SECOND PIPELINE. load_model returns an object with
+# the one method _encode needs, so build(), benchmark_one() and the retriever
+# are untouched and the two models stay comparable by construction. A second
+# encode path is a second thing to drift.
+GEMINI_EMBED_MODEL = "gemini-embedding-001"
+GEMINI_DIM = 768
+# RETRIEVAL_DOCUMENT and RETRIEVAL_QUERY are an ASYMMETRIC pair: the same
+# text embeds differently depending on which side it is on, which is the
+# point of them. Getting them the wrong way round does not error, it just
+# retrieves worse -- so the canary asserts the pair is actually asymmetric.
+GEMINI_TASK = {"query": "RETRIEVAL_QUERY", "passage": "RETRIEVAL_DOCUMENT"}
+# Batch by CHARACTERS, not by item count. The free tier's binding limit is
+# tokens per minute, not requests: a batch of 32 real chunks (~60k chars)
+# returns 429 RESOURCE_EXHAUSTED while a batch of 8 (~14k) succeeds, and a
+# fixed item count would fail on long chunks and waste quota on short ones.
+GEMINI_CHARS_PER_REQ = 9_000
+GEMINI_PAUSE = 2.5          # keeps a long build under 100 requests/minute
+
+
+class GeminiEmbedder:
+    """Duck-typed stand-in for a SentenceTransformer, API-backed."""
+
+    # RETRY BUDGET IS A UX DECISION, NOT A NETWORKING ONE.
+    #
+    # The build is a batch job and can afford to wait out a per-minute cap:
+    # six attempts on a 1.8x ladder from 20s is about 7.5 minutes, and a
+    # build that pauses beats a build that has to start again.
+    #
+    # A QUERY CANNOT. The same ladder in front of a person asking a question
+    # means 7.5 minutes of a spinner before the Bengali "try again later"
+    # appears -- measured here by a probe that outran its own timeout and
+    # printed nothing at all. Worse, a DAILY quota will not recover inside
+    # any ladder, so every one of those waits is spent on an outcome that
+    # was already decided. Interactive callers fail fast; build() opts in.
+    ATTEMPTS_INTERACTIVE = 2
+    ATTEMPTS_BATCH = 6
+
+    def __init__(self, name=GEMINI_EMBED_MODEL, dim=GEMINI_DIM, key=None,
+                 max_attempts=None):
+        from google.genai import Client
+        from generate import load_key
+        self._bfa_name = name
+        self.name, self.dim = name, dim
+        self.client = Client(api_key=key or load_key("gemini"))
+        self.requests = 0
+        self.max_attempts = max_attempts or self.ATTEMPTS_INTERACTIVE
+
+    def _batches(self, texts):
+        cur, n = [], 0
+        for t in texts:
+            if cur and n + len(t) > GEMINI_CHARS_PER_REQ:
+                yield cur
+                cur, n = [], 0
+            cur.append(t)
+            n += len(t)
+        if cur:
+            yield cur
+
+    def _one(self, batch, task):
+        from google.genai import types
+        cfg = types.EmbedContentConfig(task_type=task,
+                                       output_dimensionality=self.dim)
+        # Free-tier 429s are per-minute, so the first wait has to be a
+        # minute-scale wait. 2s was optimistic and just burned attempts.
+        delay = 20.0
+        for attempt in range(self.max_attempts):
+            try:
+                r = self.client.models.embed_content(
+                    model=self.name, contents=batch, config=cfg)
+                self.requests += 1
+                return [e.values for e in r.embeddings]
+            except Exception as exc:                      # noqa: BLE001
+                # generate._status_of owns "where does this provider put the
+                # status code"; providers disagree and a second copy would
+                # drift from it.
+                from generate import _status_of
+                status = _status_of(exc)
+                last = attempt == self.max_attempts - 1
+                if status != 429 or last:
+                    raise EmbeddingUnavailable(
+                        f"{self.name}: {type(exc).__name__}: "
+                        f"{str(exc)[:200]}") from exc
+                time.sleep(delay)
+                delay *= 1.8
+        raise EmbeddingUnavailable(f"{self.name}: retries exhausted")
+
+    def encode_task(self, texts, kind):
+        """-> float32 (n, dim), L2-NORMALISED.
+
+        THE NORMALISATION IS NOT OPTIONAL AND IS NOT AUTOMATIC. Only the
+        full 3072-dimension output of gemini-embedding-001 comes back unit
+        length; a truncated 768 arrives at ~0.59 and Google documents that
+        the caller must re-normalise. Everything downstream here assumes
+        unit vectors -- faiss.IndexFlatIP IS cosine only for unit vectors,
+        rank_hybrid calls its dense term a cosine, and the abstention floor
+        is a number on that scale. Skipping this does not raise; it quietly
+        rescales every score and moves the floor out from under itself.
+        """
+        import numpy as np
+        task = GEMINI_TASK["query" if kind == "query" else "passage"]
+        out = []
+        batches = list(self._batches(list(texts)))
+        for i, b in enumerate(batches):
+            out += self._one(b, task)
+            if len(batches) > 4 and (i % 10 == 0 or i == len(batches) - 1):
+                print(f"    embedded {len(out)}/{len(texts)} "
+                      f"({i + 1}/{len(batches)} requests)", flush=True)
+            if i < len(batches) - 1:
+                time.sleep(GEMINI_PAUSE)
+        V = np.asarray(out, dtype="float32")
+        n = np.linalg.norm(V, axis=1, keepdims=True)
+        return V / np.maximum(n, 1e-12)
+
+    # sentence-transformers compatibility: build()/benchmark never call this
+    # with anything but the two kinds above, but a bare .encode must not
+    # silently embed a query as a passage.
+    def encode(self, texts, **kw):
+        raise NotImplementedError(
+            "GeminiEmbedder needs the task type: call encode_task(texts, "
+            "'query'|'passage'). An untyped embed would put a question on "
+            "the document side of an asymmetric model.")
+
+
+class EmbeddingUnavailable(RuntimeError):
+    """The hosted embedder could not be reached, or the quota is spent.
+
+    Carried as its own type so the app can show one plain Bengali sentence
+    instead of a traceback -- see app.py. Retrieval without an embedder is
+    not a degraded answer, it is no answer, and the difference has to reach
+    the reader as a sentence rather than as a stack.
+    """
+
+
+def gemini_canary(verbose=True, model=None):
+    """Convention 3, for the two ways this backend fails without raising.
+
+    1. NORMALISATION. A truncated 768-dim vector arrives at ~0.59 length.
+       Used unnormalised it still ranks, still returns five chunks, and
+       still produces a float the floor is compared against -- it is simply
+       on a different scale. Asserted both ways: raw is NOT unit, and what
+       encode_task returns IS.
+    2. TASK ASYMMETRY. RETRIEVAL_QUERY and RETRIEVAL_DOCUMENT must produce
+       DIFFERENT vectors for the same string. If a future SDK silently
+       ignored task_type, the pair would collapse to one embedding and the
+       asymmetry the model is trained for would be gone -- with no error and
+       a small, plausible recall loss.
+
+    Costs three API calls. Run only on the gemini path.
+    """
+    import numpy as np
+    from google.genai import types
+    m = model or load_model(GEMINI_EMBED_MODEL)
+    probe = "ঋণ নিরাপত্তা বিমার প্রিমিয়াম কত?"
+    raw = m.client.models.embed_content(
+        model=m.name, contents=[probe],
+        config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT",
+                                        output_dimensionality=m.dim))
+    rawn = float(np.linalg.norm(np.asarray(raw.embeddings[0].values)))
+    not_unit = abs(rawn - 1.0) > 0.01
+    unit = abs(float(np.linalg.norm(m.encode_task([probe], "passage")[0])) - 1.0) < 1e-4
+    q = m.encode_task([probe], "query")[0]
+    d = m.encode_task([probe], "passage")[0]
+    asym = float(np.dot(q, d)) < 0.999
+    ok = not_unit and unit and asym
+    if verbose:
+        print(f"  canary gemini_normalise  raw 768-dim norm={rawn:.3f} "
+              f"(not unit={not_unit}); after encode_task unit={unit}  "
+              f"[{'DETECTED' if not_unit and unit else 'MISSED'}]")
+        print(f"  canary gemini_task_types query vs passage cos={float(np.dot(q, d)):.4f} "
+              f"-- asymmetric={asym}  [{'PASS' if asym else 'FAIL'}]")
+    return ok
+
+
+def is_api_model(name):
+    return (name or "").startswith("gemini-")
 
 
 def load_model(name):
@@ -557,6 +1032,8 @@ def load_model(name):
     one died with "The paging file is too small for this operation to
     complete" (Windows os error 1455) -- see benchmark_subprocs().
     """
+    if is_api_model(name):
+        return GeminiEmbedder(name)
     from sentence_transformers import SentenceTransformer
     m = SentenceTransformer(name, device="cpu")
     m.max_seq_length = min(getattr(m, "max_seq_length", 512) or 512, MAX_SEQ)
@@ -564,8 +1041,22 @@ def load_model(name):
     return m
 
 
-def rank_hybrid(dense_q, dense_d, sparse_scores, figure):
-    """Weighted sum of L2-normalised dense cosine and min-max'd BM25."""
+def rank_hybrid(dense_q, dense_d, sparse_scores, figure, weights=None):
+    """Weighted sum of L2-normalised dense cosine and min-max'd BM25.
+
+    THE WEIGHTS BELONG TO THE INDEX, NOT TO THIS MODULE. They were tuned for
+    LaBSE, whose dense side barely worked -- dense recall@5 0.062 -- so BM25
+    had to carry the retrieval and 0.4/0.6 on figure queries was correct FOR
+    THAT MODEL. On a strong dense model the same numbers spend recall
+    defending a weakness that is not there. A single global pair would mean
+    switching BFA_INDEX_DIR back to LaBSE silently applied the new model's
+    weights to the old model's vectors, which is a worse failure than either
+    setting alone: nothing would raise, and retrieval would just get worse.
+
+    `weights` is (w_dense_topic, w_dense_figure) from the index's model.json.
+    An index that does not carry them -- every index built before this --
+    falls back to the module constants, so their behaviour is unchanged.
+    """
     import numpy as np
     d = dense_d @ dense_q
     s = np.asarray(sparse_scores, dtype="float32")
@@ -573,8 +1064,12 @@ def rank_hybrid(dense_q, dense_d, sparse_scores, figure):
         s = (s - s.min()) / (s.max() - s.min())
     else:
         s = np.zeros_like(s)
-    wd, ws = ((W_DENSE_FIGURE, W_SPARSE_FIGURE) if figure
-              else (W_DENSE_TOPIC, W_SPARSE_TOPIC))
+    if weights:
+        wd = weights[1] if figure else weights[0]
+        ws = 1.0 - wd
+    else:
+        wd, ws = ((W_DENSE_FIGURE, W_SPARSE_FIGURE) if figure
+                  else (W_DENSE_TOPIC, W_SPARSE_TOPIC))
     return wd * d + ws * s
 
 
@@ -585,7 +1080,143 @@ def _slug(name):
     return name.replace("/", "__")
 
 
-def benchmark_one(name, corpus, questions, ks=(1, 3, 5, 10)):
+# --------------------------------------------- the document-matrix cache
+#
+# INSTANCE 17, AND THE MOST DANGEROUS SO FAR. Until 2026-09-25 the cache was
+# guarded by one line:
+#
+#     if D.shape[0] != len(docs):       # corpus changed under the cache
+#
+# -- a COUNT. On 2026-09-25 the R1 heading fix rewrote 80 of 867 chunks and
+# left the count at 867 on both sides. 867 == 867, so the guard would have
+# passed, build() would have reused the old matrix, and the "rebuilt" index
+# would have carried PRE-FIX vectors for those 80 chunks while reporting
+# success. Nothing would have raised, and retrieval would have been quietly
+# scored against text that no longer existed. It was caught by hand before
+# the rebuild, not by any check.
+#
+# THE SHAPE, which is the part worth remembering: a guard that tests the
+# CHEAP property (how many) and passes while the EXPENSIVE one (which
+# content) is wrong. Same family as the duplicate-crowding metric that
+# counted distinct chunk_ids when twins always have different ids, and as
+# every other entry on this list.
+#
+# So the cache is keyed on CONTENT:
+#   - sha256 of each chunk's display_text, per chunk. By construction this is
+#     the value dedupe.py records in the manifest, because it is the same
+#     function on the same input -- imported, not reimplemented, so the two
+#     cannot drift.
+#   - one digest over the exact strings handed to the encoder, which also
+#     catches a change in display_norm or the digit twin that leaves
+#     display_text untouched. The per-chunk shas cannot see that; they are
+#     about the corpus, and this is about the encoder input.
+#
+# A refusal NAMES THE CHUNKS. "cache refused" with no list is how you end up
+# deleting the cache to make the message go away.
+CACHE_VERSION = 2   # 1 was the count-only guard and wrote no fingerprint
+
+# The real near-miss, for the canary. dabi_2025_0034 is one of the 80 chunks
+# R1 changed; this is its sha as the manifest recorded it BEFORE that run.
+CACHE_NEAR_MISS = (
+    "dabi_2025_0034",
+    "8e79af4509043824a3f552d0c0da83eb857d574e5c69d8735da596c671999663",
+)
+
+
+def _cache_meta(cache):
+    return cache.with_suffix(".meta.json")
+
+
+def cache_fingerprint(corpus, docs):
+    """What the matrix on disk has to still be true of to be reusable."""
+    from dedupe import manifest_sha   # one definition of the chunk sha
+    h = hashlib.sha256()
+    for t in docs:
+        h.update(t.encode("utf-8"))
+        h.update(b"\x00")
+    return {"version": CACHE_VERSION,
+            "chunk_ids": [c["chunk_id"] for c in corpus],
+            "sha256": [manifest_sha(c.get("display_text") or c.get("text") or "")
+                       for c in corpus],
+            "docs_sha": h.hexdigest()}
+
+
+def cache_diff(have, want):
+    """-> (reusable, why, [chunk_ids that moved]). Never 'probably fine'."""
+    if not have:
+        return False, "no fingerprint beside the matrix (written by an older build)", []
+    if have.get("version") != want["version"]:
+        return (False, "fingerprint version %s, need %s"
+                % (have.get("version"), want["version"]), [])
+    hid = list(have.get("chunk_ids") or [])
+    wid = want["chunk_ids"]
+    hsha = dict(zip(hid, have.get("sha256") or []))
+    wsha = dict(zip(wid, want["sha256"]))
+    changed = [i for i in wid if i in hsha and hsha[i] != wsha[i]]
+    added = [i for i in wid if i not in hsha]
+    removed = [i for i in hid if i not in wsha]
+    if changed or added or removed:
+        bits = []
+        if changed:
+            bits.append("%d chunk(s) changed" % len(changed))
+        if added:
+            bits.append("%d added" % len(added))
+        if removed:
+            bits.append("%d removed" % len(removed))
+        return False, ", ".join(bits), changed + added + removed
+    if len(hid) != len(wid):
+        return False, "chunk count %d, need %d" % (len(hid), len(wid)), []
+    if have.get("docs_sha") != want["docs_sha"]:
+        return False, ("every chunk sha matches but the encoder input digest "
+                       "differs -- the normaliser or the digit twin changed"), []
+    return True, "content identical", []
+
+
+def cache_load(cache, corpus, docs, verbose=True):
+    """The cached matrix, or None with a reason printed. Never a guess."""
+    import numpy as np
+    if not cache.exists():
+        return None
+    meta = _cache_meta(cache)
+    have = None
+    if meta.exists():
+        try:
+            have = json.loads(meta.read_text(encoding="utf-8"))
+        except ValueError:
+            have = None
+    ok, why, moved = cache_diff(have, cache_fingerprint(corpus, docs))
+    if not ok:
+        if verbose:
+            print(f"  cache REFUSED  {cache.name}: {why}")
+            for cid in moved[:12]:
+                print(f"    moved: {cid}")
+            if len(moved) > 12:
+                print(f"    ... and {len(moved) - 12} more")
+            print(f"  re-encoding all {len(docs)} chunks")
+        return None
+    D = np.load(cache)
+    if D.shape[0] != len(docs):
+        # The fingerprint agreed and the matrix did not. That is the two
+        # files being out of step with each other, which is worse than
+        # either one being stale, so it is never reused.
+        if verbose:
+            print(f"  cache REFUSED  {cache.name}: fingerprint matches but the "
+                  f"matrix holds {D.shape[0]} rows for {len(docs)} chunks")
+        return None
+    if verbose:
+        print(f"  cache accepted {cache.name}: {len(docs)} chunks, content identical")
+    return D
+
+
+def cache_save(cache, D, corpus, docs):
+    import numpy as np
+    np.save(cache, D)
+    _cache_meta(cache).write_text(
+        json.dumps(cache_fingerprint(corpus, docs), ensure_ascii=False),
+        encoding="utf-8")
+
+
+def benchmark_one(name, corpus, questions, ks=(1, 3, 5, 10, 30)):
     """Recall@k for ONE model. Meant to be run in its own process.
 
     Caches the document matrix to out/benchmark/<slug>.docs.npy. Encoding 867
@@ -605,18 +1236,14 @@ def benchmark_one(name, corpus, questions, ks=(1, 3, 5, 10)):
     BENCH_DIR.mkdir(parents=True, exist_ok=True)
     cache = BENCH_DIR / f"{_slug(name)}.docs.npy"
     m = load_model(name)
-    if cache.exists():
-        D = np.load(cache)
-        if D.shape[0] != len(docs):       # corpus changed under the cache
-            D = None
-    else:
-        D = None
+    D = cache_load(cache, corpus, docs)
     if D is None:
         D = _encode(m, docs, "passage")
-        np.save(cache, D)
+        cache_save(cache, D, corpus, docs)
     res = {f"dense@{k}": 0 for k in ks}
     res.update({f"hybrid@{k}": 0 for k in ks})
     total = 0
+    per_q = {}
     for q in scoreable:
         gold = set().union(*[v for v in located[q["id"]].values() if v])
         if not gold:
@@ -625,6 +1252,7 @@ def benchmark_one(name, corpus, questions, ks=(1, 3, 5, 10)):
         qt = query_text(expand_banglish(q["question_bn"]))
         qv = _encode(m, [qt], "query")[0]
         fig = is_figure_query(q["question_bn"])
+        row = {"n_gold": len(gold), "figure_query": bool(fig)}
         for label, sc in (("dense", D @ qv),
                           ("hybrid",
                            rank_hybrid(qv, D, bm25.scores(qt), fig))):
@@ -632,11 +1260,18 @@ def benchmark_one(name, corpus, questions, ks=(1, 3, 5, 10)):
             for k in ks:
                 if gold & {ids[i] for i in order[:k]}:
                     res[f"{label}@{k}"] += 1
-    return {"model": name, "n": total,
-            "recall": {k: v / max(total, 1) for k, v in res.items()}}
+            # Rank of the FIRST gold chunk over the whole corpus. Not capped
+            # at max(ks): a capped rank cannot tell 31 from 800, and the
+            # gap between those two is the whole question about dense.
+            row[f"{label}_rank"] = next(
+                (i for i, j in enumerate(order, 1) if ids[j] in gold), None)
+        per_q[q["id"]] = row
+    return {"model": name, "n": total, "ks": list(ks),
+            "recall": {k: v / max(total, 1) for k, v in res.items()},
+            "hits": dict(res), "per_question": per_q}
 
 
-def benchmark_subprocs(models, gold_paths):
+def benchmark_subprocs(models, gold_paths, ks=(1, 3, 5, 10, 30)):
     """Run each model in a fresh process and collect the JSON it prints.
 
     Not premature engineering: three large models in one process exhausted
@@ -650,12 +1285,22 @@ def benchmark_subprocs(models, gold_paths):
     for name in models:
         done = BENCH_DIR / f"{_slug(name)}.json"
         if done.exists():                 # resume: already scored
-            rows.append(json.loads(done.read_text(encoding="utf-8")))
-            print(f"  [cached] {name}")
-            continue
+            cached = json.loads(done.read_text(encoding="utf-8"))
+            # A cache written before --ks existed answers a DIFFERENT
+            # question: fewer ks, no per-question ranks, and possibly a
+            # different gold set. Reusing it would print a stale number
+            # under a new heading, which is exactly the failure this repo
+            # keeps recording. Re-run instead of reusing silently.
+            if (cached.get("ks") == list(ks)
+                    and cached.get("per_question") is not None):
+                rows.append(cached)
+                print(f"  [cached] {name}")
+                continue
+            print(f"  [stale cache, re-running] {name}", flush=True)
         print(f"  [running] {name} ...", flush=True)
         cmd = [sys.executable, __file__, "--benchmark-one", name,
-               "--gold", *gold_paths]
+               "--gold", *gold_paths,
+               "--ks", *[str(k) for k in ks]]
         r = subprocess.run(cmd, capture_output=True, text=True,
                            encoding="utf-8", errors="replace")
         line = next((l for l in r.stdout.splitlines()
@@ -672,7 +1317,7 @@ def benchmark_subprocs(models, gold_paths):
     return rows
 
 
-def print_benchmark(rows, ks=(1, 3, 5, 10)):
+def print_benchmark(rows, ks=(1, 3, 5, 10, 30)):
     ns = {r["n"] for r in rows if r.get("recall")}
     tail = f", n={ns.pop()} scoreable questions" if len(ns) == 1 else ""
     print(f"\nMODEL BENCHMARK -- recall@k of gold-fact chunks{tail}")
@@ -693,7 +1338,7 @@ def print_benchmark(rows, ks=(1, 3, 5, 10)):
           f"{W_DENSE_FIGURE}/{W_SPARSE_FIGURE} (dense/sparse)")
 
 
-def build(name, corpus, use_cache=True):
+def build(name, corpus, use_cache=True, out_dir=None):
     """Write a FAISS index plus the sidecar the retriever needs.
 
     Reuses out/benchmark/<slug>.docs.npy when it matches the corpus. Encoding
@@ -705,20 +1350,17 @@ def build(name, corpus, use_cache=True):
 
     docs = [index_text(c) for c in corpus]
     cache = BENCH_DIR / f"{_slug(name)}.docs.npy"
-    D = None
-    if use_cache and cache.exists():
-        D = np.load(cache)
-        if D.shape[0] != len(docs):
-            D = None
-        else:
-            print(f"  reusing cached document matrix {cache}")
+    D = cache_load(cache, corpus, docs) if use_cache else None
     if D is None:
         m = load_model(name)
+        if hasattr(m, "max_attempts"):
+            m.max_attempts = m.ATTEMPTS_BATCH   # a build can afford to wait
         D = _encode(m, docs, "passage")
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out = Path(out_dir) if out_dir else OUT_DIR
+    out.mkdir(parents=True, exist_ok=True)
     ix = faiss.IndexFlatIP(D.shape[1])
     ix.add(D)
-    faiss.write_index(ix, str(OUT_DIR / "dense.faiss"))
+    faiss.write_index(ix, str(out / "dense.faiss"))
     # dup_group travels INTO the index, because the retriever collapses on it
     # and meta.jsonl is what the retriever loads. Leaving it out is how the
     # annotation went missing the first time: computed by dedupe.py, written to
@@ -730,15 +1372,20 @@ def build(name, corpus, use_cache=True):
              "display_text": c.get("display_text") or c.get("text") or "",
              "index_text": t}
             for c, t in zip(corpus, docs)]
-    (OUT_DIR / "meta.jsonl").write_text(
+    (out / "meta.jsonl").write_text(
         "\n".join(json.dumps(x, ensure_ascii=False) for x in meta),
         encoding="utf-8")
-    (OUT_DIR / "model.json").write_text(
+    wt, wf = INDEX_WEIGHTS.get(name, (W_DENSE_TOPIC, W_DENSE_FIGURE))
+    (out / "model.json").write_text(
         json.dumps({"model": name, "dim": int(D.shape[1]),
                     "normaliser": "display_norm",
-                    "digit_twin": True}, ensure_ascii=False),
+                    "digit_twin": True,
+                    # Recorded so the retriever uses the weights this index
+                    # was measured at, whatever the module defaults become.
+                    "w_dense_topic": wt, "w_dense_figure": wf},
+                   ensure_ascii=False),
         encoding="utf-8")
-    print(f"index -> {OUT_DIR}  ({len(meta)} chunks, dim {D.shape[1]})")
+    print(f"index -> {out}  ({len(meta)} chunks, dim {D.shape[1]})")
     return len(meta)
 
 
@@ -762,19 +1409,28 @@ def main():
                              "gold/livestock_additions.yaml",
                              "gold/bootstrap_livestock_grow.yaml"])
     ap.add_argument("--benchmark", action="store_true")
+    ap.add_argument("--ks", nargs="*", type=int, default=[1, 3, 5, 10, 30],
+                    help="recall cut-offs for --benchmark")
     ap.add_argument("--benchmark-one", metavar="MODEL",
                     help="internal: score one model, print BENCHMARK_JSON")
     ap.add_argument("--build", metavar="MODEL")
+    ap.add_argument("--out-dir", metavar="DIR",
+                    help="write the index here instead of $BFA_INDEX_DIR "
+                         "(default out/index). Lets two models' indexes "
+                         "coexist so a switch costs a flag, not an encode.")
     ap.add_argument("--models", nargs="*", default=MODELS)
     args = ap.parse_args()
 
+    # Read before the canaries so the cache canary can be built from the real
+    # corpus. Reading is not scanning: nothing below has used it yet.
+    corpus = load_corpus()
+
     print("CANARY")
-    if not canary_selftest():
+    if not canary_selftest(corpus=corpus):
         print("FATAL: embed failed its own canary. The index would be built "
-              "on the wrong normaliser.")
+              "on the wrong normaliser, or on a stale document matrix.")
         return 2
 
-    corpus = load_corpus()
     print(f"\ncorpus ......... {len(corpus)} chunks")
     print("  by manual .... " + " / ".join(
         f"{k}:{v}" for k, v in Counter(manual_of(c) for c in corpus).items()))
@@ -787,13 +1443,23 @@ def main():
         return 1
 
     if args.benchmark_one:
-        res = benchmark_one(args.benchmark_one, corpus, questions)
+        res = benchmark_one(args.benchmark_one, corpus, questions,
+                            ks=tuple(args.ks))
         print("BENCHMARK_JSON " + json.dumps(res, ensure_ascii=False))
         return 0
     if args.benchmark:
-        print_benchmark(benchmark_subprocs(args.models, args.gold))
+        print_benchmark(benchmark_subprocs(args.models, args.gold,
+                                           ks=tuple(args.ks)),
+                        ks=tuple(args.ks))
     if args.build:
-        build(args.build, corpus)
+        if is_api_model(args.build):
+            print("\nCANARY -- hosted embedder")
+            if not gemini_canary():
+                print("FATAL: the hosted embedder failed its canary. An index "
+                      "built now would be on the wrong scale or the wrong "
+                      "task type.")
+                return 2
+        build(args.build, corpus, out_dir=args.out_dir)
     if not (args.benchmark or args.build or args.benchmark_one):
         print("\nnothing to do: pass --benchmark or --build MODEL")
     return 0

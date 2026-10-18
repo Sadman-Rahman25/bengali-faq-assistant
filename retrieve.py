@@ -47,6 +47,7 @@ Usage:
 import argparse
 import csv
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -56,7 +57,11 @@ import redact
 from embed import (BM25, expand_banglish, index_text, is_figure_query,
                    query_text, rank_hybrid)
 
-INDEX_DIR = Path("out/index")
+# Which index is live. Set BFA_INDEX_DIR to switch models without rebuilding:
+#   out/index_labse    dim  768
+#   out/index_bge_m3   dim 1024
+# Read once at import, like every other module constant here.
+INDEX_DIR = Path(os.environ.get("BFA_INDEX_DIR", "out/index"))
 CATALOGUE = Path("products_catalogue.csv")
 
 
@@ -115,15 +120,32 @@ class Index:
     def __init__(self, d=INDEX_DIR):
         import faiss
         import numpy as np
-        from sentence_transformers import SentenceTransformer
         cfg = json.loads((d / "model.json").read_text(encoding="utf-8"))
         self.cfg = cfg
         self.meta = [json.loads(l) for l in
                      (d / "meta.jsonl").read_text(encoding="utf-8").splitlines()
                      if l.strip()]
         self.faiss = faiss.read_index(str(d / "dense.faiss"))
-        self.model = SentenceTransformer(cfg["model"])
+        # A gemini-* index is served by the hosted embedder; anything else is
+        # a local sentence-transformer, constructed EXACTLY as before.
+        #
+        # The branch is deliberately additive rather than a single call to
+        # embed.load_model. load_model also pins device="cpu" and caps
+        # max_seq_length, and while both are almost certainly no-ops for
+        # LaBSE here, "almost certainly" is not a thing to assert about the
+        # live index on a machine that currently cannot load LaBSE to check.
+        # The local path is left untouched so it cannot have changed.
+        if embed.is_api_model(cfg["model"]):
+            self.model = embed.load_model(cfg["model"])
+        else:
+            from sentence_transformers import SentenceTransformer
+            self.model = SentenceTransformer(cfg["model"])
         self.model._bfa_name = cfg["model"]
+        # None for an index built before weights were recorded, which makes
+        # rank_hybrid fall back to the module constants -- the behaviour
+        # those indexes were measured with.
+        self.weights = ((cfg["w_dense_topic"], cfg["w_dense_figure"])
+                        if "w_dense_topic" in cfg else None)
         self.bm25 = BM25([m["index_text"] for m in self.meta])
         self._np = np
         # The dense matrix, for filtered re-ranking. 867 chunks is small;
@@ -180,7 +202,7 @@ class Index:
         qv = embed._encode(self.model, [qt], "query")[0]
         fig = is_figure_query(query)
         sparse_raw = self.bm25.scores(qt)
-        scores = rank_hybrid(qv, self.D, sparse_raw, fig)
+        scores = rank_hybrid(qv, self.D, sparse_raw, fig, self.weights)
         # The two sides, kept separately. A fused score alone cannot say
         # WHICH component found a chunk, and that is the first question asked
         # of every miss. rank_hybrid stays the single owner of the weighting;

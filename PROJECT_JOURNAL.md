@@ -2515,6 +2515,128 @@ restatement dropped demonstrated successes. The card now imports
 `gold_eval.citation_accuracy`, which is the only place that rule is written.
 ---
 
+## 4l. Switched to a hosted embedder on an incomplete comparison
+
+**Decided 2026-10-18. The comparison was NOT completed, and the switch was
+made anyway. The reasoning is here so it can be overturned.**
+
+### What was measured, and what was not
+
+`out/index_gemini` was built with `gemini-embedding-001` at 768 dimensions,
+867 chunks, 191 requests, no 429s. It was then scored on the 23 answerable
+recall-scoreable gold questions plus 2 Banglish variants.
+
+**LaBSE could not be scored at all.** Loading it died with
+`OSError 1455, the paging file is too small` -- the ceiling recorded in 4f --
+in a fresh process and again with `low_cpu_mem_usage=True`. The machine was
+at 12.4G committed against a 15.5G limit with 1.4G physical free. So there is
+no same-day, same-corpus LaBSE number to compare against.
+
+The only LaBSE figures that exist are from `out/benchmark/`, **2026-09-19,
+n=16, on the PRE-R1 corpus**:
+
+| | dense@5 | hybrid@1 | hybrid@3 | hybrid@5 |
+|---|---|---|---|---|
+| LaBSE, 2026-09-19, n=16, pre-R1 | **0.062** | 0.312 | 0.500 | 0.562 |
+| Gemini, 2026-10-18, n=23/25, current corpus | **0.800** | 0.478 | 0.652 | 0.696 |
+
+Different question set, different corpus revision, different n. Under 4b's
+own rule -- never read an artefact without checking when it was produced --
+these two rows are not a comparison and are not presented as one.
+
+### Why we switched regardless
+
+Three reasons, in order of weight:
+
+1. **LaBSE does not fit.** Staying on it does not mean keeping the old
+   behaviour; it means the app does not run on this machine. A measured
+   comparison between a model that works and a model that cannot load is not
+   available at any n.
+2. **The gap is too large for the caveats to explain.** Dense recall@5 of
+   0.062 against 0.800 is not a corpus-revision artefact or an n=16/n=23
+   artefact. 0.062 means the dense side found the gold chunk in one question
+   out of sixteen; the journal's own 4a is titled "LaBSE's dense side barely
+   works".
+3. **The score inversion is gone.** On LaBSE the misses scored HIGHER than
+   the hits (median 0.5698 against 0.5567), which is why the floor could
+   only ever guard the degenerate case. On Gemini the hits lead: median
+   0.8031 against 0.7285. The distributions still overlap -- highest miss
+   0.9062 beats lowest hit 0.7002 -- so the floor is still not a confidence
+   signal, but it is no longer pointing the wrong way.
+
+**What would overturn this:** LaBSE scored on the current corpus with the
+same 23 questions, on a machine with ~2.5G free. `BFA_INDEX_DIR=out/index`
+switches back without a rebuild.
+
+### The weights were tuned for a weakness that is gone
+
+LaBSE's weak dense side is why the fusion was 0.8/0.2 on topic queries and
+0.4/0.6 on figure queries: BM25 had to carry the retrieval. Swept on the
+Gemini index over the same 25 questions, dense share 1.0 / 0.8 / 0.6 for
+topic and figure independently:
+
+| topic / figure | bengali @1/@3/@5 | banglish @5 | all @5 |
+|---|---|---|---|
+| **1.0 / 1.0** | **12/17/19** | **2/2** | **21** |
+| 1.0 / 0.8 | 14/17/18 | 2/2 | 20 |
+| 1.0 / 0.6 | 14/17/18 | 2/2 | 20 |
+| 0.8 / 0.8 | 11/15/16 | 2/2 | 18 |
+| 0.6 / 0.6 | 10/16/17 | 1/2 | 19 |
+
+**Pure dense was adopted.** It is best at k=5 -- the k the app actually uses,
+and the one that decides whether the right chunk reaches the prompt -- best
+on the five figure queries (3 hits against 2 at every weighted setting), and
+the simplest cell in the grid. At n=23 that last point is the tie-break:
+1.0/0.8 is two questions better at @1 and one worse at @5, and neither
+difference is evidence.
+
+**The Banglish worry did not materialise.** BM25 is where the vocabulary fix
+from 4g lives, so pure dense could have lost it. It held 2/2 at every setting
+with topic weight >= 0.8 and only dropped at 0.6. n=2 is too small to call
+this settled, and it is the first thing to re-check when more Banglish
+variants exist.
+
+**The weights now live in the index, not in the module.** `model.json`
+carries `w_dense_topic` / `w_dense_figure`, and `rank_hybrid` takes them as
+an argument. A single global pair would have meant that switching
+`BFA_INDEX_DIR` back to LaBSE silently applied pure-dense weights to the
+model whose dense side scores 0.062 -- nothing would raise, and retrieval
+would simply get much worse. Indexes built before this carry no weights and
+fall back to the module constants, so their behaviour is unchanged.
+
+### The floor is NOT re-derived, and that is a loose end
+
+At the old weights the Gemini floor came out at 0.7002. That number is not
+used, because the weights changed in the same session: at 1.0/1.0 the fused
+score IS the cosine, and 0.7002 was measured on a different quantity.
+Gemini cosines for related Bengali text sit in the same 0.7-0.9 band, so
+applying it unchanged would abstain on ordinary answers.
+
+`app.INDEX_FLOOR` therefore sets **0.0** for this index, which preserves
+exactly what the LaBSE floor actually delivered -- the journal records that
+at 0.4044 it "fires on nothing in this sample" -- while `not chunks` still
+catches the degenerate case. It could not be re-derived on the day because
+the embedding quota was spent building the index. Re-run
+`derive_floor.py out/index_gemini` when it resets.
+
+### Two things the hosted path got wrong first
+
+**The 768-dimension output is not unit length.** It arrives at ~0.589; only
+the full 3072 is pre-normalised. `IndexFlatIP` is cosine ONLY for unit
+vectors, and the floor is a number on that scale. Unnormalised, nothing
+raises -- every score is simply rescaled and the floor moves out from under
+itself. Canaried both ways.
+
+**The retry ladder was a batch decision applied to an interactive path.**
+Six attempts on a 1.8x ladder from 20s is 7.5 minutes, which is right for a
+build and absurd in front of a person asking a question -- and a DAILY quota
+will not recover inside any ladder, so every one of those waits is spent on
+an outcome already decided. Found by a probe that outran its own timeout and
+printed nothing. Interactive callers now get 2 attempts; `build()` opts into
+6.
+
+---
+
 ## 4k. A clause number is not a topic identifier
 
 The product registry arrived with four rules to enforce (see `registry.py`),
