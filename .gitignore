@@ -20,3 +20,8 @@ check_*.html
 headings_*.md
 audit_*.csv
 bucket_*.json
+
+# the quiz build's record of what it sent the model: the FULL TEXT of the
+# manual chunks it used. Manual bodies stay out of git (see data/processed
+# above), and the data-protection decision is still pending.
+quiz/_sent_to_model.jsonl
