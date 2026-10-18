@@ -52,6 +52,7 @@ import sys
 from pathlib import Path
 
 import embed
+from bnnorm import canon
 from dedupe import clause_of, collapse
 import redact
 from embed import (BM25, expand_banglish, index_text, is_figure_query,
@@ -105,8 +106,24 @@ def product_status(path=CATALOGUE):
 
 
 def products_named(text):
-    """Product keys named in text, via productmatch's own patterns."""
+    """Product keys named in text, via productmatch's own patterns.
+
+    THE TEXT IS canon()'d FIRST (Convention 4: canon the text where you
+    can). It was matched raw, and that failed on loan_18_month's OWN display
+    name, ১৮ মাস মেয়াদি লোন, for two independent reasons -- either one alone
+    was enough. Measured:
+
+      digits  the pattern carries ASCII 18; a question types ১৮. canon folds
+              digits, raw text does not.
+      nukta   with ASCII digits, precomposed য় (U+09DF) still missed and only
+              the decomposed U+09AF U+09BC matched. canon gives one form.
+
+    Raw, 1 of the NAMED products failed to match its own name; canon'd, 0.
+    registry.products_named already canon()'d -- which is why the registry
+    found this product while this function did not.
+    """
     import productmatch as pm
+    text = canon(text or "")
     hits = []
     for key, _n, _a, pat in pm.NAMED:
         if pm.compile_pat(pat).search(text):
