@@ -2709,6 +2709,254 @@ sufficient test has to touch the content.
 
 ---
 
+## 4m. Restyled to the brand book, without the brand book
+
+`app.py` was restyled to BRAND.md and given an English/বাংলা switch and a
+light/dark switch. Answer behaviour is unchanged: the same retrieval, the
+same guard, the same prompt, the same post-filter, and answers still come
+back in the language of the question with roles, products and clause
+numbers in Bengali. What changed is the chrome, the strings and the colours.
+
+### The source document was not here
+
+**`docs/BRAND.md` does not exist on this machine.** It is not in the
+project, and a search of E: and the user profile for the brand book, a BRAC
+font pack, Kohinoor or Helvetica Neue files, or an export of
+`Brand motif.indd` found nothing. Every brand value in this restyle
+therefore comes from the restyle brief's quotation of BRAND.md, not from
+BRAND.md. Where the brief quoted a code, that code is used. Where the brief
+only pointed at a section (2.1 logo files, 3.2 status meanings, 5 motif,
+10.2 spelling), nothing could be checked against it. **Re-read this entry
+against BRAND.md when it is to hand.**
+
+The brief also said to replace `#B5006A` everywhere. It occurs nowhere in
+the code, so there was nothing to replace.
+
+### What is now where
+
+- **`ui_strings.py`** holds every interface string, en and bn, in one
+  table. `t(key, lang)` raises on a missing key rather than falling back to
+  English, because a silent fallback is how one English sentence ends up on a
+  Bengali page. Programme names are filled from `productmatch.PROGRAMME_NAMES`
+  (Convention 2). Ints and floats come out as Bengali numerals in bn;
+  identifiers that merely contain digits (model name, chunk id) do not.
+- **`app.py` `PALETTE`** holds the official codes only. **`THEMES`** maps
+  roles (`--ink`, `--chip-bg`, …) to codes per theme. The stylesheet names
+  roles, never hexes, so a switch changes one `:root` block.
+- **`.streamlit/config.toml`** still pins `base = "light"`, now with
+  official fills. Dark mode is **not** done there: theme options are server
+  config, shared by every session, so one viewer flipping it would flip
+  everyone.
+
+### Colour, as specified
+
+| Role | Light | Dark |
+|---|---|---|
+| ground | `#FFFFFF` | `#27281C` |
+| body text | `#27281C` | `#F3F3F4` |
+| supporting text | `#4D4F53` | `#D9D9DC` |
+| card / border | `#F3F3F4` / `#D9D9DC` | `#34352A`* / `#4D4F53` |
+| magenta, large and non-text | `#EC008C` | `#EC008C` |
+| magenta, small text | `#B8006B` | `#F6B3D6` |
+| citation chip fill / border / text | `#FDE6F2` / `#F6B3D6` / `#B8006B` | `#521F35`* / `#EC008C` / `#F6B3D6` |
+| status active | `#E4F2EE` / `#00594C` | `#00594C` / `#E4F2EE` |
+| status suspended | `#F8E6E6` / `#A41E22` | `#A41E22` / `#F8E6E6` |
+| status updated rule | `#FDE6F2` / `#B8006B` | `#B8006B` / `#FDE6F2` |
+| input fill / border | `#FFFFFF` / `#4D4F53` | `#414237`* / `#D9D9DC` |
+| primary button fill / label | `#B8006B` / `#FFFFFF` | `#F6B3D6` / `#27281C` |
+
+\* **Derived, not official.** Each is a stated blend of two official codes:
+`#34352A` = `#27281C` + 6% `#FFFFFF`; `#414237` = `#27281C` + 12% `#FFFFFF`;
+`#521F35` = `#27281C` + 22% `#EC008C` (`_mix()` in app.py).
+
+**THE WHOLE DARK PALETTE NEEDS BRAND APPROVAL.** BRAND.md has no dark
+palette. Everything in the dark column is an official code or a stated
+blend of two, and in dark mode the status pairs are inverted (the deep
+colour becomes the fill, its tint becomes the text) so that no new hue is
+introduced. Until the brand team signs it off, it is a reading aid.
+
+Removed because they are not in the table: the `#2b2f38` top bar, the
+`#f7f7f7` band, the `#e6e6e6` rule, the `#6b7078` grey, and the quiz's
+`#1f7a4d` / `#8a5157`. The quiz's right/wrong colours are now the teal and
+risk status pairs. Yellow `#FBD00F` is not used.
+
+### Contrast, measured (WCAG 2.x)
+
+| Pair | Ratio | |
+|---|---|---|
+| white on `#EC008C` | **4.25** | large text only |
+| `#EC008C` on white / on `#F3F3F4` | 4.25 / 3.83 | large only: page title 28px bold, stat figure 30px bold |
+| `#B8006B` on white / on chip `#FDE6F2` | 6.46 / 5.47 | small text |
+| `#4D4F53` on `#F3F3F4` | 7.40 | |
+| active / suspended | 7.20 / 6.26 | both themes, inverted pairs equal |
+| dark: `#F3F3F4` on `#27281C` | 13.46 | |
+| dark: `#F6B3D6` on ground / card / chip | 8.77 / 7.31 / 7.68 | |
+| dark: `#EC008C` on ground / on card | **3.52 / 2.93** | ground: large only. Card: fails even as large text, hence `#F6B3D6` for the dark stat figure |
+| white on `#B8006B` (light button) | 6.46 | |
+| `#27281C` on `#F6B3D6` (dark button) | 8.77 | |
+
+### Streamlit's widgets, measured in all four states
+
+Playwright on Chromium, with the browser told the OS prefers **dark** for every
+run, which is the condition that produced black inputs in a white page last
+time. Light-mode results are the regression check; dark-mode results are the
+feature. Values are computed styles, identical in en and bn:
+
+| Widget | Light | Dark |
+|---|---|---|
+| page `stApp` | `#FFFFFF` | `#27281C` |
+| text input root: fill / border | `#FFFFFF` / `#4D4F53` | `#414237` / `#D9D9DC` |
+| text input: text | `#27281C` | `#F3F3F4` |
+| select: fill / border / text | `#FFFFFF` / `#4D4F53` / `#27281C` | `#414237` / `#D9D9DC` / `#F3F3F4` |
+| select menu (open): fill / option text | `#F3F3F4` / `#27281C` | `#34352A` / `#F3F3F4` |
+| radio label / ring off / ring on | `#27281C` / `#4D4F53` / `#EC008C` | `#F3F3F4` / `#D9D9DC` / `#EC008C` |
+| submit button: fill / label | `#B8006B` / `#FFFFFF` | `#F6B3D6` / `#27281C` |
+| tab selected / other / underline | `#B8006B` / `#4D4F53` / `#EC008C` | `#F6B3D6` / `#D9D9DC` / `#EC008C` |
+| switch, selected / unselected | `#B8006B`+`#FFFFFF` / `#FFFFFF`+`#27281C` | `#F6B3D6`+`#27281C` / `#27281C`+`#F3F3F4` |
+| expander summary | `#27281C` on `#FFFFFF` | `#F3F3F4` on `#27281C` |
+| footer bar / name | `#EC008C` / `#FFFFFF` 21px 600 left | same |
+
+**THE FIRST MEASUREMENT FOUND EVERY WIDGET RULE DEAD.** Streamlit 1.64
+renders its widgets with react-aria, not BaseWeb. All the `data-baseweb`
+selectors (input, select, tab highlight) matched nothing, and the tab rule
+targeted `button[role=tab]`, which is now `div[data-testid=stTab]`. The
+first pass had the selected tab label at `#EC008C` on 14px text (4.25:1),
+which is exactly what the tint exists to prevent. This is the same failure
+as 4e, *a rule that exists is not a rule that applies*, and once again only
+the computed style could tell. The CSS now uses only `data-testid`, `role`
+and `aria-*`, never the emotion class hashes. **After any Streamlit upgrade,
+re-run this measurement before trusting the dark theme.**
+
+The radio needed one more fix. Streamlit draws the unselected ring at 20% of
+`textColor` (near-black), which disappears on the dark ground. It is now
+`--muted`, and the selected ring is magenta, picked out with
+`:has(input:checked)`.
+
+### The switches
+
+Each switch is a segmented control with `required=True`. Without it, a
+second click deselects and leaves the page with no language. Each is seeded
+with `setdefault` and remembered in `session_state` with
+`persist_state="session"`.
+
+**URL binding was tried and rejected.** `bind="query-params"` writes the
+option's *displayed label* to the URL, and the theme's label is translated.
+After a language switch, `?theme=Dark` no longer names an option, and
+Streamlit silently strips it. A reload is a new Streamlit session anyway,
+so session state is exactly "for the session".
+
+Clicked through as a reader would: en→bn→dark→quiz tab→en→light. The
+answer stayed on screen throughout with no re-ask (the `_asked` guard
+covers switch reruns) and the input followed the theme every time.
+
+**KNOWN LIMIT: a language switch reopens the first tab.** The switch
+renames all three tabs. With `on_change="ignore"` the browser never tells
+the server which tab is open (`session_state["tabs"]` read `None` after a
+click on the quiz tab), so nothing can carry the selection across the
+rename. A theme switch keeps the tab. Fixing this needs `on_change="rerun"`,
+a rerun on every tab click, which is the cost the tabs were chosen to avoid.
+Not changed in a restyle.
+
+**Also:** any rerun clears a submitted quiz's score display, as it always
+has (the score shows only on the submitting run). A switch is a rerun, so
+switching after submitting hides the score. The selected answers stay, and
+pressing submit again shows it.
+
+### Deviations and things not matched
+
+1. **Kohinoor Bangla is not self-hosted.** There is no font pack and no web
+   licence on this machine. The stack names Kohinoor first, so it is used
+   where installed (macOS, iOS), then **Noto Sans Bengali from Google Fonts:
+   a deviation.** Helvetica Neue is in the same position: named first, with
+   Arial, the brand's own fallback, everywhere else (which includes all of
+   Windows). The chrome stack puts the Bengali faces after Arial, so the
+   browser falls through per character: Latin gets Helvetica Neue or Arial,
+   and Bengali gets Kohinoor or Noto, inside one string.
+2. **Logo files are not confirmed as BRAND.md 2.1 exports.** Measured:
+   `brac-logo-white.png` is a pixel-exact alpha conversion of
+   `brac-logo.png`, so it was derived here, not delivered. Swap both for the
+   official PNGs.
+3. **No motif.** The hand-drawn running-stitch divider is gone (BRAND.md 5:
+   never redraw the stitch). No official export of `Brand motif.indd` exists
+   in `assets/`, so its place is 40px of white space.
+   `assets/brac-divider.svg` is left on disk, unreferenced. **The official
+   motif file is needed.**
+4. **Footer: programme name only, no logo.** The brief asks both for "only
+   মাইক্রোফাইন্যান্স কর্মসূচি" on the bar and for the white logo "on the
+   magenta footer". These conflict, and the more specific footer instruction
+   was followed. One line restores the logo if that reading is wrong. The
+   name is Bengali in both interface languages, because it is the brand
+   descriptor, not a sentence to translate.
+5. **Footer weight is 700, not the specified semibold.** White on `#EC008C`
+   is 4.25:1, a pass only as WCAG *large* text, and at 21px that requires
+   bold. 600 was borderline, so it was raised to 700 in the follow-up
+   (measured: 700 / 21px / `#FFFFFF`).
+6. **Primary buttons are not plain magenta.** A white 14px label on
+   `#EC008C` is 4.25:1. Light buttons use the approved text tint `#B8006B`
+   as their fill; dark buttons use `#F6B3D6` with near-black text. Using
+   the text tint as a fill is a judgement call, not something the brief
+   specifies.
+7. **Status vocabulary is the registry's own** (follow-up, below):
+   `active` (teal), `suspended` (risk), `pilot` (neutral, because the brief
+   gives the magenta highlight to an *updated rule*, which lives in a
+   different table). No product is in pilot today, so nothing on the page
+   uses the "updated rule" colour yet.
+8. **Bengali copy not checked against 10.2.** The new Bengali strings aim at
+   Prothom Alo style (e.g. সঙ্গে). The two inherited sentences were left
+   word for word, and one of them uses সাথে. "লাইট" / "ডার্ক" for the theme
+   switch need a Bengali reviewer.
+9. **Upstream error text stays English.** Provider and budget refusals
+   arrive from `generate.py` as English sentences. The lead-in is
+   translated, and in bn a note says the message below is shown as
+   received.
+10. **Logo exclusion zone is the file's own.** The PNG holds the mark about
+    25% in from each edge. BRAND.md's exact clear-space rule could not be
+    read. The logo sits alone in its row, top-left, and the switches are in
+    a strip above it, not beside it.
+
+### Follow-up: the registry, and the two bugs found in passing
+
+**The status panel read the wrong file.** It read `products_catalogue.csv`,
+whose status column holds 0 of 43, so every product showed *unknown*. Meanwhile
+`generate.py`, which applies the registry's rules, was leading the answer with
+the registry's status sentence. The page and the answer disagreed about the
+same product. The panel now reads `data/registry/products.csv` (30 products:
+26 active, 4 suspended) through `registry.py`, and suspended products are
+listed first. A product `productmatch` knows but the registry does not list
+gets an explicit *not in the registry* row rather than silence.
+
+**The "unverified" qualifier is gone.** It existed because the catalogue
+recorded nobody who had checked a status. The registry is the field team's
+curated sheet, so it is the check. The footer note had said status was
+unconfirmed "until the status sheet comes back". The sheet is back, so that
+sentence was replaced with: *Product status comes from the field team's
+registry, not from the manuals.*
+
+**The embedder-down card said "out of memory". FIXED.** `ask()` now records
+which failure happened (`infra: "embedder"` or `"memory"`), and the card and
+the empty chunk list each branch on it. A spent quota now reads "The service
+cannot be used at the moment. Please try again in a little while."
+
+**১৮ মাস মেয়াদি লোন was not matched. FIXED, and the cause was two defects,
+not one.** `retrieve.products_named` matched *raw* text. Measured:
+
+| question text | raw | canon'd |
+|---|---|---|
+| Bengali digits `১৮`, either য় form | miss | hit |
+| ASCII `18`, precomposed য় U+09DF | **miss** | hit |
+| ASCII `18`, decomposed য় U+09AF U+09BC | hit | hit |
+
+The nukta was half of it. The other half was the digits: the pattern carries
+ASCII `18`, and only `canon()` folds `১৮` to it. Convention 4's remedy, canon
+the text where you can, fixes both. With it, 0 of the NAMED products miss
+their own display name (1 did before). `registry.products_named` already
+canon'd, which is why the registry matched this product and the catalogue
+path did not. `pattern_audit.py`: clean 54 of 54. The chunk-side caller only
+feeds metadata (`products`, `product_status`), which nothing in generation
+reads, so no answer can change.
+
+---
+
 ## 5. The four conventions, and why they are checks rather than prose
 
 All four exist because they were broken repeatedly — **fifteen times between

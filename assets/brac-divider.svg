@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 140"
+     preserveAspectRatio="none" width="1440" height="140" role="presentation">
+  <!-- "Always a Way" motif, used as a band rule and nothing more.
+       The stroke is a running stitch: one long dash, then three points,
+       after the nakshi katha three-point stitch. preserveAspectRatio is
+       none so the band fills any width at a fixed 140px height. -->
+  <path d="M0 60 C 260 44, 470 62, 700 92 C 860 113, 1010 116, 1180 92
+           C 1310 73, 1390 56, 1440 46"
+        fill="none" stroke="#EC008C" stroke-width="2.4"
+        stroke-linecap="round"
+        stroke-dasharray="26 9 3 9 3 9 3 9" />
+</svg>

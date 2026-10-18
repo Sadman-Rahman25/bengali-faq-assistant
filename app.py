@@ -46,44 +46,144 @@ import generate
 import embed
 import retrieve
 from bnnorm import canon
+import ui_strings
 
 
 # ------------------------------------------------------------------- brand
 # ONE PLACE TO CORRECT. Every colour, font stack and size the chrome uses
 # comes from here; nothing below writes a hex or a px for brand identity.
 #
-# MAGENTA IS MEASURED, NOT CONFIRMED. #EC008C is the exact pixel value of
-# the flat magenta in assets/brac-logo.png, the lockup supplied for this
-# build -- sampled, 236/0/140, 4,440 pixels of the image. It is NOT a hex
-# handed over by the brand team and has not been checked against the
-# printed brand manual. The brief's approximation, #E6007E, is kept below
-# because it is close enough to look right on its own and wrong enough to
-# see beside the logo. Correcting this one line corrects the header, the
-# chips, the divider and the footer at once.
+# OFFICIAL CODES ONLY: the brand book's colour table, BRAND.md section 3.1,
+# as quoted in the restyle brief. BRAND.md itself was NOT on this machine
+# when this was written (journal 4m), so these are the brief's transcription
+# of the table and have not been read off the table directly. Nothing that
+# is not in that list appears here -- the old #2b2f38 top bar, #f7f7f7 band,
+# #e6e6e6 rule and #6b7078 grey are gone for that reason, and yellow
+# #FBD00F is deliberately absent.
+PALETTE = {
+    "magenta": "#EC008C",        # 100%: logo area, tab underline, large
+                                 # headings, the footer bar. 4.25:1 on white,
+                                 # so never small text.
+    "magenta_text": "#B8006B",   # approved tint for magenta TEXT on light
+    "magenta_hi": "#FDE6F2",     # magenta highlight tint (fill)
+    "magenta_hi_line": "#F6B3D6",  # its border; also small magenta text on dark
+    "ink": "#27281C",            # body text, near-black
+    "grey": "#4D4F53",           # supporting text
+    "card": "#F3F3F4",           # neutral card
+    "card_line": "#D9D9DC",      # its border
+    "white": "#FFFFFF",
+    "teal": "#00594C",           # status: active (text)
+    "teal_tint": "#E4F2EE",      # status: active (fill)
+    "brick": "#A41E22",          # status: suspended (text)
+    "risk_tint": "#F8E6E6",      # status: suspended (fill)
+}
+
+
+def _mix(a, b, share):
+    """`share` of colour b laid over colour a. -> '#RRGGBB'
+
+    The ONE way the dark theme gets a colour the table does not hold: as a
+    stated blend of two official codes. Each use below names both parents
+    and the share, so a reviewer can rebuild it -- and reject it."""
+    a, b = a.lstrip("#"), b.lstrip("#")
+    return "#" + "".join(
+        f"{round(int(a[i:i + 2], 16) * (1 - share) + int(b[i:i + 2], 16) * share):02X}"
+        for i in (0, 2, 4))
+
+
+# ROLES, PER THEME. CSS reads these as custom properties, so the stylesheet
+# names a role (--ink, --chip-bg) and never a hex.
 #
-# KOHINOOR BANGLA IS THE BRAND BENGALI FACE AND IS NOT WEB-AVAILABLE.
-# Noto Sans Bengali is a DEVIATION, taken deliberately: the alternative is
-# whatever the browser falls back to, which renders conjuncts
-# inconsistently across platforms. Swap it when a licensed webfont exists.
+# THE DARK THEME IS DERIVED AND UNAPPROVED. BRAND.md has no dark palette.
+# Every value below is an official code, or a blend of two official codes
+# stated in place; none is a new colour. It needs brand-team approval before
+# it is anything more than a reading aid -- journal 4m.
+#
+# Contrast, measured (WCAG 2.x), for the pairs that carry text:
+#   light  ink/white 14.93  grey/card 7.40  magenta_text/white 6.46
+#          chip text/fill 5.47  active 7.20  suspended 6.26
+#          button white on #B8006B 6.46   (white on #EC008C is 4.25 -- fails)
+#   dark   ink/ground 13.46  grey/card 8.83  #F6B3D6 on ground 8.77, on card
+#          7.31, on chip fill 7.68  button #27281C on #F6B3D6 8.77
+#          #EC008C on ground 3.52 -- large headings only; on a card 2.93,
+#          which is why a stat figure on a dark card is #F6B3D6, not magenta.
+THEMES = {
+    "light": {
+        "bg": PALETTE["white"], "ink": PALETTE["ink"], "muted": PALETTE["grey"],
+        "card": PALETTE["card"], "card-line": PALETTE["card_line"],
+        "raised": PALETTE["white"],           # a flag inside a card
+        "magenta": PALETTE["magenta"],        # non-text and large text only
+        "heading": PALETTE["magenta"],        # large headings, on the ground
+        "stat": PALETTE["magenta"],           # 30px bold figure, on a card
+        "accent": PALETTE["magenta_text"],    # SMALL magenta text
+        "chip-bg": PALETTE["magenta_hi"], "chip-line": PALETTE["magenta_hi_line"],
+        "chip-ink": PALETTE["magenta_text"],
+        "ok-bg": PALETTE["teal_tint"], "ok-ink": PALETTE["teal"],
+        "risk-bg": PALETTE["risk_tint"], "risk-ink": PALETTE["brick"],
+        "upd-bg": PALETTE["magenta_hi"], "upd-ink": PALETTE["magenta_text"],
+        "input-bg": PALETTE["white"], "input-line": PALETTE["grey"],
+        "focus": PALETTE["magenta"],
+        "btn-bg": PALETTE["magenta_text"], "btn-ink": PALETTE["white"],
+        "logo": "logo",
+    },
+    "dark": {
+        "bg": PALETTE["ink"], "ink": PALETTE["card"],
+        "muted": PALETTE["card_line"],
+        "card": _mix(PALETTE["ink"], PALETTE["white"], 0.06),     # #34352A
+        "card-line": PALETTE["grey"],
+        "raised": PALETTE["ink"],
+        "magenta": PALETTE["magenta"],
+        "heading": PALETTE["magenta"],
+        "stat": PALETTE["magenta_hi_line"],
+        "accent": PALETTE["magenta_hi_line"],
+        "chip-bg": _mix(PALETTE["ink"], PALETTE["magenta"], 0.22),  # #521F35
+        "chip-line": PALETTE["magenta"],
+        "chip-ink": PALETTE["magenta_hi_line"],
+        # Status in dark: the SAME official pair, inverted -- the deep colour
+        # becomes the fill and its tint the text. No new hue.
+        "ok-bg": PALETTE["teal"], "ok-ink": PALETTE["teal_tint"],
+        "risk-bg": PALETTE["brick"], "risk-ink": PALETTE["risk_tint"],
+        "upd-bg": PALETTE["magenta_text"], "upd-ink": PALETTE["magenta_hi"],
+        "input-bg": _mix(PALETTE["ink"], PALETTE["white"], 0.12),  # #414237
+        "input-line": PALETTE["card_line"],
+        "focus": PALETTE["magenta_hi_line"],
+        "btn-bg": PALETTE["magenta_hi_line"], "btn-ink": PALETTE["ink"],
+        "logo": "logo_white",
+    },
+}
+DEFAULT_THEME = "light"
+
+# FONTS. BRAND.md: Kohinoor Bangla for Bengali, Helvetica Neue then Arial for
+# English.
+#
+# ONE STACK FOR MIXED TEXT, AND THE ORDER IS THE MECHANISM. Arial has no
+# Bengali glyphs, so the browser falls through it, per character, to the
+# Bengali faces listed after it -- Latin lands on Helvetica Neue or Arial
+# and Bengali on Kohinoor Bangla or its fallback, inside one sentence.
+# Without a Bengali face in the chrome stack, a Bengali label falls to
+# whatever the OS has (Nirmala UI on Windows), which is neither.
+#
+# KOHINOOR BANGLA IS NOT SELF-HOSTED. No BRAC font pack -- no web font files
+# and no licence permitting web use -- was found on this machine, so there is
+# nothing to put behind an @font-face. Kohinoor is named first so the brand
+# face is used wherever it is installed (it ships with macOS and iOS); Noto
+# Sans Bengali, loaded from Google Fonts, is the DEVIATION everywhere else.
+# Recorded in journal 4m. Helvetica Neue is in the same position: named,
+# used where installed, Arial otherwise -- which is the brand's own fallback.
 BRAND = {
-    "magenta": "#EC008C",         # measured from the supplied logo; UNVERIFIED
-    "magenta_approx": "#E6007E",  # the brief's approximation, kept for the diff
-    "dark": "#2b2f38",            # the top bar
-    "ink": "#1d1f24",             # body text
-    "band": "#f7f7f7",            # the answer band
-    "rule": "#e6e6e6",            # thin borders
-    "muted": "#6b7078",           # chrome labels
-    # Latin. Helvetica Neue is the brand face; Arial is the brand fallback.
-    "latin": ('"Helvetica Neue", Helvetica, Arial, '
-              '-apple-system, "Segoe UI", sans-serif'),
-    # Bengali. DEVIATION, see above.
-    "bengali": ('"Noto Sans Bengali", "Kohinoor Bangla", '
-                '"Nirmala UI", sans-serif'),
+    "magenta": PALETTE["magenta"],   # must equal primaryColor in config.toml
+    "latin": ('"Helvetica Neue", Arial, '
+              '"Kohinoor Bangla", "Noto Sans Bengali", sans-serif'),
+    "bengali": ('"Kohinoor Bangla", "Noto Sans Bengali", '
+                '"Helvetica Neue", Arial, sans-serif'),
     # Bengali sits at 21px against 13-14px English chrome. Not a preference:
     # at a matching point size Bengali renders visually smaller than Latin,
     # the figures ARE the answer, and a wrong figure at 14px is easy to miss.
     "bengali_px": "21px",
-    "chrome_px": "13px",
+    # The chrome, per interface language, for the same reason: Bengali
+    # chrome at the English 13px reads as a size smaller.
+    "chrome_px": {"en": "13px", "bn": "15px"},
+    "small_px": {"en": "12px", "bn": "14px"},
 }
 
 # ------------------------------------------------------- the configuration
@@ -135,22 +235,14 @@ INDEX_FLOOR = {"out/index_gemini": 0.0}
 FLOOR = INDEX_FLOOR.get(str(INDEX_DIR).replace("\\", "/"),
                         generate.SCORE_FLOOR)
 
-# Shown when the hosted embedder cannot be reached or the day's quota is
-# spent. Bengali only, and it says what the reader can do -- "try again
-# later" is actionable; a 429 is not.
-# THE PANEL A FIELD OFFICER READS. One Bengali sentence each, no score, no
-# threshold, no English. The numbers that used to be here -- the fused
-# score, the floor, the matched figure -- are operator information and are
-# written to the meta row, which is where every other diagnostic already
-# lives. A reader who cannot act on "0.4012 below a floor of 0.4044" is
-# being shown it only because it was easy to print.
-FLOOR_NOTE_BN = ("ম্যানুয়ালে এই প্রশ্নের সাথে মেলে এমন কিছু পাওয়া যায়নি। "
-                 "পণ্যের নাম বা ধারা নম্বর লিখে আবার চেষ্টা করুন।")
-FILTER_NOTE_BN = ("এই প্রশ্নের নির্ভরযোগ্য উত্তর দেওয়া যাচ্ছে না, "
-                  "তাই কোনো সংখ্যা দেখানো হয়নি।")
-
-EMBEDDER_DOWN_BN = ("এই মুহূর্তে সেবাটি ব্যবহার করা যাচ্ছে না। "
-                    "কিছুক্ষণ পর আবার চেষ্টা করুন।")
+# THE PANEL A FIELD OFFICER READS. The floor, post-filter and embedder-down
+# notes are one sentence each, no score, no threshold. The numbers that used
+# to be here -- the fused score, the floor, the matched figure -- are
+# operator information and are written to the meta row, which is where
+# every other diagnostic already lives. A reader who cannot act on "0.4012
+# below a floor of 0.4044" is being shown it only because it was easy to
+# print. The sentences themselves live in ui_strings (floor_note,
+# filter_note, embedder_down), with the rest of the interface text.
 
 # The gold files the post-filter draws its constraints from. The filter can
 # only fire on a question it has a record for; see gold_by_text.
@@ -188,51 +280,77 @@ def _data_uri(path, mime):
 
 @st.cache_data(show_spinner=False)
 def assets():
-    """The three brand assets, inlined. Streamlit serves no static path to
-    HTML written into a markdown block, so they go in as data URIs.
+    """The two logo files, inlined. Streamlit serves no static path to HTML
+    written into a markdown block, so they go in as data URIs.
 
-    The divider carries the magenta as a literal so the file renders on its
-    own; BRAND is the authority, so it is substituted here. One place to
-    correct, still.
+    MAGENTA ON LIGHT, WHITE ON DARK, never on a tint. brac-logo.png carries
+    an opaque white ground and its own clear space -- the mark sits 32-35px
+    inside a 284x130 canvas -- so it is placed on the white page as it is.
+    brac-logo-white.png is the same lockup reversed out, for the dark ground.
+
+    NEITHER FILE IS CONFIRMED AS THE BRAND BOOK'S EXPORT (BRAND.md 2.1).
+    Measured: the white file is a pixel-exact alpha conversion of the magenta
+    one -- every non-white pixel of one is the opaque pixel of the other --
+    so it was derived from the supplied lockup here, not delivered. It is the
+    same drawing, not a redrawn one, but swap both for the official PNGs
+    when they arrive. Journal 4m.
+
+    THE MOTIF IS NOT HERE. assets/brac-divider.svg was a hand-drawn running
+    stitch, and BRAND.md section 5 says the motif is never redrawn. No
+    official export from Brand motif.indd is in assets/, so the band it
+    occupied is white space. The file is left on disk, unreferenced.
     """
-    svg = (ASSETS / "brac-divider.svg").read_text(encoding="utf-8")
-    svg = svg.replace("#EC008C", BRAND["magenta"])
     return {
         "logo": _data_uri(ASSETS / "brac-logo.png", "image/png"),
-        # White reverse, for the magenta footer. Derived from the same
-        # lockup, never a redrawn one: the mark and the wordmark stay
-        # together and neither is rotated, distorted nor recoloured.
         "logo_white": _data_uri(ASSETS / "brac-logo-white.png", "image/png"),
-        "divider": ("data:image/svg+xml;base64,"
-                    + base64.b64encode(svg.encode("utf-8")).decode("ascii")),
     }
 
 
 # --------------------------------------------------------------------- CSS
 # A Template, not an f-string: CSS is made of braces.
+#
+# TWO PARTS. CSS is the stylesheet and names ROLES only (var(--ink)); it is
+# the same for every session. theme_vars() is the :root block that binds
+# those roles to one theme and one interface language, and it is the only
+# part that differs between sessions. A switch therefore changes nine-odd
+# custom properties, not the stylesheet.
+#
+# STREAMLIT'S OWN WIDGETS ARE RESTYLED HERE, AND THAT IS NEW. config.toml
+# pins base = "light", so the widgets no longer follow the OS -- that was
+# the black-input-in-a-white-page defect. But a pinned light base cannot
+# follow a per-session dark switch either: Streamlit's theme is a server
+# option shared by every session, and changing it for one viewer would
+# change it for all of them. So the input, select, radio, button, tabs,
+# expander and the switches themselves are given the role colours here,
+# under both themes. Colour and type only; no widget is reshaped. Every
+# selector below was checked against the computed style of the running page
+# (journal 4m has the measurements) -- the lesson of 4e is that a rule that
+# exists is not a rule that applies.
 CSS = Template("""
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap');
 
-:root { --magenta: $magenta; --dark: $dark; --ink: $ink;
-        --band: $band; --rule: $rule; --muted: $muted; }
+html, body, [data-testid="stApp"], [data-testid="stAppViewContainer"],
+[data-testid="stMain"] { font-family: $latin; color: var(--ink);
+        background: var(--bg); }
 
-html, body, [data-testid="stAppViewContainer"] { font-family: $latin;
-        color: var(--ink); background: #fff; }
+/* MEASURED, not assumed (4e). Streamlit puts its own font-family on the
+   markdown container and on every widget, so the face is named on each
+   explicitly. Never `*`: the expander arrow and the select chevron are
+   Material Symbols glyphs, and a blanket rule turns them into words. */
+.bfa-header, .bfa-title, .bfa-sub, .bfa-card, .bfa-label, .bfa-answer-en,
+.bfa-chip, .bfa-flag, .bfa-meta, .bfa-chunk, .bfa-footer, .bfa-foot-note,
+.bfa-budget, .bfa-stat, .bfa-soon, .bfa-orphan, .bfa-badge,
+[data-testid="stMarkdownContainer"], [data-testid="stWidgetLabel"],
+[data-testid="stTextInputField"], [data-testid="stSelectbox"] input,
+[data-testid="stRadio"] label, [data-testid="stTab"] p,
+[data-testid="stForm"] button,
+[data-testid="stExpander"] summary, [data-testid="stButtonGroup"] button,
+[data-testid="stSpinner"] { font-family: $latin; }
+.bfa-answer, .bfa-flag .bn, .bfa-name, .bfa-footer .name {
+    font-family: $bengali; }
 
-/* MEASURED, not assumed. Setting the face on html/body is not enough:
-   Streamlit puts its own font-family on the markdown container these
-   blocks live inside, so every .bfa-* element inherited Source Sans and
-   the brand face never appeared. getComputedStyle said "Source Sans" on
-   the chips, the flags and the header tagline while the stylesheet said
-   Helvetica Neue. Named explicitly, and the Bengali rules come after so
-   they still win where they apply. */
-.bfa-header, .bfa-tag, .bfa-card, .bfa-label, .bfa-answer-en, .bfa-chip,
-.bfa-flag, .bfa-meta, .bfa-chunk, .bfa-footer, .bfa-foot-links,
-.bfa-foot-note, .bfa-budget { font-family: $latin; }
-
-/* The page starts with an 8px bar at the very top edge, so Streamlit's own
-   toolbar and the block padding go. This is the app frame, not a widget:
-   no Streamlit control is restyled by it. */
+/* The page starts at the logo, so Streamlit's own toolbar and the block
+   padding go. This is the app frame, not a widget. */
 header[data-testid="stHeader"] { display: none; }
 .block-container { padding: 0 !important; max-width: 100% !important; }
 /* THE FOOTER SITS AT THE BOTTOM OF A SHORT PAGE, and scrolls normally on
@@ -253,10 +371,8 @@ header[data-testid="stHeader"] { display: none; }
    margin-bottom: -16px on EVERY stMarkdownContainer to trim the trailing
    margin of a markdown paragraph. These blocks are not paragraphs -- they
    are full-bleed bands -- so each one reported itself 16px shorter than it
-   draws. Measured: band element 295 / container 279, footer 130 / 114,
-   divider img 140 / 124. That is also why the divider overlapped the band
-   by exactly 16px. Zeroed for the top-level sections only, so the chunk
-   rows nested inside the expander keep Streamlit's spacing. */
+   draws. Zeroed for the top-level sections only, so the chunk rows nested
+   inside the expander keep Streamlit's spacing. */
 [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"]
   > [data-testid="stElementContainer"] [data-testid="stMarkdownContainer"] {
     margin-bottom: 0; }
@@ -268,55 +384,145 @@ header[data-testid="stHeader"] { display: none; }
   > *:last-child { margin-top: auto; }
 
 /* SCOPED TO THE TOP-LEVEL BLOCK, and the scoping is the whole point.
-   `[data-testid="stVerticalBlock"] { gap: 0 }` applied to EVERY vertical
-   block, including the one Streamlit creates inside the form -- measured:
-   that block came back gap 0px, so the submit button's top equalled the
-   input's bottom exactly (164 and 164) and the two were glued together.
-   The page sections want no gap because each paints its own full-bleed
-   band; the widgets inside a form want Streamlit's spacing. A direct-child
-   selector gives the first without taking the second. */
+   A bare `[data-testid="stVerticalBlock"] { gap: 0 }` reached the block
+   inside the form too and glued the submit button to the input. The page
+   sections want no gap because each sets its own spacing; the widgets
+   inside a form want Streamlit's. */
 [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {
     gap: 0; }
 
-/* Widgets keep their own shape. Colour and type only. */
-.stTextInput input { font-family: $latin; font-size: 15px; color: var(--ink); }
-.stTextInput input:focus { border-color: var(--magenta); box-shadow: none; }
-.stTextInput label { font-size: $chrome; color: var(--muted); }
-/* A CLOSED EXPANDER MUST NOT LAY OUT ITS BODY. Measured, collapsed:
-   the <details> box was 40px tall -- the header alone -- while
-   stExpanderDetails inside it was 97px with overflow visible, so the
-   rows kept a layout box running 68px PAST the top of the footer. The
-   browser does not paint them (a closed <details> hides its slot), so
-   nothing looked wrong; the footer simply sat 68px higher than the
-   content it was supposed to follow, mid-page, with dead space under it.
-   This is a containment fix, not a restyle: it changes no colour, no
-   type and no shape, only whether hidden content occupies the page. */
+/* ---------------------------------------------------- Streamlit widgets */
+[data-testid="stWidgetLabel"], [data-testid="stWidgetLabel"] p {
+    color: var(--muted) !important; font-size: var(--chrome); }
+
+/* SELECTORS ARE STREAMLIT 1.64's DOM, and that is a dependency. 1.64
+   renders its widgets with react-aria, not BaseWeb: every data-baseweb
+   selector written for the older DOM matched NOTHING when measured. Only
+   data-testid, role and aria-* attributes are used below -- the emotion
+   class names are hashes and change between builds. After a Streamlit
+   upgrade, re-run the measurement in journal 4m before trusting this. */
+
+/* Text input. The fill, the border and the text, all three, in both
+   themes: setting only the text is how a dark page gets a white box. */
+[data-testid="stTextInputRootElement"] {
+    background-color: var(--input-bg) !important;
+    border: 1px solid var(--input-line) !important; }
+[data-testid="stTextInputRootElement"]:focus-within {
+    border-color: var(--focus) !important; }
+[data-testid="stTextInputField"] { font-size: 15px;
+    color: var(--ink) !important; -webkit-text-fill-color: var(--ink);
+    caret-color: var(--ink); background-color: transparent !important; }
+[data-testid="stTextInputField"]::placeholder { color: var(--muted);
+    -webkit-text-fill-color: var(--muted); opacity: 1; }
+
+/* Select box, and its menu -- which renders in a portal under <body>, not
+   under the select, so it is targeted on its own. */
+[data-testid="stSelectbox"] [role="group"] {
+    background-color: var(--input-bg) !important;
+    border: 1px solid var(--input-line) !important; }
+[data-testid="stSelectbox"] [role="group"]:focus-within {
+    border-color: var(--focus) !important; }
+[data-testid="stSelectbox"] input[role="combobox"] {
+    color: var(--ink) !important; -webkit-text-fill-color: var(--ink); }
+[data-testid="stSelectbox"] input[role="combobox"]::placeholder {
+    color: var(--muted); -webkit-text-fill-color: var(--muted); opacity: 1; }
+[data-testid="stSelectbox"] svg { color: var(--muted); }
+[data-testid="stSelectboxVirtualDropdown"] {
+    background-color: var(--card) !important;
+    border: 1px solid var(--card-line) !important; }
+[data-testid="stSelectboxVirtualDropdown"] [role="option"] {
+    color: var(--ink) !important; font-family: $latin; }
+[data-testid="stSelectboxVirtualDropdown"] [role="option"][data-focused],
+[data-testid="stSelectboxVirtualDropdown"] [role="option"]:hover,
+[data-testid="stSelectboxVirtualDropdown"] [role="option"][aria-selected="true"] {
+    background-color: var(--input-bg) !important; }
+
+/* Radio. The text, and the ring: Streamlit draws an unselected ring at 20%
+   of textColor, which is near-black and so vanishes on the dark ground.
+   Ring muted, selected ring the brand magenta (4.25:1 on white, 3.52:1 on
+   the dark ground, both above the 3:1 a control needs), centre the page. */
+[data-testid="stRadioOption"] p { color: var(--ink) !important;
+    font-size: var(--chrome); }
+[data-testid="stRadioOption"] > div > div:first-child {
+    background-color: var(--muted) !important; }
+[data-testid="stRadioOption"]:has(input:checked) > div > div:first-child {
+    background-color: var(--magenta) !important; }
+[data-testid="stRadioOption"] > div > div:first-child > div {
+    background-color: var(--bg) !important; }
+
+/* Primary buttons. NOT plain magenta: white on #EC008C is 4.25:1, under
+   the 4.5:1 a 14px label needs. Light uses the approved text tint #B8006B
+   as the fill (6.46:1); dark uses the light tint #F6B3D6 with near-black
+   text (8.77:1). */
+[data-testid="stBaseButton-primaryFormSubmit"],
+[data-testid="stBaseButton-primary"] {
+    background-color: var(--btn-bg) !important;
+    border-color: var(--btn-bg) !important; color: var(--btn-ink) !important; }
+[data-testid="stBaseButton-primaryFormSubmit"] p,
+[data-testid="stBaseButton-primary"] p { color: var(--btn-ink) !important;
+    font-size: var(--chrome); font-weight: 600; }
+[data-testid="stBaseButton-primaryFormSubmit"]:hover,
+[data-testid="stBaseButton-primary"]:hover,
+[data-testid="stBaseButton-primaryFormSubmit"]:focus-visible {
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--magenta) !important; }
+
+/* The two switches. Segmented controls: the selected half is the button
+   colour, the other is the page. */
+[data-testid="stButtonGroup"] button[role="radio"] {
+    background-color: var(--bg) !important; color: var(--ink) !important;
+    border-color: var(--input-line) !important; }
+[data-testid="stButtonGroup"] button[role="radio"] * {
+    color: inherit !important; font-size: var(--small); }
+[data-testid="stButtonGroup"] button[role="radio"][aria-checked="true"] {
+    background-color: var(--btn-bg) !important; color: var(--btn-ink) !important;
+    border-color: var(--btn-bg) !important; font-weight: 600; }
+
+/* Tabs. The underline is 100% magenta; the selected label is small text,
+   so it is the text tint -- Streamlit's default puts #EC008C on it, 4.25:1
+   at 14px, which is the failure the tint exists to fix. */
+[data-testid="stTabs"] { padding: 0 22px; }
+[data-testid="stTab"] p { font-size: 14px; color: var(--muted) !important; }
+[data-testid="stTab"][aria-selected="true"] p { color: var(--accent) !important;
+    font-weight: 600; }
+[data-testid="stTab"] .react-aria-SelectionIndicator,
+[data-testid="stTabs"] [role="tablist"] .react-aria-SelectionIndicator {
+    background-color: var(--magenta) !important; }
+[data-testid="stTabs"] [role="tablist"] {
+    border-bottom-color: var(--card-line) !important; }
+
+/* Expander. A CLOSED EXPANDER MUST NOT LAY OUT ITS BODY: measured, the
+   collapsed <details> kept a 97px body box running past the footer, so
+   the footer sat mid-page. Containment, not restyling. */
 details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
-[data-testid="stExpander"] summary { font-size: 20px; color: var(--ink); }
-[data-testid="stExpander"] summary svg { fill: var(--magenta); }
-/* Colour and type only, still. The spinner and the submit button are
-   Streamlit's own controls; neither is reshaped, only recoloured.
-   MEASURED, not guessed. The spinner's arc is a <span> with
-   border-radius 50% and an animated 2px top border -- there is no <svg>
-   and no <i>, so rules written for those match NOTHING. That is the same
-   "the rule exists but never applies" defect as the font, and the only
-   way to know either way is to read the computed style off the running
-   spinner. Only the arc carries a visible border, so colouring the top
-   border of the spans here touches exactly one element. The label is a
-   <p>, not a div. */
+[data-testid="stExpander"] details { background-color: var(--bg) !important;
+    border-color: var(--card-line) !important; }
+[data-testid="stExpander"] summary { color: var(--ink) !important;
+    background-color: var(--bg) !important; }
+[data-testid="stExpander"] summary p { font-size: 20px; }
+[data-testid="stExpander"] summary:hover { color: var(--accent) !important; }
+[data-testid="stExpander"] summary [data-testid="stIconMaterial"] {
+    color: var(--accent) !important; }
+
+/* The spinner's arc is a <span> with an animated top border -- no <svg>,
+   no <i> -- so that is what is coloured. The label is a <p>. */
 [data-testid="stSpinner"] span { border-top-color: var(--magenta) !important; }
 [data-testid="stSpinner"] p { color: var(--muted); }
 
+.st-key-prefs { padding: 10px 22px 0; }
 .st-key-mode { padding: 16px 22px 0; }
 .st-key-ask { padding: 10px 22px 18px; }
-.st-key-chunks { padding: 6px 22px 28px; }
+.st-key-chunks { padding: 40px 22px 28px; }
 
-.bfa-topbar { height: 8px; background: var(--dark); }
-.bfa-header { display: flex; align-items: center; justify-content: space-between;
-              padding: 22px; background: #fff; }
-.bfa-header img { height: 38px; display: block; }
-.bfa-tag { font-size: $chrome; color: var(--muted); text-align: right;
-           line-height: 1.5; }
+/* ------------------------------------------------------------- the page */
+/* THE LOGO STANDS ALONE. Top left, on the page ground, with nothing in its
+   row: the canvas already holds its clear space (the mark sits ~25% in
+   from every edge), and the title starts below it rather than beside it. */
+.bfa-header { padding: 0 22px; background: var(--bg); }
+.bfa-header img { height: 64px; display: block; margin-left: -15px; }
+.bfa-title { font-size: 28px; font-weight: 700; line-height: 1.2;
+             color: var(--heading); margin: 6px 0 2px; }
+.bfa-sub { font-size: var(--chrome); color: var(--muted); line-height: 1.5;
+           margin-bottom: 18px; }
 
 /* Stat cards. Four across, collapsing to two then one on a narrow
    screen -- an officer's phone should not scroll sideways. */
@@ -324,121 +530,132 @@ details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
              gap: 12px; padding: 0 22px 18px; }
 @media (max-width: 900px) { .bfa-stats { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 520px) { .bfa-stats { grid-template-columns: 1fr; } }
-.bfa-stat { background: #fff; border: 1px solid var(--rule);
+.bfa-stat { background: var(--card); border: 1px solid var(--card-line);
             border-radius: 10px; padding: 14px 16px; }
-.bfa-stat .v { font-family: $latin; font-size: 30px; font-weight: 700;
-               line-height: 1.1; color: var(--magenta); }
-.bfa-stat .l { font-family: $latin; font-size: $chrome; color: var(--ink);
-               margin-top: 4px; }
-.bfa-stat .n { font-family: $latin; font-size: 11px; color: var(--muted);
-               margin-top: 3px; }
+.bfa-stat .v { font-size: 30px; font-weight: 700; line-height: 1.1;
+               color: var(--stat); }
+.bfa-stat .l { font-size: var(--chrome); color: var(--ink); margin-top: 4px; }
+.bfa-stat .n { font-size: 11px; color: var(--muted); margin-top: 3px;
+               overflow-wrap: anywhere; }
 
-/* Tabs. Colour and type only; the control keeps its own shape. */
-[data-testid="stTabs"] { padding: 0 22px; }
-[data-testid="stTabs"] button[role="tab"] { font-family: $latin;
-    font-size: 14px; color: var(--muted); }
-[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-    color: var(--magenta); }
-[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
-    background-color: var(--magenta); }
-
-.bfa-soon { background: #fff; border: 1px dashed var(--rule);
+.bfa-soon { background: var(--card); border: 1px solid var(--card-line);
             border-radius: 10px; padding: 22px; margin: 4px 22px 22px;
-            font-family: $latin; font-size: 14px; line-height: 1.7;
-            color: var(--ink); }
-.bfa-soon .k { font-weight: 600; color: var(--magenta);
+            font-size: 14px; line-height: 1.7; color: var(--ink); }
+.bfa-soon .k { font-weight: 600; color: var(--accent);
                text-transform: uppercase; letter-spacing: .12em;
-               font-size: 12px; display: block; margin-bottom: 8px; }
+               font-size: var(--small); display: block; margin-bottom: 8px; }
 
-.bfa-band { background: var(--band); padding: 22px; }
-.bfa-card { background: #fff; border-radius: 10px; padding: 20px 22px;
-            box-shadow: 0 1px 2px rgba(0,0,0,.07), 0 8px 20px rgba(0,0,0,.05); }
-.bfa-label { font-size: 12px; font-weight: 600; letter-spacing: .14em;
-             text-transform: uppercase; color: var(--magenta);
+.bfa-section { padding: 4px 22px 18px; }
+.bfa-card { background: var(--card); border: 1px solid var(--card-line);
+            border-radius: 10px; padding: 20px 22px; }
+.bfa-label { font-size: var(--small); font-weight: 600; letter-spacing: .14em;
+             text-transform: uppercase; color: var(--accent);
              margin: 0 0 12px; }
-.bfa-answer { font-family: $bengali; font-size: $bengali_px; line-height: 1.8;
-              color: var(--ink); }
+.bfa-answer { font-size: $bengali_px; line-height: 1.8; color: var(--ink); }
 .bfa-answer-en { font-size: 14px; line-height: 1.6; color: var(--muted); }
 .bfa-chips { margin-top: 14px; }
-.bfa-chip { display: inline-block; background: var(--magenta); color: #fff;
-            font-size: 12px; line-height: 1.6; border-radius: 999px;
-            padding: 3px 11px; margin: 0 6px 6px 0; }
+/* Citation chips: the magenta highlight tint, not white on magenta, which
+   is 4.25:1 and under the 4.5:1 a 12px label needs. */
+.bfa-chip { display: inline-block; background: var(--chip-bg);
+            border: 1px solid var(--chip-line); color: var(--chip-ink);
+            font-size: var(--small); line-height: 1.6; border-radius: 999px;
+            padding: 2px 11px; margin: 0 6px 6px 0; }
 
-/* Disclosure rows, in TWO weights, and the split is the point.
-   MEASURED by looking at the rendered page: four magenta bars of identical
-   weight stacked under one answer, and the one that said "this is a
-   refusal, not a blank" looked exactly like the one that said "the
-   registry holds 43 products". Everything emphasised is nothing
-   emphasised. So:
-     .bfa-flag        why THIS answer is not what the model first said --
-                      the floor, the post-filter, the model's own refusal.
+/* Disclosure rows, in TWO weights, and the split is the point (4e).
+     .bfa-flag        why THIS answer is not what the model first said.
                       Magenta bar, full size. At most one ever shows.
-     .bfa-flag.note   standing conditions true of every query -- an
-                      unarmed filter, an empty status registry. Quieter,
-                      grey, and they must stay ON the page: they are the
-                      disclosures, they are just not the headline. */
-.bfa-flag { border-left: 3px solid var(--magenta); background: #fff;
-            padding: 10px 14px; margin-top: 14px; font-size: $chrome;
+     .bfa-flag.note   standing conditions true of every query. Quieter,
+                      grey, and they stay ON the page. */
+.bfa-flag { border-left: 3px solid var(--magenta); background: var(--raised);
+            padding: 10px 14px; margin-top: 14px; font-size: var(--chrome);
             line-height: 1.6; color: var(--ink); }
-.bfa-flag.note { border-left: 2px solid var(--rule); font-size: 12px;
-                 color: var(--muted); padding: 7px 12px; margin-top: 10px; }
+.bfa-flag.note { border-left: 2px solid var(--card-line);
+                 font-size: var(--small); color: var(--muted);
+                 padding: 7px 12px; margin-top: 10px; }
 .bfa-flag.note .k { color: var(--ink); }
-.bfa-flag.warn { border-left-color: var(--dark); }
 .bfa-flag .k { font-weight: 600; }
-.bfa-flag .bn { font-family: $bengali; font-size: 16px; }
+.bfa-flag .bn { font-size: 16px; }
+.bfa-flag code, .bfa-meta code { font-size: var(--small);
+    color: var(--muted); background: transparent; }
+
+/* Status badges, by MEANING (BRAND.md 3.2): active teal, suspended risk,
+   updated rule magenta highlight. Anything else -- including the empty
+   registry's "unknown" -- is neutral, because colouring a status nobody
+   recorded would be a claim. */
+.bfa-status { margin-top: 6px; }
+.bfa-name { font-size: 16px; color: var(--ink); margin-right: 8px; }
+.bfa-badge { display: inline-block; font-size: var(--small); font-weight: 600;
+             line-height: 1.5; border-radius: 999px; padding: 1px 10px;
+             border: 1px solid transparent; }
+.bfa-badge.ok { background: var(--ok-bg); color: var(--ok-ink); }
+.bfa-badge.risk { background: var(--risk-bg); color: var(--risk-ink); }
+.bfa-badge.upd { background: var(--upd-bg); color: var(--upd-ink);
+                 border-color: var(--chip-line); }
+.bfa-badge.neutral { background: var(--card); color: var(--muted);
+                     border-color: var(--card-line); }
 
 /* The token budget is a condition of the DAY, not of this answer, so it
-   sits outside the answer card. Inside it, under the model line, it read
-   as if it were about the answer above it. */
-.bfa-budget { background: var(--band); padding: 0 22px 18px; }
-.bfa-budget .inner { border-left: 3px solid var(--dark); background: #fff;
-                     padding: 10px 14px; font-size: $chrome;
-                     line-height: 1.6; color: var(--ink); }
-.bfa-meta { margin-top: 12px; font-size: 12px; color: var(--muted); }
-.bfa-meta code { font-size: 12px; color: var(--muted); }
+   sits outside the answer card. */
+.bfa-budget { padding: 0 22px 18px; }
+.bfa-budget .inner { border-left: 3px solid var(--muted);
+                     background: var(--card); padding: 10px 14px;
+                     font-size: var(--chrome); line-height: 1.6;
+                     color: var(--ink); }
+.bfa-budget .k { font-weight: 600; }
+.bfa-meta { margin-top: 12px; font-size: var(--small); color: var(--muted); }
 
-.bfa-divider { width: 100%; height: 140px; display: block; }
-
-.bfa-chunk { display: flex; gap: 16px; align-items: baseline;
-             padding: 9px 0; border-bottom: 1px solid var(--rule);
-             font-size: $chrome; color: var(--ink); }
+.bfa-chunk { display: flex; flex-wrap: wrap; gap: 4px 16px;
+             align-items: baseline; padding: 9px 0;
+             border-bottom: 1px solid var(--card-line);
+             font-size: var(--chrome); color: var(--ink); }
 .bfa-chunk .id { min-width: 180px; }
 .bfa-chunk .cl { min-width: 190px; color: var(--muted); }
 .bfa-chunk .sc { color: var(--muted); }
-/* The badge, and why it is an outline rather than a solid magenta pill:
-   the citation chips in the answer card are solid magenta, and a second
-   solid magenta element down here would read as the same kind of thing.
-   It is not -- a chip is what the model claimed, a badge is where that
-   claim landed in the evidence. */
+/* An outline, not a fill: a chip is what the model claimed, this badge is
+   where that claim landed in the evidence. Small text, so the tint. */
 .bfa-chunk .cited { font-size: 10px; font-weight: 700; letter-spacing: .08em;
-                    color: var(--magenta); border: 1px solid var(--magenta);
+                    color: var(--accent); border: 1px solid var(--accent);
                     border-radius: 3px; padding: 1px 5px; margin-left: 2px; }
-.bfa-orphan { border-left: 3px solid var(--magenta); background: #fff;
-              padding: 10px 14px; margin: 4px 0 12px; font-size: $chrome;
-              line-height: 1.6; color: var(--ink); font-family: $latin; }
+.bfa-orphan { border-left: 3px solid var(--magenta); background: var(--card);
+              padding: 10px 14px; margin: 4px 0 12px; font-size: var(--chrome);
+              line-height: 1.6; color: var(--ink); }
 .bfa-orphan .k { font-weight: 600; }
 
-.bfa-footer { background: var(--magenta); color: #fff; padding: 18px 22px 20px; }
-.bfa-foot-top { display: flex; align-items: center;
-                justify-content: space-between; }
-/* The lockup, reversed, at 26px. The mark and the wordmark are one image:
-   scaling the lockup puts the wordmark at about 21px, which is where the
-   design wants it, without separating the two. */
-.bfa-foot-top img { height: 26px; display: block; }
-.bfa-foot-links { font-size: $chrome; display: flex; gap: 22px; color: #fff; }
-.bfa-foot-rule { height: 1px; background: rgba(255,255,255,.4);
-                 margin: 14px 0 11px; }
-.bfa-foot-note { font-size: 12px; line-height: 1.65;
-                 color: rgba(255,255,255,.95); max-width: 820px; }
-""").safe_substitute(
-    magenta=BRAND["magenta"], dark=BRAND["dark"], ink=BRAND["ink"],
-    band=BRAND["band"], rule=BRAND["rule"], muted=BRAND["muted"],
-    latin=BRAND["latin"], bengali=BRAND["bengali"],
-    bengali_px=BRAND["bengali_px"], chrome=BRAND["chrome_px"])
+/* THE NOTE IS OFF THE BAR. Small text on the page ground, in grey, where
+   it reads at 8.21:1 (light) / 10.60:1 (dark) -- on magenta it was 4.25:1. */
+.bfa-foot-note { font-size: var(--small); line-height: 1.65;
+                 color: var(--muted); max-width: 820px;
+                 padding: 32px 22px 16px; }
+/* THE BAR: the programme name and nothing else, left-aligned, 21px white.
+   BOLD 700, not the specified semibold. White on #EC008C is 4.25:1, a pass
+   only as WCAG LARGE text, and at 21px that needs bold; 600 was borderline
+   (journal 4m). */
+.bfa-footer { background: var(--magenta); padding: 18px 22px 20px; }
+.bfa-footer .name { font-size: 21px; font-weight: 700; line-height: 1.4;
+                    color: var(--on-magenta); text-align: left; }
+""").safe_substitute(latin=BRAND["latin"], bengali=BRAND["bengali"],
+                     bengali_px=BRAND["bengali_px"])
+
+
+def theme_vars(theme, lang):
+    """The :root block binding the stylesheet's roles to one theme and one
+    interface language. -> str"""
+    roles = {k: v for k, v in THEMES[theme].items() if k != "logo"}
+    roles["on-magenta"] = PALETTE["white"]
+    roles["chrome"] = BRAND["chrome_px"][lang]
+    roles["small"] = BRAND["small_px"][lang]
+    body = " ".join(f"--{k}: {v};" for k, v in roles.items())
+    # color-scheme tells the browser which way to draw what CSS cannot
+    # reach -- scrollbars, autofill, the caret.
+    scheme = "dark" if theme == "dark" else "light"
+    return f":root {{ {body} color-scheme: {scheme}; }}"
 
 
 # --------------------------------------------------------------- the parts
-@st.cache_resource(show_spinner="Loading the LaBSE index...")
+# No spinner text of its own: index() is only called inside ask(), which
+# already runs under the translated "Searching the manuals" spinner. (The
+# old text also named LaBSE, which is no longer the default index.)
+@st.cache_resource(show_spinner=False)
 def index():
     """One index per process. Given the directory explicitly."""
     return retrieve.Index(INDEX_DIR)
@@ -536,15 +753,19 @@ def stat_cards():
     A card whose number cannot be read is not rendered. A dashboard that
     hardcodes a figure is a screenshot with extra steps: it keeps saying
     867 after the corpus changes, and nobody finds out from the page.
+
+    THE LABEL IS A KEY, NOT TEXT. The figures are cached and the language is
+    not, so the card carries a ui_strings key and the render translates it;
+    the note is a file path, which is the same in both languages, or a
+    (key, numbers) pair when it is a sentence.
     """
     cards = []
     rows, manuals = manifest()
     if rows:
-        cards.append((f"{len(rows):,}", "indexed chunks",
-                      "data/processed/chunk_manifest.json"))
+        cards.append((f"{len(rows):,}", "stat_chunks", MANIFEST.as_posix()))
     if manuals:
-        cards.append((str(len(manuals)), "manuals",
-                      "chunk_manifest.json - manuals"))
+        cards.append((str(len(manuals)), "stat_manuals",
+                      f'{MANIFEST.name} ["manuals"]'))
     if EVAL_REPORT.exists():
         try:
             ev = json.loads(EVAL_REPORT.read_text(encoding="utf-8"))
@@ -552,8 +773,8 @@ def stat_cards():
             ev = None
         if ev:
             viol = sum(1 for r in ev if r.get("violations"))
-            cards.append((f"{viol}/{len(ev)}", "forbidden-figure violations",
-                          "out/eval_report.json"))
+            cards.append((f"{viol}/{len(ev)}", "stat_violations",
+                          EVAL_REPORT.as_posix()))
             # THE AGGREGATION IS IMPORTED, NOT RESTATED. This card first
             # computed its own rate by filtering on `citation_achievable`
             # and read 6/10 = 60%, where the metric's own rule gives
@@ -565,18 +786,23 @@ def stat_cards():
             hit, scored, _unach = citation_accuracy(ev)
             if scored:
                 cards.append((f"{100 * hit / scored:.1f}%",
-                              "citation accuracy",
-                              f"on achievable questions ({hit}/{scored})"))
+                              "stat_citation",
+                              ("stat_citation_note",
+                               {"hit": hit, "scored": scored})))
     return cards
 
 
 @st.cache_data(show_spinner=False)
 def gold_menu():
-    """[(label, question)] for the browse dropdown. Read, never typed.
+    """[(id, question, mark_key)] for the browse dropdown. Read, never typed.
 
     The unanswerable ones are marked. A viewer who picks one and sees a
     refusal should be able to tell that the refusal is CORRECT -- the
     manual has no answer -- rather than reading it as the demo failing.
+
+    The mark is a ui_strings key, translated at render: this is cached
+    and the interface language is not. The widget's VALUE is the id, so
+    switching language relabels the options without changing the pick.
     """
     import yaml
     if not GOLD_MAIN.exists():
@@ -588,9 +814,9 @@ def gold_menu():
         if not text:
             continue
         ans = str(q.get("answerable", "")).lower()
-        mark = {"no": "  [no answer in the manual]",
-                "partial": "  [partly answerable]"}.get(ans, "")
-        out.append((f"{q['id']}  {text}{mark}", text))
+        mark = {"no": "gold_mark_no",
+                "partial": "gold_mark_partial"}.get(ans)
+        out.append((q["id"], text, mark))
     return out
 
 
@@ -607,29 +833,6 @@ def _mf_clause(c):
     than to nothing -- a number in the wrong script still beats silence."""
     r = manifest()[0].get(c["chunk_id"]) or {}
     return r.get("clause_display") or r.get("clause") or c.get("clause") or ""
-
-
-def status_verification_column(path=retrieve.CATALOGUE):
-    """The catalogue column recording WHO confirmed a status, or None.
-
-    MEASURED 19 Sep 2026: there is no such column. products_catalogue.csv
-    carries product_key, entity_type, name_bn, aliases, defining_chunk_id,
-    chunk_ids and status -- and nothing that says a status was checked
-    against anything. So every status the registry may come to hold is, on
-    the evidence in the file, UNCONFIRMED, and this returning None is what
-    makes the page say so instead of presenting a bare status as fact. It
-    reads the header rather than asserting the absence, so the day someone
-    adds the column the claim stops being made.
-    """
-    import csv
-    if not Path(path).exists():
-        return None
-    with Path(path).open(encoding="utf-8-sig") as fh:
-        fields = csv.DictReader(fh).fieldnames or []
-    for name in ("status_verified", "status_source", "status_confirmed_by"):
-        if name in fields:
-            return name
-    return None
 
 
 def cite_match(citations, chunks):
@@ -783,8 +986,11 @@ def ask(question):
         OUT.mkdir(parents=True, exist_ok=True)
         with DEMO_META.open("a", encoding="utf-8", newline="\n") as fh:
             fh.write(json.dumps(meta, ensure_ascii=False) + "\n")
-        return {"id": qid, "chunks": [], "infra": True, "meta": meta,
-                "bn_message": EMBEDDER_DOWN_BN}
+        # "infra" names WHICH failure. The card used to read only the flag,
+        # so this branch rendered the out-of-memory card: a spent quota was
+        # reported to the reader as a machine fault, with advice (close
+        # applications, raise the page file) that cannot help.
+        return {"id": qid, "chunks": [], "infra": "embedder", "meta": meta}
     except (MemoryError, OSError) as exc:
         if not _is_memory_exhaustion(exc):
             raise               # a real fault: a missing index, a bad path
@@ -825,7 +1031,7 @@ def ask(question):
         OUT.mkdir(parents=True, exist_ok=True)
         with DEMO_META.open("a", encoding="utf-8", newline="\n") as fh:
             fh.write(json.dumps(meta, ensure_ascii=False) + "\n")
-        return {"id": qid, "chunks": [], "infra": True, "meta": meta}
+        return {"id": qid, "chunks": [], "infra": "memory", "meta": meta}
 
     row = {"question_id": qid, "question_bn": question, "chunks": chunks}
 
@@ -905,65 +1111,162 @@ def ask(question):
 def product_rows(question):
     """(rows, populated, total) for the products THE QUESTION names.
 
-    Read from the registry AT QUERY TIME, never from a chunk -- a chunk
-    records what the manual said, not whether the product is still sold.
+    Read from data/registry/products.csv AT QUERY TIME, never from a chunk --
+    a chunk records what the manual said, not whether the product is still
+    sold. Each row is (name_bn, status), status "" when unknown.
 
-    QUESTION-NAMED ONLY, and the union with the chunks is what this used to
-    do. Measured on the rendered page: a service-charge question about one
-    product produced three "unknown" rows for products harvested out of the
-    retrieved chunks -- none of them asked about, and the one the officer
-    typed absent, because it is a programme rather than a NAMED product. A
-    panel that answers a question nobody asked crowds out the one row that
-    would have mattered. If the question names no product there is no panel
-    at all: a status the officer did not ask for is noise, and noise in the
-    disclosure is how a real disclosure stops being read.
+    THE REGISTRY, NOT THE CATALOGUE. This panel used to read
+    products_catalogue.csv, whose status column is empty (0 of 43), so it
+    said "unknown" for every product while generate.py -- which applies the
+    registry's rules -- was already leading the answer with the registry's
+    status sentence. The page and the answer disagreed about the same
+    product. Both now read the same file, through registry.py.
+
+    THE REGISTRY IS THE FIELD TEAM'S SHEET, so a status from it is shown as
+    a status. The old "unverified" qualifier existed because the catalogue
+    recorded no one who had checked; the registry is the check.
+
+    QUESTION-NAMED ONLY. If the question names no product there is no panel:
+    a status the officer did not ask for is noise, and noise in the
+    disclosure is how a real disclosure stops being read. A product
+    productmatch recognises but the registry does not list gets a row saying
+    so -- silence there would read as "available".
     """
-    keys = list(retrieve.products_named(question))
+    import registry
+    reg = registry.load()
+    # registry.products_named puts suspended first, so the row that changes
+    # what an officer may offer is the one read first.
+    hits = {p["product_id"]: p for p in reg.products_named(question)}
+    keys = list(hits) + [k for k in retrieve.products_named(question)
+                         if k not in hits]
     if not keys:
         return [], 0, 0
-    status, populated, total = retrieve.product_status()
-    verified_col = status_verification_column()
+    by_id = {p["product_id"]: p for p in reg.products}
     names = product_names()
     rows = []
     for k in keys:
-        raw = (status.get(k) or "").strip()
-        if not raw:
-            rows.append((names.get(k, k), "unknown: no status recorded"))
-        elif verified_col is None:
-            # A status with nothing in the registry recording who checked
-            # it. Shown as what it is. Dropping the qualifier would turn an
-            # unconfirmed entry into an availability claim the registry
-            # cannot support, which is the failure this whole panel exists
-            # to prevent.
-            rows.append((names.get(k, k), f"{raw} - UNVERIFIED"))
-        else:
-            rows.append((names.get(k, k), raw))
-    return rows, populated, total
+        p = hits.get(k) or by_id.get(k)
+        rows.append((p["name_bn"], (p.get("status") or "").strip()) if p
+                    else (names.get(k, k), ""))
+    populated = sum(1 for p in reg.products if (p.get("status") or "").strip())
+    return rows, populated, len(reg.products)
+
+
+# STATUS BY MEANING (BRAND.md 3.2), keyed by the registry's OWN values --
+# data/registry/README.md: active · suspended · pilot. active is the teal
+# pair and suspended the risk pair. pilot has no colour in the brief's list
+# (its magenta highlight is for an UPDATED RULE, which is a different
+# table), so it is neutral; no product is in pilot today. A value outside
+# this list is shown as written, neutral, never coloured as if understood.
+STATUS_CLASS = {"active": "ok", "suspended": "risk", "pilot": "neutral"}
+
+
+def status_badge(raw, lang):
+    """One registry status, as a badge in the colour of what it means. -> html"""
+    if not raw:
+        return (f'<span class="bfa-badge neutral">'
+                f'{esc(t("status_unknown", lang))}</span>')
+    key = raw.lower()
+    label = (t(f"status_{key}", lang) if f"status_{key}" in ui_strings.STRINGS
+             else raw)
+    return (f'<span class="bfa-badge {STATUS_CLASS.get(key, "neutral")}">'
+            f'{esc(label)}</span>')
 
 
 # -------------------------------------------------------------- the render
+def current_lang():
+    """The interface language for this session. The segmented control owns
+    the value (key "lang"); this only reads it."""
+    v = st.session_state.get("lang")
+    return v if v in ui_strings.LANGS else ui_strings.DEFAULT_LANG
+
+
+def current_theme():
+    v = st.session_state.get("theme")
+    return v if v in THEMES else DEFAULT_THEME
+
+
+def programme_names():
+    """{dabi, progoti} for the strings that name them. Read from productmatch,
+    never typed here (Convention 2)."""
+    import productmatch as pm
+    return {k: pm.PROGRAMME_NAMES[k][0] for k in ("dabi", "progoti")}
+
+
+def t(key, lang, **kw):
+    """ui_strings.t, with the programme names always available to fill."""
+    return ui_strings.t(key, lang, **{**programme_names(), **kw})
+
+
+def n(value, lang):
+    """A number already formatted as text, in the interface's numerals."""
+    return ui_strings.num(value) if lang == "bn" else str(value)
+
+
+def render_prefs(lang):
+    """The language and display switches, top right, in their own strip
+    above the logo -- so nothing sits beside the logo.
+
+    REMEMBERED FOR THE SESSION, in session_state, and NOT in the URL.
+    Streamlit's bind="query-params" was tried and rejected on measurement:
+    it writes the option's DISPLAYED label to the URL, and the display
+    switch's label is translated -- so after a language switch the URL's
+    ?theme=Dark no longer names an option, and Streamlit silently drops it. A reload starts a new Streamlit session
+    anyway, so session_state is exactly "for the session".
+
+    Seeded with setdefault rather than `default=`, so the value has one
+    owner and never trips Streamlit's "default and Session State both set"
+    warning. persist_state="session" keeps it when the strip is not drawn.
+    required=True, because a segmented control otherwise deselects on a
+    second click and leaves the page with no language at all."""
+    st.session_state.setdefault("lang", ui_strings.DEFAULT_LANG)
+    st.session_state.setdefault("theme", DEFAULT_THEME)
+    with st.container(key="prefs", horizontal=True,
+                      horizontal_alignment="right", gap="small"):
+        st.segmented_control(
+            t("lang_label", lang), ui_strings.LANGS,
+            format_func=lambda v: t(f"lang_{v}", lang),
+            required=True, key="lang", persist_state="session",
+            label_visibility="collapsed")
+        st.segmented_control(
+            t("theme_label", lang), tuple(THEMES),
+            format_func=lambda v: t(f"theme_{v}", lang),
+            required=True, key="theme", persist_state="session",
+            label_visibility="collapsed")
+
+
 def main():
-    st.set_page_config(page_title="BRAC Field Assistant",
+    lang, theme = current_lang(), current_theme()
+    st.set_page_config(page_title=t("page_title", lang),
                        layout="wide", initial_sidebar_state="collapsed")
-    st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
+    st.markdown(f"<style>{theme_vars(theme, lang)}{CSS}</style>",
+                unsafe_allow_html=True)
     a = assets()
 
+    render_prefs(lang)
+    # The control has run, so read again: on the run a switch is clicked,
+    # session_state already holds the new value and the page should use it.
+    lang, theme = current_lang(), current_theme()
+    st.markdown(f"<style>{theme_vars(theme, lang)}</style>",
+                unsafe_allow_html=True)
+
     st.markdown(
-        '<div class="bfa-topbar"></div>'
         '<div class="bfa-header">'
-        f'<img src="{a["logo"]}" alt="BRAC">'
-        '<div class="bfa-tag">Field Assistant &middot; '
-        'Dabi &amp; Progoti operations manuals</div>'
+        f'<img src="{a[THEMES[theme]["logo"]]}" alt="{esc(t("logo_alt", lang))}">'
+        f'<div class="bfa-title">{esc(t("title", lang))}</div>'
+        f'<div class="bfa-sub">{esc(t("subtitle", lang))}</div>'
         '</div>', unsafe_allow_html=True)
 
     cards = stat_cards()
     if cards:
+        def note(x):
+            return t(x[0], lang, **x[1]) if isinstance(x, tuple) else x
         st.markdown(
             '<div class="bfa-stats">'
-            + "".join(f'<div class="bfa-stat"><div class="v">{esc(v)}</div>'
-                      f'<div class="l">{esc(l)}</div>'
-                      f'<div class="n">{esc(note)}</div></div>'
-                      for v, l, note in cards)
+            + "".join(f'<div class="bfa-stat"><div class="v">{esc(n(v, lang))}'
+                      f'</div><div class="l">{esc(t(label, lang))}</div>'
+                      f'<div class="n">{esc(note(nt))}</div></div>'
+                      for v, label, nt in cards)
             + '</div>', unsafe_allow_html=True)
 
     # TABS, NOT SEGMENTED BUTTONS, and the reason is state. Streamlit's
@@ -974,57 +1277,71 @@ def main():
     # they do not need. The cost is that every tab's body is rendered on
     # every run; that is affordable only because two of the three make no
     # model call and the third is guarded.
+    #
+    # KEYED, so a language switch -- which renames all three -- is the same
+    # widget with new labels rather than three new tabs.
+    #
+    # KNOWN LIMIT, MEASURED: A LANGUAGE SWITCH REOPENS THE FIRST TAB. The
+    # switch renames all three tabs, and with on_change="ignore" the browser
+    # never tells the server which tab is open -- session_state["tabs"] read
+    # None after a click on the quiz tab -- so there is nothing to carry the
+    # selection across the rename. A theme switch keeps the tab (labels
+    # unchanged). Fixing it needs on_change="rerun", i.e. a rerun on every
+    # tab click, which is the cost this design chose not to pay; not changed
+    # in a restyle. Journal 4m.
     ask_tab, faq_tab, quiz_tab = st.tabs(
-        ["Ask anything", "50 FAQ", "Test yourself"])
+        [t("tab_ask", lang), t("tab_faq", lang), t("tab_quiz", lang)],
+        key="tabs")
     with ask_tab:
-        render_ask(a)
+        render_ask(a, lang)
     with faq_tab:
-        render_faq()
+        render_faq(lang)
     with quiz_tab:
         import quiz_app
-        quiz_app.render_quiz()
+        quiz_app.render_quiz(lang)
 
-    links = "".join(f"<span>{t}</span>" for t in
-                    ("Dabi", "Progoti", "Livestock Grow", "Corpus gaps"))
+    # The note sits on the page, above the bar, where small grey text is
+    # readable; the bar carries the programme name and nothing else.
     st.markdown(
-        '<div class="bfa-footer"><div class="bfa-foot-top">'
-        f'<img src="{a["logo_white"]}" alt="BRAC">'
-        f'<div class="bfa-foot-links">{links}</div></div>'
-        '<div class="bfa-foot-rule"></div>'
-        '<div class="bfa-foot-note">'
-        'Answers are drawn from the operations manuals and may be '
-        'incomplete. Verify against the printed manual before acting. '
-        'Product status is not yet confirmed, so availability is shown as '
-        'unknown. This notice stays until the status sheet comes back.'
-        '</div></div>', unsafe_allow_html=True)
+        f'<div class="bfa-foot-note">{esc(t("footer_note", lang))}</div>'
+        '<div class="bfa-footer"><div class="name">'
+        f'{esc(t("footer_bar", lang))}</div></div>', unsafe_allow_html=True)
 
 
 
-def render_ask(a):
-    """SURFACE 1. The answer page, unchanged.
+def render_ask(a, lang):
+    """SURFACE 1. The answer page, unchanged in order and behaviour.
 
-    Lifted into a function so it can sit in a tab; not one line of its
-    order or behaviour is different. The mode control above it is the
-    only addition, and it only decides what text reaches the same input.
+    Lifted into a function so it can sit in a tab. The mode control above it
+    only decides what text reaches the same input. `lang` changes the words
+    around the answer, never the answer: that is in the language of the
+    question, as generate.py has always produced it.
     """
     gold = gold_menu()
     with st.container(key="mode"):
+        # The VALUES are fixed keys and the labels come from format_func, so
+        # a language switch relabels the control without changing the
+        # selection -- comparing against a label would break on the switch.
         mode = st.radio(
-            "How would you like to ask?",
-            ("Browse gold questions", "Ask your own"),
+            t("mode_label", lang), ("browse", "own"),
+            format_func=lambda v: t(f"mode_{v}", lang),
             horizontal=True, key="ask_mode",
             label_visibility="collapsed")
-        if mode == "Browse gold questions" and gold:
-            labels = [lbl for lbl, _t in gold]
+        if mode == "browse" and gold:
+            texts = {qid: text for qid, text, _m in gold}
+            marks = {qid: m for qid, _text, m in gold}
             pick = st.selectbox(
-                f"{len(gold)} gold questions - the evaluation set",
-                labels, index=None, key="gold_pick",
-                placeholder="Choose a question to put it in the box")
+                t("gold_select", lang, n=len(gold)),
+                list(texts), index=None, key="gold_pick",
+                format_func=lambda qid: (
+                    f"{qid}  {texts[qid]}"
+                    + (f"  {t(marks[qid], lang)}" if marks[qid] else "")),
+                placeholder=t("gold_placeholder", lang))
             # Set the INPUT, do not bypass it: the chosen question then
             # travels the same path a typed one does, through the same
             # guard, so nothing about the answer surface special-cases it.
             if pick and st.session_state.get("_last_pick") != pick:
-                st.session_state["q"] = dict(gold)[pick]
+                st.session_state["q"] = texts[pick]
                 st.session_state["_last_pick"] = pick
 
     with st.container(key="ask"):
@@ -1035,15 +1352,12 @@ def render_ask(a):
         # the harder half -- embed.expand_banglish exists for it -- so it is
         # the half worth showing on an empty page.
         # A FORM, so the question is submitted once -- by Enter or by
-        # the button -- rather than on every keystroke's rerun. The button
-        # is type="primary", which takes primaryColor from
-        # .streamlit/config.toml, i.e. the brand magenta; it is not
-        # hand-styled here.
+        # the button -- rather than on every keystroke's rerun.
         with st.form("ask", border=False, clear_on_submit=False):
             st.text_input(
-                "Ask a question - Bengali, or Banglish", key="q",
-                placeholder="progoti loner service charge koto?")
-            st.form_submit_button("Search the manuals", type="primary")
+                t("input_label", lang), key="q",
+                placeholder=t("input_placeholder", lang))
+            st.form_submit_button(t("submit", lang), type="primary")
         question = st.session_state.get("q") or ""
 
     # THE BUDGET, BEFORE ANYTHING IS TYPED. Warned, not enforced here: a
@@ -1055,60 +1369,67 @@ def render_ask(a):
     if limit and used / limit >= generate.TPD_WARN_AT:
         budget_warn = (
             '<div class="bfa-budget"><div class="inner">'
-            '<span class="k">Token budget nearly '
-            f'spent.</span><br>{used:,} of {limit:,} tokens used today on '
-            f'{esc(MODEL)}. The limit is per model per day; a query that '
-            'will not fit is refused before it is sent, not part-way '
-            'through.</div></div>')
+            f'<span class="k">{esc(t("budget_head", lang))}</span><br>'
+            + esc(t("budget_body", lang, used=n(f"{used:,}", lang),
+                    limit=n(f"{limit:,}", lang), model=MODEL))
+            + '</div></div>')
 
     # ONLY ON A NEW QUESTION. Streamlit re-runs the script on every
-    # interaction, so opening the chunk list would otherwise re-ask the
-    # model and spend the budget a second time on the same question.
+    # interaction, so opening the chunk list -- or switching language or
+    # theme -- would otherwise re-ask the model and spend the budget a
+    # second time on the same question.
     if question and st.session_state.get("_asked") != question:
-        with st.spinner("Searching the manuals..."):
+        with st.spinner(t("spinner", lang)):
             st.session_state["_result"] = ask(question)
         st.session_state["_asked"] = question
     result = st.session_state.get("_result") if question else None
 
     body = []
     if result is None:
+        body.append(f'<div class="bfa-answer-en">{esc(t("empty", lang))}</div>')
+    elif result.get("infra") == "embedder":
+        # THE HOSTED EMBEDDER IS DOWN OR THE DAY'S QUOTA IS SPENT. One
+        # sentence the reader can act on -- "try again in a while" -- and the
+        # same note as the memory card: this was not a refusal.
         body.append(
-            '<div class="bfa-answer-en">Ask about a product, a clause or an '
-            'approval limit. Answers are drawn from the Dabi and Progoti '
-            'operations manuals only.</div>')
+            f'<div class="bfa-answer-en"><b>{esc(t("embedder_down", lang))}'
+            '</b></div>'
+            f'<div class="bfa-flag note"><span class="k">'
+            f'{esc(t("infra_note_head", lang))}</span><br>'
+            + t("infra_note_body", lang,
+                id=f'<code>{esc(result["id"])}</code>',
+                flag='<code>answered: false</code>')
+            + '</div>')
     elif result.get("infra"):
         # THE FOURTH CARD STATE. Not an abstention and not an answer: the
         # question was never put to anything. Said in the same voice as the
         # other three, and it names the cause, because the traceback this
         # replaces pointed at the index and the index is not at fault.
         body.append(
-            '<div class="bfa-answer-en"><b>No answer. The machine ran out '
-            'of memory before the question could be searched.</b></div>'
-            '<div class="bfa-flag"><span class="k">Nothing is wrong with '
-            'the manuals or the index.</span><br>Loading the search model '
-            'needs more memory than this machine can commit right now. '
-            'Two things help, and on this machine the second is usually '
-            'the one that works:<br>'
-            '&nbsp;&nbsp;1. Close other applications and reload the page.'
-            '<br>'
-            '&nbsp;&nbsp;2. Raise the Windows page file, then restart.'
-            '<br>The limit here is the <b>commit ceiling</b>, not free '
-            'RAM - at the last failure only 2.5 GB was actually resident '
-            'against a 15.6 GB commit limit, so closing applications on '
-            'its own may not free enough. The question was not sent to any '
-            'model, and nothing was retrieved.</div>'
-            '<div class="bfa-flag note"><span class="k">Recorded as an '
-            'infrastructure failure.</span><br>The meta row for '
-            f'<code>{esc(result["id"])}</code> carries '
-            '<code>answered: false</code>, so this cannot be read later as '
-            'a refusal - a refusal is a decision the system made, and this '
-            'is not one.</div>')
+            f'<div class="bfa-answer-en"><b>{esc(t("infra_head", lang))}'
+            '</b></div>'
+            f'<div class="bfa-flag"><span class="k">'
+            f'{esc(t("infra_flag_head", lang))}</span><br>'
+            # infra_flag_body carries its own <br> and <b>; it is a string
+            # from the table, not data, so it is not escaped.
+            + t("infra_flag_body", lang, one=1, two=2, resident=2.5,
+                ceiling=15.6)
+            + '</div>'
+            f'<div class="bfa-flag note"><span class="k">'
+            f'{esc(t("infra_note_head", lang))}</span><br>'
+            + t("infra_note_body", lang,
+                id=f'<code>{esc(result["id"])}</code>',
+                flag='<code>answered: false</code>')
+            + '</div>')
     elif result.get("error"):
+        hint = t("error_untranslated", lang)
         body.append(
-            '<div class="bfa-answer-en"><b>No answer. The provider was not '
-            'called.</b></div>'
-            '<div class="bfa-flag"><span class="k">Reason.</span><br>'
-            f'{esc(result["error"])}</div>')
+            f'<div class="bfa-answer-en"><b>{esc(t("error_head", lang))}'
+            '</b></div>'
+            f'<div class="bfa-flag"><span class="k">'
+            f'{esc(t("error_reason", lang))}</span>'
+            + (f' {esc(hint)}' if hint else '')
+            + f'<br>{esc(result["error"])}</div>')
     else:
         answer, meta = result["answer"], result["meta"]
         body.append(f'<div class="bfa-answer">{esc(answer["answer"])}</div>')
@@ -1123,12 +1444,12 @@ def render_ask(a):
         if meta.get("floor_fired"):
             body.append(
                 '<div class="bfa-flag"><span class="bn">'
-                + FLOOR_NOTE_BN + '</span></div>')
+                + esc(t("floor_note", lang)) + '</span></div>')
         # 2. THE POST-FILTER. The model answered; the answer was discarded.
         if meta.get("filter_fired"):
             body.append(
                 '<div class="bfa-flag"><span class="bn">'
-                + FILTER_NOTE_BN + '</span></div>')
+                + esc(t("filter_note", lang)) + '</span></div>')
         # 3. THE MODEL'S OWN ABSTENTION, and the reason this branch exists.
         # MEASURED 19 Sep 2026. The obvious test question for the floor --
         # a loan ceiling for a product whose ceiling the manuals do not
@@ -1142,8 +1463,6 @@ def render_ask(a):
         # floor and the post-filter substitute a fixed sentence this file
         # can recognise; a model-authored refusal is just prose, and on
         # screen it is indistinguishable from a system that knows nothing.
-        # Which is precisely the failure the flags above exist to prevent,
-        # arriving through the one door they did not cover.
         #
         # gold_eval.is_abstention is the metric's own detector, reused
         # rather than re-written -- the page and the score must agree about
@@ -1152,54 +1471,56 @@ def render_ask(a):
         if (not meta.get("floor_fired") and not meta.get("filter_fired")
                 and _is_abstention(answer.get("answer"))):
             body.append(
-                '<div class="bfa-flag"><span class="k">The model read the '
-                'clauses and found no answer in them.</span><br>This is a '
-                'refusal, not a blank. The clauses below were retrieved '
-                'and read; they do not carry the figure asked for. Open '
-                'them and judge for yourself.</div>')
+                f'<div class="bfa-flag"><span class="k">'
+                f'{esc(t("abstain_head", lang))}</span><br>'
+                f'{esc(t("abstain_body", lang))}</div>')
 
         if meta.get("filter_skipped"):
+            # The meta row keeps generate's English reason; the page shows
+            # the same reason in the interface language.
+            reason = (t("filter_skip_off", lang) if not POST_FILTER
+                      else t("filter_skip_nogold", lang))
             body.append(
-                '<div class="bfa-flag note"><span class="k">Post-filter not '
-                f'armed.</span><br>{esc(meta["filter_skipped"])}. It holds '
-                'per-question constraints and has none for this question, '
-                'so it could not have fired. This is not a clean pass.</div>')
+                f'<div class="bfa-flag note"><span class="k">'
+                f'{esc(t("filter_skip_head", lang))}</span><br>'
+                f'{esc(t("filter_skip_body", lang, reason=reason))}</div>')
 
         # 4. PRODUCT STATUS, read from the registry at query time.
         rows, populated, total = product_rows(question)
         if rows:
-            lines = "".join(f'<br><span class="bn">{esc(n)}</span> - {esc(s)}'
-                            for n, s in rows)
+            lines = "".join(
+                f'<div class="bfa-status"><span class="bfa-name">{esc(nm)}'
+                f'</span>{status_badge(raw, lang)}</div>'
+                for nm, raw in rows)
             body.append(
-                '<div class="bfa-flag note"><span class="k">Product '
-                'status.</span>' + lines +
-                f'<br><span style="color:{BRAND["muted"]}">The registry '
-                f'holds {total} products and {populated} statuses. Status is '
-                'read at query time, so a withdrawn product still shows its '
-                'terms - the terms bind existing clients either '
-                'way.</span></div>')
+                f'<div class="bfa-flag note"><span class="k">'
+                f'{esc(t("status_head", lang))}</span>' + lines +
+                f'<br>{esc(t("status_note", lang, total=total, populated=populated))}'
+                '</div>')
 
-        model_used = meta.get("model") or "no model - the floor fired"
+        model_used = meta.get("model") or t("meta_no_model", lang)
         body.append(
-            f'<div class="bfa-meta">Answered by <b>{esc(model_used)}</b> '
-            f'&middot; provider {esc(PROVIDER)} &middot; k={K} &middot; '
-            f'top fused {meta.get("top_fused") or 0:.4f} &middot; '
-            f'{meta.get("prompt_tokens") or 0:,} prompt + '
-            f'{meta.get("output_tokens") or 0:,} output tokens &middot; '
-            f'meta row <code>{esc(result["id"])}</code> in '
-            f'{esc(DEMO_META.as_posix())}</div>')
+            '<div class="bfa-meta">'
+            + t("meta_line", lang,
+                model=f'<b>{esc(model_used)}</b>', provider=esc(PROVIDER),
+                k=K, top=n(f'{meta.get("top_fused") or 0:.4f}', lang),
+                prompt=n(f'{meta.get("prompt_tokens") or 0:,}', lang),
+                output=n(f'{meta.get("output_tokens") or 0:,}', lang),
+                id=f'<code>{esc(result["id"])}</code>',
+                path=esc(DEMO_META.as_posix()))
+            + '</div>')
 
     st.markdown(
-        '<div class="bfa-band"><div class="bfa-card">'
-        '<div class="bfa-label">Answer</div>'
+        '<div class="bfa-section"><div class="bfa-card">'
+        f'<div class="bfa-label">{esc(t("answer_label", lang))}</div>'
         + "".join(body) +
         '</div></div>' + budget_warn, unsafe_allow_html=True)
 
-    st.markdown(f'<img class="bfa-divider" src="{a["divider"]}" alt="">',
-                unsafe_allow_html=True)
-
+    # THE DIVIDER IS GONE (BRAND.md 5: the motif is never redrawn, and no
+    # official export is in assets/). The 40px of white space that replaces
+    # it is .st-key-chunks' top padding.
     with st.container(key="chunks"):
-        with st.expander("Retrieved chunks", expanded=False):
+        with st.expander(t("chunks_title", lang), expanded=False):
             chunks = (result or {}).get("chunks") or []
             cited, orphans = cite_match(
                 ((result or {}).get("answer") or {}).get("citations"), chunks)
@@ -1208,21 +1529,19 @@ def render_ask(a):
             # reader notices. It is also the most informative thing here.
             if orphans:
                 st.markdown(
-                    '<div class="bfa-orphan"><span class="k">Cited but not '
-                    'retrieved.</span> '
+                    f'<div class="bfa-orphan"><span class="k">'
+                    f'{esc(t("orphan_head", lang))}</span> '
                     + ", ".join(f"<b>{esc(cite_display(o, chunks))}</b>"
                                 for o in orphans)
-                    + ' - named in the answer, but no retrieved chunk '
-                    'carries that clause. Either the model invented it, or '
-                    'it belongs to a manual this search did not reach. '
-                    'Treat the answer as unsupported on that point.</div>',
+                    + f' – {esc(t("orphan_body", lang))}</div>',
                     unsafe_allow_html=True)
             if not chunks:
                 st.markdown(
                     '<div class="bfa-chunk"><span class="cl">'
-                    + ('Retrieval never ran - the search model could not '
-                       'be loaded.' if (result or {}).get("infra")
-                       else 'Nothing retrieved yet.')
+                    + esc(t({"embedder": "chunks_embedder",
+                             "memory": "chunks_infra"}.get(
+                                 (result or {}).get("infra"), "chunks_none"),
+                            lang))
                     + '</span></div>', unsafe_allow_html=True)
             for c in chunks:
                 st.markdown(
@@ -1230,15 +1549,17 @@ def render_ask(a):
                     f'<span class="id">{esc(c["chunk_id"])}</span>'
                     f'<span class="cl">{esc(_mf_manual(c))} '
                     + (f'&sect;{esc(_mf_clause(c))}' if _mf_clause(c)
-                       else '<i>no clause number</i>') + '</span>'
-                    + ('<span class="cited">CITED</span>'
+                       else f'<i>{esc(t("no_clause", lang))}</i>') + '</span>'
+                    + (f'<span class="cited">{esc(t("cited", lang))}</span>'
                        if c["chunk_id"] in cited else '')
-                    + f'<span class="sc">fused {c["fused_score"]:.2f}</span>'
-                    + '</div>', unsafe_allow_html=True)
+                    + '<span class="sc">'
+                    + esc(t("fused", lang,
+                            score=n(f'{c["fused_score"]:.2f}', lang)))
+                    + '</span></div>', unsafe_allow_html=True)
 
 
 
-def render_faq():
+def render_faq(lang):
     """SURFACE 2. Not started, and saying so is the point.
 
     An empty tab reads as broken; a stated gap reads as a plan. Nothing
@@ -1247,14 +1568,9 @@ def render_faq():
     here and what it will take.
     """
     st.markdown(
-        '<div class="bfa-soon"><span class="k">Not started</span>'
-        '<b>Fifty questions field officers actually ask, with reviewed '
-        'answers.</b><br>The 24 questions in the evaluation set were '
-        'written by reading chunks, so they test retrieval mechanics '
-        'rather than what an officer walks in with. This surface waits '
-        'on the field questions being collected and their answers '
-        'checked against the printed manual by someone who has it.'
-        '</div>', unsafe_allow_html=True)
+        f'<div class="bfa-soon"><span class="k">{esc(t("faq_state", lang))}'
+        f'</span><b>{esc(t("faq_head", lang))}</b><br>'
+        f'{esc(t("faq_body", lang, n=24))}</div>', unsafe_allow_html=True)
 
 # Convention 1: importing this module must never write a file or call a
 # provider. Everything above is a definition; main() does the work.

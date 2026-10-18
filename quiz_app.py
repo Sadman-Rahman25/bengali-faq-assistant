@@ -51,41 +51,42 @@ N_PER_SESSION = 10
 # সিডিও 7, so those two alone carry most of it.
 MAX_SAME_ANSWER = 2
 
-# SEMANTIC COLOURS, DELIBERATELY NOT IN BRAND. Right and wrong are states of
-# an answer, not brand identity, and BRAND is the brand's dictionary. Both
-# are chosen to sit below the magenta rather than beside it: a saturated
-# green or red would read as a second accent and compete with the one colour
-# the page is allowed to shout in.
-RIGHT = "#1f7a4d"        # deep green, no magenta in it
-WRONG = "#8a5157"        # grey-red, desaturated on purpose
-
+# RIGHT AND WRONG ARE STATUS COLOURS, by meaning (BRAND.md 3.2): the teal
+# pair for a correct answer, the brick-red risk pair for a wrong one. Both
+# are official codes and both are read through app.py's theme roles, so the
+# quiz follows the light/dark switch with the rest of the page. The old
+# #1f7a4d / #8a5157 were not in the brand table and are gone.
 def quiz_css():
     BRAND = _app().BRAND
     return f"""
-.qz-band {{ background: {BRAND['band']}; padding: 22px; }}
-.qz-card {{ background: #fff; border-radius: 10px; padding: 18px 22px;
-           margin-bottom: 14px;
-           box-shadow: 0 1px 2px rgba(0,0,0,.07), 0 8px 20px rgba(0,0,0,.05); }}
-.qz-num {{ font-family: {BRAND['latin']}; font-size: 12px; font-weight: 600;
-          letter-spacing: .14em; text-transform: uppercase;
-          color: {BRAND['magenta']}; margin: 0 0 10px; }}
+.qz-band {{ padding: 4px 22px 22px; }}
+.qz-card {{ background: var(--card); border: 1px solid var(--card-line);
+           border-radius: 10px; padding: 18px 22px; margin-bottom: 14px; }}
+.qz-num {{ font-family: {BRAND['latin']}; font-size: var(--small);
+          font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+          color: var(--accent); margin: 0 0 10px; }}
 .qz-q {{ font-family: {BRAND['bengali']}; font-size: {BRAND['bengali_px']};
-        line-height: 1.8; color: {BRAND['ink']}; }}
+        line-height: 1.8; color: var(--ink); }}
 .qz-score {{ font-family: {BRAND['latin']}; font-size: 15px;
-            color: {BRAND['ink']}; }}
+            color: var(--ink); }}
 .qz-score b {{ font-size: 26px; }}
-.qz-fb {{ font-family: {BRAND['latin']}; font-size: 13px; line-height: 1.7;
-         padding: 10px 14px; margin-top: 12px; border-left: 3px solid; }}
-.qz-fb.right {{ border-left-color: {RIGHT}; color: {RIGHT}; }}
-.qz-fb.wrong {{ border-left-color: {WRONG}; color: {WRONG}; }}
+.qz-fb {{ font-family: {BRAND['latin']}; font-size: var(--chrome);
+         line-height: 1.7; padding: 10px 14px; margin-top: 12px;
+         border-left: 3px solid; }}
+.qz-fb.right {{ border-left-color: var(--ok-ink); background: var(--ok-bg);
+               color: var(--ok-ink); }}
+.qz-fb.wrong {{ border-left-color: var(--risk-ink); background: var(--risk-bg);
+               color: var(--risk-ink); }}
 .qz-fb .bn {{ font-family: {BRAND['bengali']}; font-size: 17px; }}
 .qz-exp {{ font-family: {BRAND['bengali']}; font-size: 16px; line-height: 1.8;
-          color: {BRAND['ink']}; margin-top: 8px; }}
-.qz-cite {{ display: inline-block; background: {BRAND['magenta']};
-           color: #fff; font-family: {BRAND['latin']}; font-size: 12px;
-           border-radius: 999px; padding: 3px 11px; margin-top: 10px; }}
-.qz-note {{ font-family: {BRAND['latin']}; font-size: 12px;
-           color: {BRAND['muted']}; margin-top: 8px; }}
+          color: var(--ink); margin-top: 8px; }}
+.qz-cite {{ display: inline-block; background: var(--chip-bg);
+           border: 1px solid var(--chip-line); color: var(--chip-ink);
+           font-family: {BRAND['latin']}; font-size: var(--small);
+           border-radius: 999px; padding: 2px 11px; margin-top: 10px; }}
+.qz-note {{ font-family: {BRAND['latin']}; font-size: var(--small);
+           color: var(--muted); margin-top: 8px; }}
+.qz-note code {{ color: var(--muted); background: transparent; }}
 .st-key-quiz {{ padding: 0 22px; }}
 """
 
@@ -190,7 +191,7 @@ def citation(q):
     return f"{name} §{disp}" if disp else name
 
 
-def render_quiz():
+def render_quiz(lang=None):
     """SURFACE 3. The quiz, with no page chrome of its own.
 
     Everything that made this a separate app -- set_page_config, the
@@ -198,16 +199,23 @@ def render_quiz():
     quiz. Removing it is the whole merge. The two properties that matter
     are untouched: nothing here calls a provider and nothing loads the
     index, so this still renders with the model unreachable.
+
+    `lang` is the interface language; questions, options, explanations and
+    citations are bank data and stay as the bank holds them.
     """
-    esc = _app().esc
+    app = _app()
+    esc, t, n = app.esc, app.t, app.n
+    lang = lang or app.current_lang()
     st.markdown(f"<style>{quiz_css()}</style>", unsafe_allow_html=True)
     qs, meta = bank()
     if not qs:
         st.markdown('<div class="qz-band"><div class="qz-card">'
-                    '<div class="qz-num">No bank</div>'
-                    f'<div class="qz-note">Nothing at {esc(str(BANK))}. '
-                    'Run <code>python quiz_build.py</code> first.</div>'
-                    '</div></div>', unsafe_allow_html=True)
+                    f'<div class="qz-num">{esc(t("quiz_no_bank", lang))}</div>'
+                    '<div class="qz-note">'
+                    + t("quiz_no_bank_body", lang,
+                        path=f"<code>{esc(str(BANK))}</code>",
+                        cmd="<code>python quiz_build.py</code>")
+                    + '</div></div></div>', unsafe_allow_html=True)
         return
 
     # ONE DRAW PER SESSION. Streamlit re-runs the whole script on every radio
@@ -224,19 +232,19 @@ def render_quiz():
         # quiz that quietly serves eight looks like a quiz with two questions
         # missing. Name the number and the reason instead.
         st.markdown(
-            f'<div class="qz-note">{len(chosen)} questions, drawn at random '
-            f'from {len(qs)} in the bank, with no more than '
-            f'{MAX_SAME_ANSWER} sharing a correct answer. Answers come from '
-            'the manuals; nothing is generated while you take this.</div>',
-            unsafe_allow_html=True)
+            '<div class="qz-note">'
+            + esc(t("quiz_intro", lang, n=len(chosen), total=len(qs),
+                    cap=MAX_SAME_ANSWER))
+            + '</div>', unsafe_allow_html=True)
         if len(chosen) < N_PER_SESSION:
             st.markdown(
-                f'<div class="qz-note"><b>{len(chosen)} questions, not '
-                f'{N_PER_SESSION}.</b> At most {MAX_SAME_ANSWER} questions '
-                f'may share a correct answer, and the {len(qs)} in the bank '
-                f'support only {answer_capacity(qs)} under that limit. The '
-                'bank needs more distinct answers, not a bigger draw.</div>',
-                unsafe_allow_html=True)
+                '<div class="qz-note"><b>'
+                + esc(t("quiz_short_head", lang, n=len(chosen),
+                        want=N_PER_SESSION))
+                + '</b> '
+                + esc(t("quiz_short_body", lang, cap=MAX_SAME_ANSWER,
+                        total=len(qs), capacity=answer_capacity(qs)))
+                + '</div>', unsafe_allow_html=True)
 
         # ALL TEN ON ONE PAGE, ONE SUBMIT. There is no model call and so no
         # latency to hide, and a single submit gives one score instead of
@@ -247,36 +255,42 @@ def render_quiz():
             picks = {}
             for i, q in enumerate(chosen, 1):
                 st.markdown(
-                    f'<div class="qz-card"><div class="qz-num">Question {i}'
+                    f'<div class="qz-card"><div class="qz-num">'
+                    f'{esc(t("quiz_question", lang, i=i))}'
                     f'</div><div class="qz-q">{esc(q["question_bn"])}</div>'
                     '</div>', unsafe_allow_html=True)
                 picks[q["id"]] = st.radio(
-                    f"Question {i}", q["options"], index=None,
+                    t("quiz_question", lang, i=i), q["options"], index=None,
                     key=f"pick_{q['id']}", label_visibility="collapsed")
-            submitted = st.form_submit_button("Submit answers",
+            submitted = st.form_submit_button(t("quiz_submit", lang),
                                               type="primary")
 
     if not submitted:
         return
 
     score = sum(1 for q in chosen if picks.get(q["id"]) == q["correct"])
-    body = [f'<div class="qz-card"><div class="qz-num">Your score</div>'
-            f'<div class="qz-score"><b>{score}</b> of {len(chosen)}</div>'
-            '</div>']
+    body = [f'<div class="qz-card"><div class="qz-num">'
+            f'{esc(t("quiz_score", lang))}</div>'
+            '<div class="qz-score">'
+            + t("quiz_score_of", lang, score=f"<b>{n(score, lang)}</b>",
+                n=len(chosen))
+            + '</div></div>']
     for i, q in enumerate(chosen, 1):
         got = picks.get(q["id"])
         ok = got == q["correct"]
         cls = "right" if ok else "wrong"
-        verdict = "Correct" if ok else (
-            "Not answered" if got is None else "Not correct")
+        verdict = t("quiz_right" if ok else (
+            "quiz_unanswered" if got is None else "quiz_wrong"), lang)
         chosen_line = ("" if got is None else
-                       f'<br>You chose <span class="bn">{esc(got)}</span>')
+                       f'<br>{esc(t("quiz_you_chose", lang))} '
+                       f'<span class="bn">{esc(got)}</span>')
         body.append(
             f'<div class="qz-card">'
-            f'<div class="qz-num">Question {i}</div>'
+            f'<div class="qz-num">{esc(t("quiz_question", lang, i=i))}</div>'
             f'<div class="qz-q">{esc(q["question_bn"])}</div>'
-            f'<div class="qz-fb {cls}"><b>{verdict}.</b>{chosen_line}'
-            f'<br>Correct answer <span class="bn">{esc(q["correct"])}</span>'
+            f'<div class="qz-fb {cls}"><b>{esc(verdict)}</b>{chosen_line}'
+            f'<br>{esc(t("quiz_correct_answer", lang))} '
+            f'<span class="bn">{esc(q["correct"])}</span>'
             '</div>'
             f'<div class="qz-exp">{esc(q["explanation"])}</div>'
             f'<div class="qz-cite">{esc(citation(q))}</div>'
@@ -293,17 +307,24 @@ def main():
     either is unavailable. Page chrome lives here, not in render_quiz.
     """
     app = _app()
-    st.set_page_config(page_title="BRAC Field Assistant - Quiz",
+    lang, theme = app.current_lang(), app.current_theme()
+    st.set_page_config(page_title=app.t("quiz_page_title", lang),
                        layout="wide", initial_sidebar_state="collapsed")
-    st.markdown(f"<style>{app.CSS}</style>", unsafe_allow_html=True)
+    st.markdown(f"<style>{app.theme_vars(theme, lang)}{app.CSS}</style>",
+                unsafe_allow_html=True)
+    app.render_prefs(lang)
+    lang, theme = app.current_lang(), app.current_theme()
+    st.markdown(f"<style>{app.theme_vars(theme, lang)}</style>",
+                unsafe_allow_html=True)
     a = app.assets()
     st.markdown(
-        '<div class="bfa-topbar"></div>'
         '<div class="bfa-header">'
-        f'<img src="{a["logo"]}" alt="BRAC">'
-        '<div class="bfa-tag">Field Assistant &middot; Practice quiz</div>'
+        f'<img src="{a[app.THEMES[theme]["logo"]]}" '
+        f'alt="{app.esc(app.t("logo_alt", lang))}">'
+        f'<div class="bfa-title">{app.esc(app.t("title", lang))}</div>'
+        f'<div class="bfa-sub">{app.esc(app.t("quiz_subtitle", lang))}</div>'
         '</div>', unsafe_allow_html=True)
-    render_quiz()
+    render_quiz(lang)
 
 
 # Convention 1: importing must never write a file or call a provider.

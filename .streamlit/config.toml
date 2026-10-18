@@ -1,0 +1,33 @@
+# Streamlit's OWN widgets. app.py's CSS styles the markdown blocks AND, since
+# the light/dark switch (journal 4m), overrides the widgets' colours per
+# session. This file is the floor underneath that: what a widget looks like
+# before app.py's stylesheet arrives, and for anything it does not reach.
+#
+# WHY base IS PINNED TO light. With no theme configured Streamlit follows
+# the browser's prefers-color-scheme, so the same page renders light for one
+# viewer and dark for another. Measured 20 Sep 2026 on the real page, the
+# text input's wrapper:
+#
+#   prefers-color-scheme: light   ->  rgb(240, 242, 246)
+#   prefers-color-scheme: dark    ->  rgb(38, 39, 48)     <- the black bar
+#
+# The page's own colours did NOT follow that preference, so a viewer on a
+# dark OS got near-black widgets sitting in a white page. Pinning light makes
+# the OS irrelevant; the in-page switch is now the only thing that changes
+# the theme, and it changes the page and the widgets together.
+#
+# WHY THE SWITCH IS NOT THIS FILE. This is server configuration, shared by
+# every session. Flipping it for one viewer would flip it for everyone
+# connected, so per-session dark mode lives in app.py's CSS instead.
+#
+# OFFICIAL CODES ONLY (BRAND.md 3.1). primaryColor must equal
+# PALETTE["magenta"] in app.py -- this file is read before any Python runs,
+# so it cannot import it; keep the two in step by hand. Primary BUTTONS do
+# not use it as their fill: white on #EC008C is 4.25:1, so app.py fills
+# them with the approved text tint instead.
+[theme]
+base = "light"
+primaryColor = "#EC008C"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F3F4"
+textColor = "#27281C"
