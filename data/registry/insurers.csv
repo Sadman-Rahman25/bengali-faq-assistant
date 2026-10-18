@@ -1,0 +1,6 @@
+insurer_id,name_bn,name_en,in_manual,clause,carries_brac_policies,covers,note
+sena,সেনা ইন্স্যুরেন্স পিএলসি,Sena Insurance PLC,yes,5.4.6,yes,Livestock insurance; fire safety insurance,
+green_delta,গ্রীন ডেল্টা ইন্স্যুরেন্স পিএলসি,Green Delta Insurance PLC,yes,5.4.7,yes,Livestock insurance,
+guardian_life,গার্ডিয়ান লাইফ ইন্স্যুরেন্স লিমিটেড,Guardian Life Insurance PLC,yes,5.1,yes,Credit shield (loan security) insurance,Reviewer spelled it 'Gurdian'.
+pioneer,পাইওনিয়ার ইন্স্যুরেন্স কোম্পানি লিমিটেড,Pioneer Insurance PLC,no,,yes,,Not described in either manual — the chatbot will not name a product.
+chartered_life,চার্টার্ড লাইফ,Chartered Life,no,,yes,,Added by the field team. Not in either manual — the chatbot will not name a product.
