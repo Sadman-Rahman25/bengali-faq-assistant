@@ -1283,7 +1283,10 @@ def split_citations(text):
 # "(retrieval score below floor; no model call made)" -- and that string went
 # to a field officer who reads Bengali, in an answer that was otherwise
 # correct. A reply is not a log line.
-ABSTAIN_TEXT = "প্রদত্ত প্রসঙ্গে এই প্রশ্নের উত্তর নেই।"
+# "প্রদত্ত প্রসঙ্গে" -- "in the given context" -- was machinery talking.
+# A field officer has no notion of a retrieval context; what they can act
+# on is whether the manual answers the question.
+ABSTAIN_TEXT = "এই প্রশ্নের উত্তর ম্যানুয়ালে পাওয়া যায়নি।"
 ABSTAIN_REASON = "retrieval score below floor; no model call made"
 
 
@@ -1305,7 +1308,12 @@ ABSTAIN_REASON = "retrieval score below floor; no model call made"
 # would report zero because the filter removed what it looks for, while a
 # literal the filter missed slipped past both. Sharing means a filter miss is
 # also a metric miss, and metric 4 stays a report-stopper that can still fire.
-FILTERED_TEXT = "প্রদত্ত প্রসঙ্গে এই প্রশ্নের উত্তর নেই।"
+# DELIBERATELY THE SAME SENTENCE as the abstention. A filtered answer
+# means the model produced a forbidden figure and it was discarded;
+# saying anything more specific would tell the reader that a figure
+# exists and was withheld, which is the thing being withheld. Which of
+# the two fired is in the meta row, where the operator reads it.
+FILTERED_TEXT = ABSTAIN_TEXT
 FILTERED_REASON = "post-filter matched a forbidden figure"
 
 
