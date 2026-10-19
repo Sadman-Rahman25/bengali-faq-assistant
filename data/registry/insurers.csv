@@ -1,6 +1,6 @@
 insurer_id,name_bn,name_en,in_manual,clause,carries_brac_policies,covers,note
-shena_insurance,সেনা ইন্স্যুরেন্স পিএলসি,Sena Insurance PLC,yes,5.4.6,yes,Livestock insurance; fire safety insurance,
+shena_insurance,সেনা ইন্স্যুরেন্স পিএলসি,Sena Insurance PLC,yes,5.4.6,yes,Livestock insurance; fire safety insurance (Dhaka area),"progoti §5.4.6: fire-safety premium rate 0.15% + 15% VAT, Dhaka and adjacent areas."
 green_delta_insurance,গ্রীন ডেল্টা ইন্স্যুরেন্স পিএলসি,Green Delta Insurance PLC,yes,5.4.7,yes,Livestock insurance,
 guardian_life,গার্ডিয়ান লাইফ ইন্স্যুরেন্স লিমিটেড,Guardian Life Insurance PLC,yes,5.1,yes,Credit shield (loan security) insurance,Reviewer spelled it 'Gurdian'.
-pioneer_insurance,পাইওনিয়ার ইন্স্যুরেন্স কোম্পানি লিমিটেড,Pioneer Insurance PLC,no,,yes,,Not described in either manual — the chatbot will not name a product.
+pioneer_insurance,পাইওনিয়ার ইন্স্যুরেন্স কোম্পানি লিমিটেড,Pioneer Insurance PLC,yes,5.4.6,yes,"Fire safety insurance, Chittagong area","progoti §5.4.6: premium rate 0.18% + 15% VAT, Chittagong and adjacent areas."
 chartered_life,চার্টার্ড লাইফ,Chartered Life,no,,yes,,Added by the field team. Not in either manual — the chatbot will not name a product.
