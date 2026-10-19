@@ -122,6 +122,33 @@ about the same insurance. That is now a single row.
 at all — `python registry.py --check` reports it, by design, rather than
 inventing one.
 
+### 1.5 সিনিয়র সিডিও / সিনিয়র পিও — not a post, 2026-10-19
+
+**The title is not in use.** Both manuals name a "সিনিয়র সিডিও" (Dabi) or
+"সিনিয়র পিও" (Progoti). There is no post of that name.
+
+| | |
+|---|---|
+| Source | BRAC programme team, 2026-10-19 |
+| Recorded in | `data/registry/rule_updates.csv`, rule 11 — scoped to both manuals; the current rule stands as the field team gave it: শাখা ব্যবস্থাপকের অনুপস্থিতিতে এবিএম অথবা এএম দায়িত্ব পালন করবেন। |
+| Manual text | unchanged — the chunks keep their original wording |
+
+Where the manuals print it, in the built corpus:
+
+| chunk | clause | what it assigns to the title | what the registry does |
+|---|---|---|---|
+| `dabi_2025_0085` | §৩.১.৩(ক) | stand-in for an absent branch manager when there is no এবিএম or বিএম trainee | rule 11 replaces it |
+| `progoti_0096` | §৩.১.৩(ক) | the same | rule 11 replaces it |
+| `progoti_0128` | §৩.৮.১(খ) | keeping Progoti's loan papers ("সিনিয়র পিও প্রগতি") | withheld row 5 answers instead — with the retention period, not with who keeps them |
+| `progoti_0162` | §৩.১১.২ | keeping Progoti's file and register papers, the same sentence | **nothing** — a question that retrieves this chunk can still be answered with the title |
+
+It does not appear in the roles registry, the quiz bank, any FAQ answer or the
+gold set.
+
+**Still open:** who keeps those Progoti papers now. The programme team's
+answer removes the title, not the duty, and no replacement is known — so no
+registry row has been invented for §3.8.1(খ) or §3.11.2.
+
 ---
 
 ## 2. Spelling errors in the source
@@ -562,7 +589,6 @@ python -c "import json;print(sum(1 for c in map(json.loads,open('data/processed/
 | Low | Decide on অরগানোগ্রাম vs অর্গানোগ্রাম | Copy-edit |
 | Low | Introduce the underwriters where first named | Insurance unit |
 | High | Registry rule 9: do existing এককালীন স্থায়ী সঞ্চয় প্রকল্প accounts still earn ৩ মাসে ৮%, ৬ মাসে ৯%, ১২ মাসে ১০%? `products.csv` lists the product as suspended; rule 9 says still_valid. Not in `not_available.csv`: a match there replaces the suspension line instead of following it | Field team |
-| High | Registry rule 11 (temporary charge now এবিএম or এএম) is scoped to Dabi. Progoti §3.1.3(ক) prints the same bullet but for one word: the last-resort stand-in is সিনিয়র সিডিও in Dabi and সিনিয়র পিও in Progoti -- the same role under each manual's title. Does the change apply to Progoti? Until answered, Progoti answers quote the manual. (Rule 10's Progoti text, §2.1.2(গ), was word-for-word identical and is now scoped to both) | Field team |
 | High | Registry rule 23: does "এখন যেকোনো বয়সে" mean the ছায়া-সঞ্চয় insurance benefit now covers DPS holders of any age? §5.2.3's limit is a condition of the insurance benefit, not of opening a DPS; the row's old wording, "ডিপিএস বয়সসীমা", read as the latter. Set to not_confirmed until answered: the bot now says the current age limit for the benefit could not be confirmed | Field team |
 
 ---

@@ -42,13 +42,15 @@ Usage:
 """
 import argparse
 import csv
+import functools
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 from bn_shared import BN_DIGITS, NUM_RX
 from bnnorm import canon, canon_pattern
-from productmatch import NAMED, compile_names, compile_pat
+from productmatch import NAMED, PROGRAMME_NAMES, compile_names, compile_pat
 
 REG = Path("data/registry")
 STALE_VERDICTS = ("changed", "retired", "not_confirmed")
@@ -386,14 +388,115 @@ _ASK_BEYOND = re.compile(
 # head noun is NOT a name: "লোন নিতে কী কাগজ লাগে?" names nothing, so a
 # qualifier of at least MIN_WORD characters must precede it.
 _HEAD = ("লোন", "ঋণ", "বিমা", "সঞ্চয়")
+# The kind of product a head noun names. ইন্স্যুরেন্স is not a head this
+# detector looks for, but product NAMES use it (ফায়ার সেফটি ইন্স্যুরেন্স),
+# so "ফায়ার বিমা" has to find the insurance it is short for.
+_HEAD_KIND = (("loan", ("লোন", "ঋণ")),
+              ("insurance", ("বিমা", "ইন্স্যুরেন্স")),
+              ("savings", ("সঞ্চয়",)))
 # Qualifiers that are grammar rather than a name. Without these,
 # "নতুন লোন" and "এই ঋণ" read as product names.
 _NOT_A_NAME = ("নতুন", "পুরাতন", "পুরোনো", "কোন", "কোনো", "এই", "সেই",
                "যেকোনো", "সকল", "সব", "একটি", "প্রতিটি", "অন্য")
+# Where a name ends, walking back from its head noun: grammar, a question
+# word, a conjunction. "৬৫ বছর বয়সী গ্রাহক কি ছায়া-সঞ্চয় বিমা" -- the name
+# is ছায়া-সঞ্চয়, and কি is where it stops.
+_NAME_STOP = _NOT_A_NAME + ("কি", "কী", "কে", "কার", "কত", "কেন", "কীভাবে",
+                            "কিভাবে", "কবে", "কখন", "এবং", "ও", "বা", "আর",
+                            "যে", "যদি")
+_NAME_WINDOW = 3            # describing words read back from the head noun
+_GENERIC_DF = 3             # in this many product names = too common to identify
+_NAME_SPLIT = re.compile(r"[\s\-+/–—]+")
+_CLAUSE_END = "।?!,;:৷"
+_OPEN_QUOTE = "“\"'‘(["
+_PUNCT = "“”\"'‘’()[]" + _CLAUSE_END
+# The head noun is a WORD, with the same endings the topic gate allows and the
+# same boundary. Without it ঋণ matched inside ঋণী / ঋণীদের (borrowers) and
+# বিমা inside বিমাদাবি, so "৩.৯.১(খ) ধারায় ঋণীদের ক্ষেত্রে ..." was a question
+# about a product called ধারায়.
 _PRODUCT_SHAPED = re.compile(
-    r"([%s\w]{%d,})\s+(?:%s)" % (
+    r"([%s\w]{%d,})\s+(%s)%s(?![%s])" % (
         _BN, MIN_WORD,
-        "|".join(re.escape(canon_pattern(h)) for h in _HEAD)))
+        "|".join(re.escape(canon_pattern(h)) for h in _HEAD),
+        _ENDINGS, _BN))
+
+
+@functools.lru_cache(maxsize=1)
+def _product_words():
+    """-> ([(kind, words)] per product, generic words, {head word: kind}).
+
+    From productmatch.NAMED, canon'd -- the one owner of product names. A
+    product's kind is its LAST head word: ঋণ নিরাপত্তা বিমা is insurance, not a
+    loan, so "নিরাপত্তা লোন" does not borrow it.
+
+    GENERIC is measured, not listed: a word in _GENERIC_DF or more product
+    names (লোন, ঋণ, সঞ্চয়, বিমা, প্রকল্প, নিরাপত্তা, মুনাফাভিত্তিক, সাধারণ),
+    plus every programme name -- দাবি and প্রগতি qualify a loan, they do not
+    identify one. Computed on first use, not at import (Convention 1).
+    """
+    head_kind = {canon(w): k for k, ws in _HEAD_KIND for w in ws}
+    prods = []
+    for _key, name, _aliases, _pat in NAMED:
+        words = [w for w in _NAME_SPLIT.split(canon(name)) if w]
+        heads = [head_kind[w] for w in words if w in head_kind]
+        prods.append((heads[-1] if heads else None, words))
+    df = Counter(w for _kind, ws in prods for w in set(ws))
+    generic = {w for w, n in df.items() if n >= _GENERIC_DF}
+    generic |= {canon(n) for n, _a in PROGRAMME_NAMES.values()}
+    return prods, frozenset(generic), head_kind
+
+
+def _same_word(a, b):
+    """One word, allowing one case ending on either side: গাভী ~ গাভীর."""
+    if a == b:
+        return True
+    short, long_ = sorted((a, b), key=len)
+    return (long_.startswith(short)
+            and long_[len(short):] in {canon(e) for e in _TOPIC_ENDINGS})
+
+
+def _describing_words(q, head_start):
+    """The words of the name before its head noun, read back from it.
+
+    Stops at a question word, conjunction or grammar word, at the end of the
+    previous clause, after an opening quote, and after _NAME_WINDOW tokens.
+    Hyphenated and '+'-joined tokens split: ছায়া-সঞ্চয় -> ছায়া, সঞ্চয়.
+    """
+    stop = {canon(w) for w in _NAME_STOP}
+    out = []
+    for tok in reversed(q[:head_start].split()[-_NAME_WINDOW:]):
+        if tok[-1] in _CLAUSE_END:
+            break
+        bare = tok.strip(_PUNCT)
+        if not bare or bare in stop:
+            break
+        out += [w for w in _NAME_SPLIT.split(bare) if w and w not in stop]
+        if tok[0] in _OPEN_QUOTE:
+            break
+    return out
+
+
+def _short_form_of_a_product(words, head):
+    """Do these describing words, with this head noun, name a real product?
+
+    A word counts when it is a word of some product's name (one case ending
+    allowed either side) AND that product is the same kind as the head noun:
+    ছায়া + বিমা finds ছায়া-সঞ্চয় নিরাপত্তা বিমা; মাসিক + লোন finds nothing,
+    because মাসিক names a savings scheme.
+
+    TOO-COMMON WORDS DO NOT COUNT BY THEMSELVES. If the name has any word that
+    is not generic, only those words decide: "সাধারণ কৃষি লোন" is judged on
+    কৃষি, which names nothing, so it is still unknown -- although সাধারণ is
+    in two loan names. Only a name made of nothing but common words falls back
+    to them: "সাধারণ লোন" is the general loan of either programme, and
+    "ঋণ বিমা" is ঋণ নিরাপত্তা বিমা -- ঋণ being in three product names.
+    """
+    prods, generic, head_kind = _product_words()
+    kind = head_kind.get(head)
+    distinctive = [w for w in words
+                   if not any(_same_word(w, g) for g in generic)]
+    return any(k == kind and any(_same_word(w, t) for t in ws)
+               for w in (distinctive or words) for k, ws in prods)
 
 
 def unknown_product_name(question, reg=None):
@@ -401,6 +504,22 @@ def unknown_product_name(question, reg=None):
 
     Returns the qualifier so the caller can say WHICH name it did not find,
     and so a caller that wants to log it can.
+
+    A SHORT NAME IS NOT AN UNKNOWN NAME. Officers say ছায়া বিমা, গরু বিমা,
+    দাবি লোন; the registry knows each product only by its full names, so all
+    of them used to get "এই নামে কিছু ম্যানুয়ালে নেই" -- a confident wrong
+    answer about a product that is in the manual, the T-08 shape again.
+    It fires now only when the name's describing words name no product of
+    that kind.
+
+    Measured on 221 distinct real questions (FAQ, gold, quiz): the old rule
+    refused 36. Fifteen were real products named short or inflected (দাবি+
+    সাধারণ লোন, মাসিক মুনাফাভিত্তিক সঞ্চয়ে, মানি-প্লান্ট সঞ্চয়ে ...) and four
+    were ঋণ or বিমা inside another word. It now refuses 17 and none that it
+    did not refuse before. KNOWN, NOT FIXED HERE: about eleven of the 17 are
+    still wrong for a different reason -- the "name" is a postposition, a unit
+    or a place (পর্যন্ত, অনুযায়ী, টাকা, ম্যানুয়ালে, মডিউলে: "৭০,০০০ টাকা
+    পর্যন্ত ঋণ ...") or a lending mode (গ্রুপ ঋণ, ইন্ডিভিজুয়াল ঋণ).
     """
     reg = reg or load()
     q = canon(question or "")
@@ -409,6 +528,9 @@ def unknown_product_name(question, reg=None):
     for m in _PRODUCT_SHAPED.finditer(q):
         qual = m.group(1)
         if any(canon_pattern(w) == qual for w in _NOT_A_NAME):
+            continue
+        words = _describing_words(q, m.start(2))
+        if not words or _short_form_of_a_product(words, m.group(2)):
             continue
         return qual
     return None
@@ -823,6 +945,58 @@ def scenarios(reg=None, verbose=True):
     else:
         u = r23["current_rule_bn"] in t and called_outdated
     cases.append(("unconfirmed rule states nothing as current", u, t))
+
+    # --- short names are not unknown names ---------------------------------
+    # Built from productmatch's own names (Convention 2): first word + head
+    # noun, and the part before the hyphen + head noun. That yields ছায়া-সঞ্চয়
+    # বিমা, ছায়া বিমা, গরু বিমা and ঋণ বিমা without typing a product name.
+    def short(key, before_hyphen=False):
+        words = pname[key].split()
+        lead = words[0].split("-")[0] if before_hyphen else words[0]
+        return "%s %s" % (lead, words[-1])
+    shorts = [short("chaya_savings_insurance"),
+              short("chaya_savings_insurance", before_hyphen=True),
+              short("cattle_fattening_insurance"),
+              short("loan_security_insurance")]
+    sv = [s for s in shorts if unknown_product_name("%s কী?" % s, reg)]
+    cases.append(("short names of real products: no refusal", not sv,
+                  "refused: %s" % sv))
+
+    # Unknown names must still be refused, and the common-word guard must
+    # hold: সাধারণ is in two loan names, so it is the case that proves a
+    # common word cannot carry an unknown one. Picked from the data, not
+    # typed: the one generic, non-head, non-programme word in a loan's name.
+    prods, generic, head_kind = _product_words()
+    progs = {canon(n) for n, _a in PROGRAMME_NAMES.values()}
+    common = sorted(w for w in generic
+                    if w not in head_kind and w not in progs
+                    and any(k == "loan" and w in ws for k, ws in prods))[0]
+    dabi = PROGRAMME_NAMES["dabi"][0]
+    must_fire = ["“গুড কাস্টমার লোন” সম্পর্কে বলুন।",
+                 "%s কৃষি লোন কী?" % common,     # judged on কৃষি, which names nothing
+                 "%s বিমা কী?" % common,          # no insurance has the common word
+                 "%sর গুড কাস্টমার লোন কী?" % dabi]  # a programme name, inflected, is generic
+    must_be_silent = ["নতুন লোন নিতে কী লাগে?", "এই ঋণ কত দিনের?",
+                      # ঋণ inside ঋণীদের is not a head noun
+                      "৩.৯.১(খ) ধারায় ঋণীদের ক্ষেত্রে মামলার সিদ্ধান্ত কে নেবেন?"]
+    missed = [x for x in must_fire if not unknown_product_name(x, reg)]
+    noisy = [x for x in must_be_silent if unknown_product_name(x, reg)]
+    cases.append(("unknown names refused; grammar silent",
+                  not missed and not noisy,
+                  "missed=%s noisy=%s" % (missed, noisy)))
+
+    # The enrolment question, end to end: a short product name, an age, and
+    # the clause rule 23 governs. It must reach rule 23 -- not the
+    # unknown-name refusal, and not the manual's limits.
+    q65 = "৬৫ বছর বয়সী গ্রাহক কি %s নিতে পারবেন?" % shorts[0]
+    t, _c, m = run(q65, chunks=ch("5.2.3"))
+    e = ("6:unknown_product" not in m["rules_fired"] and t != NO_SUCH_NAME_BN
+         and r23["current_rule_bn"] in t)
+    if r23["verdict"] == "not_confirmed":
+        e = (e and not any(re.search(r"(?<!\d)%s(?!\d)" % a, canon(t))
+                           for a in ages)
+             and canon("যেকোনো") not in canon(t))
+    cases.append(("enrolment question reaches rule 23", e, t))
 
     for name, good, got in cases:
         ok &= bool(good)
