@@ -53,7 +53,7 @@ a worse failure than waiting for the provider decision.
 USAGE
     python generate.py --make-synthetic            # build the synthetic pair
     python generate.py --retrieved out/synthetic_retrieved.jsonl \\
-                       --gold gold/synthetic.yaml --score
+                       --gold gold/synthetic.yaml --score --no-registry
     python retrieve.py --dump out/retrieved.jsonl  # then, once cleared:
     python generate.py --allow-corpus "reason" --score
 """
@@ -1959,6 +1959,13 @@ def main():
     ap.add_argument("--run-log-dir", default="out/runs", metavar="DIR",
                     help="where the per-invocation run log goes "
                          "(default out/runs). One file per run id.")
+    ap.add_argument("--no-registry", action="store_true",
+                    help="synthetic dumps only: answer without data/registry. "
+                         "The synthetic set tests faithfulness to an invented "
+                         "manual and the registry describes real products, so "
+                         "its refusals there measure the wrong thing. Refused "
+                         "on any dump that is not synthetic, and recorded as "
+                         "registry=off in every meta row")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
     if not args.run_id:
@@ -1984,6 +1991,15 @@ def main():
               f"  or: python generate.py --make-synthetic")
         return 1
 
+    # THE REGISTRY IS ON unless a caller turns it off, and only a synthetic
+    # dump may. Checked before configure(), so a refused run calls nothing.
+    if args.no_registry and not is_synthetic(args.retrieved):
+        print(f"\n--no-registry is for the synthetic set only, and "
+              f"{args.retrieved} is not synthetic. A real dump is always "
+              f"answered with the registry.")
+        return 1
+    registry_state = "off" if args.no_registry else "on"
+
     configure(args.provider, args.model)
     try:
         guard = check_corpus_guard(args.retrieved, args.provider,
@@ -1992,7 +2008,8 @@ def main():
         print(f"\n{e}")
         return 1
     print(f"\nprovider {args.provider}  corpus-guard: {guard}")
-    print(f"floor {args.floor}  context {args.retrieved}")
+    print(f"floor {args.floor}  context {args.retrieved}  "
+          f"registry {registry_state}")
 
     if args.quota_report:
         print()
@@ -2030,7 +2047,8 @@ def main():
         run_log.write(f"run_id {args.run_id}\n"
                       f"provider {args.provider}  model {args.model}\n"
                       f"retrieved {args.retrieved}\n"
-                      f"answers {args.answers}\n")
+                      f"answers {args.answers}\n"
+                      f"registry {registry_state}\n")
         run_log.flush()
     except OSError as e:               # a log that cannot be opened must not
         print(f"  [warn] no run log: {e}")   # take the run down
@@ -2044,7 +2062,8 @@ def main():
     answers, metas = [], []
     for row in rows:
         try:
-            a, m = answer_one(row, args.floor, glossary=args.glossary)
+            a, m = answer_one(row, args.floor, glossary=args.glossary,
+                              registry_rules=not args.no_registry)
         except MissingKey as e:
             print(f"\n{e}")
             return 1
@@ -2072,6 +2091,7 @@ def main():
         m["pinned_model"] = args.model
         m["run_id"] = args.run_id
         m["glossary"] = bool(args.glossary)
+        m["registry"] = registry_state
         answers.append(a)
         metas.append(m)
         tag = "FLOOR" if m["floor_fired"] else (m.get("model") or "?")

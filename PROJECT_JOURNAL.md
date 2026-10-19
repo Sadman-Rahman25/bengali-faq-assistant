@@ -2955,6 +2955,55 @@ path did not. `pattern_audit.py`: clean 54 of 54. The chunk-side caller only
 feeds metadata (`products`, `product_status`), which nothing in generation
 reads, so no answer can change.
 
+### Follow-up: the synthetic set runs without the registry
+
+**Why.** The synthetic set tests one thing: whether the model stays faithful
+to the manual it was given. That manual is invented on purpose. নীলকমল ঋণ,
+রূপসা ইন্স্যুরেন্স, `synthetic_a` and `synthetic_b` exist nowhere else, and
+canary 3 in `generate.py` checks that no fixture names a real product. The
+registry describes the real products. Applied to the synthetic set, it does
+exactly what it should do with a real question: no manual has a product
+called নীলকমল ঋণ, so the registry refuses the name. S-001, S-004 and S-005
+all expect an answer, so all three score as misses, and none of those misses
+says anything about the model. With the registry on, the synthetic score
+measures what the registry knows about real products against a product that
+is made up. That is the wrong thing to measure.
+
+**What changed.**
+
+- `generate.py --no-registry` answers without the registry. It is off by
+  default: the registry is on unless a caller turns it off explicitly.
+  `answer_one`'s own default, `registry_rules=True`, is unchanged.
+- Only a synthetic dump may pass it. The test is the corpus guard's: every
+  chunk says `synthetic`, decided by the file and not by its name. On any
+  other dump the run stops before `configure()`, so a refused run calls
+  nothing.
+- Every meta row now records `registry`: `off` for this run and `on` for
+  every other. The run log and the header line say the same. A synthetic
+  result can no longer be read as a production one.
+- The synthetic command in the `generate.py` docstring passes the argument.
+  No other caller does.
+- The registry itself is unchanged.
+
+**What it does not do.** A synthetic score with the registry off says nothing
+about the registry. The registry is tested by its own scenarios
+(`registry.py --check`), by `tests/test_registry_pipeline.py`, and against
+the real questions.
+
+**Checks.** `tests/test_registry_synthetic.py`: four tests, two canaries, no
+model call.
+
+- A run without the argument, on S-001, still gets the registry's refusal,
+  through `main()` and through `answer_one()`. That proves the default
+  stayed on.
+- With the argument, every row says `registry=off` and no rule fires.
+- On a dump that is not synthetic, the argument is refused.
+- The canaries flip each default to off, and the refusal turns into the
+  model's answer.
+- Five disarms were each tried in turn: the argument's default, the synthetic
+  check, the meta field, the argument being ignored, and `answer_one`'s
+  default. Each fails its own test and no other.
+
 ---
 
 ## 5. The four conventions, and why they are checks rather than prose
@@ -3237,6 +3286,10 @@ python retrieval_eval.py
 # out/demo_answers.jsonl.
 python gold_eval.py --gold gold/bootstrap.yaml \
     --answers out/answers_synth.jsonl --forbidden-numbers out/forbidden.json
+# The synthetic set, registry off -- the only run that may pass --no-registry
+python generate.py --make-synthetic
+python generate.py --retrieved out/synthetic_retrieved.jsonl \
+    --gold gold/synthetic.yaml --score --no-registry
 
 # Reading a chunk by eye
 python show_chunk.py progoti_0062 dabi_2025_0033
