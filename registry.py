@@ -535,6 +535,22 @@ def apply_rules(question, answer, citations=(), chunks=(), reg=None,
         meta["stale_rules"] = [r["rule_id"] for r in stale]
         meta["superseded_original"] = answer
         parts += [r["current_rule_bn"] for r in stale if r["current_rule_bn"]]
+
+        # OUTDATED IS A VERDICT, NOT A DEFAULT. changed and retired mean the
+        # field team says the manual's rule no longer holds; not_confirmed
+        # means they could not say either way. Calling the manual পুরনো under
+        # not_confirmed is itself a claim -- and for rule 23 it was the
+        # dangerous one: "the §5.2.3 age limit is outdated" invites enrolling
+        # someone the insurance will not pay out for. So each clause is
+        # outdated if any rule on it is changed or retired, unconfirmed if
+        # all of them are not_confirmed, and the suffix and the citation tag
+        # say which.
+        state = {}
+        for r in stale:
+            known = r["verdict"] != "not_confirmed"
+            for c in _clauses(r["clause"]):
+                if known or c not in state:
+                    state[c] = "outdated" if known else state.get(c, "unconfirmed")
         seen, pairs = [], []
         for r in stale:
             for c in _clauses(r["clause"]):
@@ -545,18 +561,24 @@ def apply_rules(question, answer, citations=(), chunks=(), reg=None,
                 # "both §5.2.3 (outdated)", which is not a reference anyone
                 # can open. One citation per real manual instead.
                 for mid in reg.manuals_for(r["manual"]):
-                    pair = "%s §%s (outdated)" % (mid, c)
+                    pair = "%s §%s (%s)" % (mid, c, state[c])
                     if pair not in pairs:
                         pairs.append(pair)
         cites += pairs
-        if seen:
+        outdated = [c for c in seen if state[c] == "outdated"]
+        unconfirmed = [c for c in seen if state[c] == "unconfirmed"]
+        if outdated:
             # It pointed "above" at nothing: appended even when it was the
             # only sentence in the reply. It now states the relation
             # outright, in Bengali numerals, and says পুরনো rather than
             # সেকেলে.
             parts.append("(ম্যানুয়ালের §%s ধারার তথ্য পুরনো; এখানে বর্তমান "
                          "নিয়ম দেওয়া হলো।)"
-                         % ", §".join(bn_digits(c) for c in seen))
+                         % ", §".join(bn_digits(c) for c in outdated))
+        if unconfirmed:
+            parts.append("(ম্যানুয়ালের §%s ধারার তথ্য এখনো প্রযোজ্য কিনা "
+                         "নিশ্চিত করা যায়নি।)"
+                         % ", §".join(bn_digits(c) for c in unconfirmed))
         answer = ""        # the manual's wording must not survive as current
 
     if answer:
@@ -781,6 +803,26 @@ def scenarios(reg=None, verbose=True):
         sep &= (topic_match(r23, q_age) and not topic_match(r24, q_age)
                 and topic_match(r24, q_multi) and not topic_match(r23, q_multi))
     cases.append(("rules 23 and 24 still separate", sep, ""))
+
+    # --- an unconfirmed rule states nothing as current ---------------------
+    # Rule 23 is not_confirmed until the field team says what their "any
+    # age" verdict referred to. The reply must give the row's own sentence,
+    # must not call the manual's limit outdated, must not state any of the
+    # manual's age figures, and must cite the clause as unconfirmed. Keyed on
+    # the verdict, so it stays right once the field team answers.
+    t, cites, _m = run("ডিপিএসে বয়সসীমা কত?", chunks=ch("5.2.3"))
+    # canon() both sides: it also folds Bengali digits to ASCII, so an age
+    # written ১৮ or 18 is caught either way.
+    ct = canon(t)
+    ages = set(re.findall(r"\d{2,}", canon(r23["rule_summary"])))
+    called_outdated = canon("পুরনো") in ct
+    if r23["verdict"] == "not_confirmed":
+        u = (r23["current_rule_bn"] in t and not called_outdated
+             and not any(re.search(r"(?<!\d)%s(?!\d)" % a, ct) for a in ages)
+             and bool(cites) and all(c.endswith("(unconfirmed)") for c in cites))
+    else:
+        u = r23["current_rule_bn"] in t and called_outdated
+    cases.append(("unconfirmed rule states nothing as current", u, t))
 
     for name, good, got in cases:
         ok &= bool(good)
