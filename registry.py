@@ -46,7 +46,7 @@ import re
 import sys
 from pathlib import Path
 
-from bn_shared import NUM_RX
+from bn_shared import BN_DIGITS, NUM_RX
 from bnnorm import canon, canon_pattern
 from productmatch import compile_names
 
@@ -67,10 +67,61 @@ def _clauses(field):
     return [c.strip() for c in (field or "").replace("/", " ").split() if c.strip()]
 
 
+def _terms(field):
+    """'ক;খ গ' -> ['ক', 'খ গ']. Semicolon-separated, spaces kept inside."""
+    return [t.strip() for t in (field or "").split(";") if t.strip()]
+
+
+_TERM_RX = {}
+
+
+def topic_match(row, question):
+    """Does the question mention what this row is ABOUT? -> bool
+
+    The gate that stops a rule applying because retrieval happened to surface
+    its clause. Every literal goes through canon_pattern (Convention 4); the
+    compiled patterns are cached per string, not per row, because several
+    rows share terms.
+
+    A row with NO topic_terms never fires. That is deliberate and it is
+    checked by the canary: an ungated row is the bug this function exists to
+    prevent, so it must fail closed, not open.
+    """
+    q = canon(question or "")
+    for t in _terms(row.get("topic_terms")):
+        rx = _TERM_RX.get(t)
+        if rx is None:
+            # canon_pattern returns the canonical FORM of a regex, a string;
+            # it does not compile. re.escape first: a topic term is a
+            # literal, and an unescaped one would read '.' as any character.
+            rx = _TERM_RX[t] = re.compile(re.escape(canon_pattern(t)))
+        if rx.search(q):
+            return True
+    return False
+
+
+def bn_digits(text):
+    """'5.2.3' -> '৫.২.৩'. One owner for the digit table: bn_shared."""
+    return "".join(BN_DIGITS[int(c)] if c.isdigit() else c for c in str(text))
+
+
 def _words(text):
     """Distinctive content words of a Bengali string, canon'd."""
     return {w for w in canon(text or "").replace("।", " ").split()
             if len(w) >= MIN_WORD}
+
+
+def _manual_ids(root):
+    """Manual ids from the tracked chunk manifest. Falls back to the scopes
+    themselves if the manifest is missing, so a citation is never silently
+    dropped."""
+    import json
+    p = Path(root) / "data/processed/chunk_manifest.json"
+    try:
+        return list((json.loads(p.read_text(encoding="utf-8"))
+                     .get("manuals") or {}).keys())
+    except (OSError, ValueError):
+        return []
 
 
 class Registry:
@@ -92,6 +143,22 @@ class Registry:
         for t in self.term_updates:
             t["_rx"] = compile_names([t["old_term"]])
 
+        # Real manual ids, for citations. rule_updates.manual holds the
+        # SCOPE (dabi | progoti | both), which is not a manual id -- a row
+        # scoped to both used to be cited as "both §5.2.3".
+        self.manual_ids = _manual_ids(Path(root))
+
+    def manuals_for(self, scope):
+        """Scope -> the manual ids it covers. 'both' is every manual that is
+        not the standalone product manual; an unknown scope yields itself, so
+        a new scope shows up in the citation rather than vanishing."""
+        scope = (scope or "both").strip()
+        if scope == "both":
+            return [m for m in self.manual_ids
+                    if not m.startswith("livestock")] or [scope]
+        hit = [m for m in self.manual_ids if m.startswith(scope)]
+        return hit or [scope]
+
     # ---------------------------------------------------------------- rule 1
     def products_named(self, question):
         """Registry rows whose product the question names. Suspended first,
@@ -106,7 +173,7 @@ class Registry:
         return [i for i in self.insurers if i["_rx"] and i["_rx"].search(q)]
 
     # ---------------------------------------------------------------- rule 2
-    def stale_rules(self, clauses, manuals=()):
+    def stale_rules(self, clauses, manuals=(), question=None):
         """rule_updates rows that make a retrieved clause out of date.
 
         `manual` is honoured: a row scoped to dabi must not rewrite an answer
@@ -123,6 +190,15 @@ class Registry:
                 continue
             scope = (r["manual"] or "both").strip()
             if ms and scope != "both" and not any(m.startswith(scope) for m in ms):
+                continue
+            # THE TOPIC GATE. The clause matching only says retrieval landed
+            # near this rule; it does not say the question is about it. A
+            # leave question that retrieved §3.1.3 was rewritten by the
+            # temporary-charge rule because the clause matched and nothing
+            # else was asked. question=None keeps the old behaviour for
+            # callers that genuinely have no question (the canary's clause
+            # probes), so the gate cannot silently disable a direct lookup.
+            if question is not None and not topic_match(r, question):
                 continue
             out.append(r)
         return out
@@ -166,6 +242,13 @@ class Registry:
         qw = _words(question)
         out = []
         for r in self.not_available:
+            # THE TOPIC GATE, on both paths. Without it a dining-room
+            # question that retrieved §3.8.1 was answered with the
+            # document-retention refusal: right clause, wrong question, and
+            # a refusal is not a safe default when it refuses the wrong
+            # thing. A row with no topic_terms cannot fire at all.
+            if not topic_match(r, question):
+                continue
             rc = {canon(c) for c in _clauses(r["clause"])}
             if rc and (want & rc):
                 out.append(dict(r, _why="clause"))
@@ -224,6 +307,51 @@ _ASK_BEYOND = re.compile(
     re.IGNORECASE)
 
 
+# A PRODUCT-SHAPED NAME THE REGISTRY DOES NOT HAVE.
+#
+# T-06: asked about "গুড কাস্টমার লোন", the model asked WHICH MANUAL -- the
+# prompt's ambiguity rule firing on a product that is in neither. The right
+# answer is that nothing of that name is in the manuals; the wrong answers
+# are both "which manual did you mean?" and "no such product exists", and
+# the second is wrong because the field team named it, so it may well exist
+# somewhere this corpus does not cover.
+#
+# The head noun list is Bengali product-category words, not product names --
+# Convention 2 is about names, and productmatch still owns those. A bare
+# head noun is NOT a name: "লোন নিতে কী কাগজ লাগে?" names nothing, so a
+# qualifier of at least MIN_WORD characters must precede it.
+_HEAD = ("লোন", "ঋণ", "বিমা", "সঞ্চয়")
+# Qualifiers that are grammar rather than a name. Without these,
+# "নতুন লোন" and "এই ঋণ" read as product names.
+_NOT_A_NAME = ("নতুন", "পুরাতন", "পুরোনো", "কোন", "কোনো", "এই", "সেই",
+               "যেকোনো", "সকল", "সব", "একটি", "প্রতিটি", "অন্য")
+_PRODUCT_SHAPED = re.compile(
+    r"([%s\w]{%d,})\s+(?:%s)" % (
+        _BN, MIN_WORD,
+        "|".join(re.escape(canon_pattern(h)) for h in _HEAD)))
+
+
+def unknown_product_name(question, reg=None):
+    """A product-shaped name no registry row knows. -> the qualifier or None.
+
+    Returns the qualifier so the caller can say WHICH name it did not find,
+    and so a caller that wants to log it can.
+    """
+    reg = reg or load()
+    q = canon(question or "")
+    if reg.products_named(question) or reg.insurers_named(question):
+        return None
+    for m in _PRODUCT_SHAPED.finditer(q):
+        qual = m.group(1)
+        if any(canon_pattern(w) == qual for w in _NOT_A_NAME):
+            continue
+        return qual
+    return None
+
+
+NO_SUCH_NAME_BN = "এই নামে কিছু ম্যানুয়ালে নেই।"
+
+
 def asks_beyond_status(question):
     """True when the question wants a figure or a date, not just availability."""
     q = canon(question or "")
@@ -242,8 +370,21 @@ def apply_rules(question, answer, citations=(), chunks=(), reg=None,
     manuals = [c.get("manual_id") or c.get("doc") for c in chunks]
     meta = {"rules_fired": []}
 
-    stale = reg.stale_rules(clauses, manuals)
+    stale = reg.stale_rules(clauses, manuals, question)
     wh = reg.withheld(question, clauses)
+
+    # A PRODUCT-SHAPED NAME NOTHING KNOWS, settled before any other rule.
+    # Left to the model this became "which manual did you mean?" (T-06):
+    # the prompt's ambiguity rule firing on a product that is in neither
+    # manual, which invites the reader to pick one and be answered from it.
+    # Says what is true and nothing more -- not that the product does not
+    # exist, which the registry has no way to know.
+    unknown = unknown_product_name(question, reg)
+    if unknown and not wh:
+        meta["rules_fired"].append("6:unknown_product")
+        meta["unknown_product"] = unknown
+        meta["unknown_original"] = answer
+        return NO_SUCH_NAME_BN, [], meta
 
     # ONE CLAUSE, TWO TOPICS, AND THE COARSE CHECK WINS BY DEFAULT.
     #
@@ -329,16 +470,28 @@ def apply_rules(question, answer, citations=(), chunks=(), reg=None,
         meta["stale_rules"] = [r["rule_id"] for r in stale]
         meta["superseded_original"] = answer
         parts += [r["current_rule_bn"] for r in stale if r["current_rule_bn"]]
-        seen = []
+        seen, pairs = [], []
         for r in stale:
             for c in _clauses(r["clause"]):
                 if c in seen:
                     continue
                 seen.append(c)
-                cites.append("%s §%s (outdated)" % (r["manual"], c))
+                # "both" is a SCOPE, not a manual. Interpolating it emitted
+                # "both §5.2.3 (outdated)", which is not a reference anyone
+                # can open. One citation per real manual instead.
+                for mid in reg.manuals_for(r["manual"]):
+                    pair = "%s §%s (outdated)" % (mid, c)
+                    if pair not in pairs:
+                        pairs.append(pair)
+        cites += pairs
         if seen:
-            parts.append("(ম্যানুয়ালের §%s এখন সেকেলে — উপরের তথ্যই বর্তমান।)"
-                         % ", §".join(seen))
+            # It pointed "above" at nothing: appended even when it was the
+            # only sentence in the reply. It now states the relation
+            # outright, in Bengali numerals, and says পুরনো rather than
+            # সেকেলে.
+            parts.append("(ম্যানুয়ালের §%s ধারার তথ্য পুরনো; এখানে বর্তমান "
+                         "নিয়ম দেওয়া হলো।)"
+                         % ", §".join(bn_digits(c) for c in seen))
         answer = ""        # the manual's wording must not survive as current
 
     if answer:
@@ -391,10 +544,16 @@ def canary(root=".", verbose=True):
     # 4. a withdrawn clause must withhold; and naming a product mentioned by
     #    a clause-less row must NOT, on its own, withhold -- the real
     #    near-miss: row 8 mentions স্বাধীন লোন but withholds its STOP DATE.
-    wrow = next(r for r in reg.not_available if r["clause"])
-    r4 = bool(reg.withheld("যা কিছু", _clauses(wrow["clause"])))
+    wrow = next(r for r in reg.not_available
+                if r["clause"] and _terms(r["topic_terms"]))
+    on_topic = "%s বিষয়ে কী আছে?" % _terms(wrow["topic_terms"])[0]
+    r4 = bool(reg.withheld(on_topic, _clauses(wrow["clause"])))
     r4n = not reg.withheld("%s কি পাওয়া যায়?" % sus["name_bn"])
-    ok &= r4 and r4n
+    # THE GATE ITSELF: the same withdrawn clause, a question about something
+    # else, must NOT withhold. This is T-09 -- a dining-room question
+    # retrieved §3.8.1 and was answered with the document-retention refusal.
+    r4g = not reg.withheld("আবহাওয়া আজ কেমন?", _clauses(wrow["clause"]))
+    ok &= r4 and r4n and r4g
 
     # 5. the status line is the whole answer for an availability question,
     #    and is NOT for a question asking a figure. The near-miss both ways:
@@ -419,9 +578,100 @@ def canary(root=".", verbose=True):
               % (stale["clause"], r2n, "DETECTED" if r2 and r2n else "MISSED"))
         print("  canary rule3_terms       substitutes=%s; leaves unrelated text "
               "alone=%s  [%s]" % (r3, not u2, "DETECTED" if r3 and not u2 else "MISSED"))
-        print("  canary rule4_withheld    withholds on §%-8s does NOT withhold "
-              "on a product merely mentioned=%s  [%s]"
-              % (wrow["clause"], r4n, "DETECTED" if r4 and r4n else "MISSED"))
+        print("  canary rule4_withheld    withholds on §%-8s on-topic; NOT on "
+              "a product merely mentioned=%s; NOT off-topic=%s  [%s]"
+              % (wrow["clause"], r4n, r4g,
+                 "DETECTED" if r4 and r4n and r4g else "MISSED"))
+    ok &= scenarios(reg, verbose)
+    return bool(ok)
+
+
+def scenarios(reg=None, verbose=True):
+    """apply_rules end to end, on the stub. No retrieval, no model, no tokens.
+
+    Four cases that worked before topic gating must still work -- gating is
+    allowed to stop wrong answers, not right ones -- and three that were
+    broken in the live run must now be fixed.
+    """
+    reg = reg or load()
+
+    def run(q, answer="", chunks=(), abstained=False):
+        return apply_rules(q, answer, [], chunks, reg, abstained=abstained)
+
+    def ch(clause, manual="dabi_2025"):
+        return [{"clause": clause, "manual_id": manual}]
+
+    sus = next(p for p in reg.products if p["status"] == "suspended")
+    cases, ok = [], True
+
+    # --- the four that must keep working -----------------------------------
+    t, _c, m = run("%s কি পাওয়া যায়?" % sus["name_bn"], abstained=True)
+    a = sus["status_line_bn"] in t and m.get("status_is_answer") is True
+    cases.append(("suspended product leads", a, t))
+
+    # Convention 2: the product NAME comes from the registry row, never
+    # typed here. canary() above already builds its question this way; these
+    # scenarios were written with the names inline and the check caught it.
+    act = next(p for p in reg.products
+               if p["status"] == "active" and p["category"] == "loan")
+    t, _c, m = run("%s এর হার কত?" % act["name_bn"],
+                   answer="সার্ভিস চার্জ ২৪%।")
+    # The rule ids are ASCII. A Bengali ১ was typed in one half of this
+    # comparison, so that half could never match and the ASCII half was
+    # carrying the test alone. The figure check below IS Bengali, because
+    # the answer is.
+    b = "1:product_status" in m["rules_fired"] and "২৪" in t
+    cases.append(("active product keeps the figure", b, t))
+
+    t, _c, m = run("ডিপিএসে বয়সসীমা কত?", chunks=ch("5.2.3"))
+    c = "2:rule_updates" in m["rules_fired"] and "4:not_available" not in \
+        m["rules_fired"]
+    cases.append(("DPS age -> updated rule, not the withheld row", c, t))
+
+    # Likewise: the withheld row names its own topic, and the product name
+    # comes from the product row that shares its clause.
+    prem = next(r for r in reg.not_available if r["clause"] == "5.1.3")
+    t, _c, m = run("%s কত?" % _terms(prem["topic_terms"])[0],
+                   chunks=ch("5.1.3"))
+    d = "4:not_available" in m["rules_fired"]
+    cases.append(("loan-security premium withheld", d, t))
+
+    # --- the three that were broken ----------------------------------------
+    # T-08: a leave question that retrieved §3.1.3 was rewritten by the
+    # temporary-charge rule and cited it.
+    t, c8, m = run("বছরে কত দিন অর্জিত ছুটি পাওয়া যায়?",
+                   answer="(মডেলের উত্তর)", chunks=ch("3.1.3"))
+    e = not m["rules_fired"] and not c8
+    cases.append(("T-08 leave question: registry silent", e, t))
+
+    # T-09: a dining question that retrieved §3.8.1 got the retention refusal.
+    t, _c, m = run("ডাইনিং রুম ব্যবহারের নিয়ম কী?",
+                   answer="(মডেলের উত্তর)", chunks=ch("3.8.1"))
+    f = not m["rules_fired"]
+    cases.append(("T-09 dining question: registry silent", f, t))
+
+    # T-06: an unknown product-shaped name must be named as absent.
+    t, _c, m = run("“গুড কাস্টমার লোন” সম্পর্কে বলুন।")
+    g = t == NO_SUCH_NAME_BN and "6:unknown_product" in m["rules_fired"]
+    cases.append(("T-06 unknown product name", g, t))
+
+    # --- the two template bugs ---------------------------------------------
+    t, cites, _m = run("একাধিক বিমাসুবিধা পাওয়া যায় কি?", chunks=ch("5.2.3"))
+    h = cites and not any("both" in c for c in cites) and \
+        len([c for c in cites if "5.2.3" in c]) >= 2
+    cases.append(("scope 'both' -> two real manuals", h, "; ".join(cites)))
+
+    t, _c, _m = run("পাসবই হারালে কত টাকা?", chunks=ch("2.1.2"))
+    i = "উপরের" not in t and ("পুরনো" in t or not t)
+    cases.append(("outdated suffix stands alone", i, t))
+
+    for name, good, got in cases:
+        ok &= bool(good)
+        if verbose:
+            print("  scenario %-42s [%s]" % (name,
+                                             "PASS" if good else "FAIL"))
+            if not good:
+                print("      got: %s" % (got or "(empty)")[:150])
     return bool(ok)
 
 
