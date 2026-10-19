@@ -1096,7 +1096,14 @@ def gemini_canary(verbose=True, model=None):
     import numpy as np
     from google.genai import types
     m = model or load_model(GEMINI_EMBED_MODEL)
-    probe = "ঋণ নিরাপত্তা বিমার প্রিমিয়াম কত?"
+    # The product name comes from productmatch, which owns every product
+    # name in this repo (Convention 2). Typed here it was a bare product
+    # literal in a module that is not the matcher -- the exact shape the
+    # convention exists to stop, and it had been sitting in this probe.
+    from productmatch import NAMED
+    _name = next(n for k, n, _a, _p in NAMED
+                 if k == "loan_security_insurance")
+    probe = _name + "র প্রিমিয়াম কত?"
     raw = m.client.models.embed_content(
         model=m.name, contents=[probe],
         config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT",
