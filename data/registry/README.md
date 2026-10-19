@@ -23,6 +23,18 @@ Read with `encoding="utf-8"` — no BOM handling needed.
 - `availability`: all_branches · limited_branches · demand_basis · situation_based · unspecified
 - `verdict`: still_valid · changed · retired · not_confirmed
 - `manual`: dabi · progoti · both
+- `topic_terms` (rule_updates, not_available): semicolon-separated words a
+  question about THIS row would contain. A row applies only when the question
+  contains one, so a retrieved clause alone never triggers it.
+  - Each word matches as a whole Bengali word, with or without a case or
+    plural ending: `প্রিমিয়াম` matches প্রিমিয়ামের, but `মুনাফা` does not
+    match inside মুনাফাভিত্তিক.
+  - `product:<key>` matches a product by its key in `productmatch.NAMED`
+    (e.g. `product:money_plant_savings`), with every spelling productmatch
+    knows. Use it when officers ask by the product's name. Do not give two
+    rows on the same clause the same product key: the topic words are then
+    the only thing that tells them apart (rules 23 and 24).
+  - An unknown key stops the registry loading, by design.
 
 ## Names
 

@@ -561,6 +561,9 @@ python -c "import json;print(sum(1 for c in map(json.loads,open('data/processed/
 | Low | Fix শস্য নি**া**পত্তা in §5.3.1 | Copy-edit |
 | Low | Decide on অরগানোগ্রাম vs অর্গানোগ্রাম | Copy-edit |
 | Low | Introduce the underwriters where first named | Insurance unit |
+| High | Registry rule 9: do existing এককালীন স্থায়ী সঞ্চয় প্রকল্প accounts still earn ৩ মাসে ৮%, ৬ মাসে ৯%, ১২ মাসে ১০%? `products.csv` lists the product as suspended; rule 9 says still_valid. Not in `not_available.csv`: a match there replaces the suspension line instead of following it | Field team |
+| High | Registry rules 10 (lost passbook now free) and 11 (temporary charge now এবিএম or এএম) are scoped to Dabi, but Progoti §2.1.2(গ) and §3.1.3(ক) print the same rules. Do the changes apply to Progoti? Until answered, Progoti answers quote the old rule | Field team |
+| Medium | Registry rule 23: does "এখন যেকোনো বয়সে" mean the ছায়া-সঞ্চয় insurance benefit now covers DPS holders of any age? §5.2.3's limit is a condition of the insurance benefit, not of opening a DPS; the row's old wording, "ডিপিএস বয়সসীমা", read as the latter | Field team |
 
 ---
 

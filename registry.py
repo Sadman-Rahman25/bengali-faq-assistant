@@ -48,7 +48,7 @@ from pathlib import Path
 
 from bn_shared import BN_DIGITS, NUM_RX
 from bnnorm import canon, canon_pattern
-from productmatch import compile_names
+from productmatch import NAMED, compile_names, compile_pat
 
 REG = Path("data/registry")
 STALE_VERDICTS = ("changed", "retired", "not_confirmed")
@@ -56,6 +56,11 @@ STALE_VERDICTS = ("changed", "retired", "not_confirmed")
 # clears the postpositions and conjunctions (এই, কত, নেই) that every sentence
 # carries and that would make any two sentences look related.
 MIN_WORD = 4
+# The Bengali block, for word boundaries. \b does not work here: Python's \w
+# counts vowel signs and the virama as non-word characters, so \b fires in
+# the middle of nearly every Bengali word. Shared by the topic gate and by
+# asks_beyond_status() -- one definition of where a Bengali word ends.
+_BN = r"ঀ-৿"
 
 
 def _rows(path):
@@ -74,30 +79,85 @@ def _terms(field):
 
 _TERM_RX = {}
 
+# A TOPIC TERM IS A WORD, NOT A SUBSTRING. Matched as a substring, মুনাফা
+# (rule 9) fired inside মুনাফাভিত্তিক -- three other products -- একা (rule 13)
+# inside একাধিক, and the premium-rate withheld row's হার inside ব্যবহার and
+# inside হারালে, so "পাসবই হারালে কত টাকা?" was on-topic for premium rates.
+#
+# The boundary is the one asks_beyond_status() uses, the Bengali block on both
+# sides, with one measured difference. Bengali inflects on the RIGHT --
+# প্রিমিয়ামের, সঞ্চয়ে, মেয়াদে, মিটিংয়ের -- and those interrogatives do not.
+# A bare right boundary, measured on 294 real questions (every FAQ file, the
+# gold set, the quiz bank, the scenarios below), lost 124 term matches, 68 of
+# them legitimate inflections. So a term may carry ONE ending from this closed
+# list and then the boundary. Derivations and compounds are not endings:
+# ভিত্তিক, ধিক, ালে and না are absent on purpose. With the list, the same
+# questions lose 56 matches -- every one a word that merely contained the
+# term -- and gain none.
+#
+# Left side only is NOT the rule role_exclusions.py rejected: that rejection
+# was of a right boundary, which drops সিডিওকে and সিডিওর. Bengali has no
+# prefix inflection, so the left boundary drops no real occurrence.
+_TOPIC_ENDINGS = ("ের", "য়ের", "য়ে", "য়", "ে", "র", "তে", "কে", "দের", "রা",
+                  "গুলো", "গুলোর", "গুলি", "সমূহ", "সমূহের", "াদি", "টি", "টির",
+                  "ই", "ও")
+_ENDINGS = "(?:%s)?" % "|".join(
+    re.escape(canon_pattern(e))
+    for e in sorted(_TOPIC_ENDINGS, key=len, reverse=True))
+
+# A TERM MAY NAME A PRODUCT BY ITS productmatch KEY: product:<key>.
+#
+# Convention 2 is one owner for each name, not a ban on names. The pattern is
+# productmatch.NAMED's, so the registry still holds no product literal, a
+# spelling fixed in productmatch reaches the gate, and every variant
+# productmatch knows (মানিপ্ল্যান্ট / মানি প্লান্ট, মেয়াদি / মেয়াদী) counts.
+# It is matched exactly as productmatch matches it -- against canon'd text,
+# with no boundary added. The product patterns carry their own guards (গতি's
+# lookbehinds); wrapping them in a second set would make this module a second
+# owner of what a product name looks like.
+PRODUCT_TERM = "product:"
+
+
+def _term_rx(t):
+    """One topic term -> its compiled pattern. Cached per string, because
+    several rows share terms. Raises on a product key productmatch does not
+    have: a gate that silently cannot fire looks exactly like a rule nobody
+    asks about."""
+    rx = _TERM_RX.get(t)
+    if rx is not None:
+        return rx
+    if t.startswith(PRODUCT_TERM):
+        key = t[len(PRODUCT_TERM):].strip()
+        pat = next((p for k, _n, _a, p in NAMED if k == key), None)
+        if pat is None:
+            raise ValueError("topic term %r: productmatch.NAMED has no key %r"
+                             % (t, key))
+        rx = compile_pat(pat)
+    else:
+        # canon_pattern returns the canonical FORM of a regex, a string; it
+        # does not compile. re.escape first: a topic term is a literal, and
+        # an unescaped one would read '.' as any character.
+        rx = re.compile("(?<![%s])%s%s(?![%s])" % (
+            _BN, re.escape(canon_pattern(t)), _ENDINGS, _BN))
+    _TERM_RX[t] = rx
+    return rx
+
 
 def topic_match(row, question):
     """Does the question mention what this row is ABOUT? -> bool
 
     The gate that stops a rule applying because retrieval happened to surface
-    its clause. Every literal goes through canon_pattern (Convention 4); the
-    compiled patterns are cached per string, not per row, because several
-    rows share terms.
+    its clause. Every literal goes through canon_pattern (Convention 4). A
+    term matches as a whole Bengali word, optionally inflected; a product key
+    matches as productmatch matches that product. See _TOPIC_ENDINGS and
+    PRODUCT_TERM above.
 
     A row with NO topic_terms never fires. That is deliberate and it is
     checked by the canary: an ungated row is the bug this function exists to
     prevent, so it must fail closed, not open.
     """
     q = canon(question or "")
-    for t in _terms(row.get("topic_terms")):
-        rx = _TERM_RX.get(t)
-        if rx is None:
-            # canon_pattern returns the canonical FORM of a regex, a string;
-            # it does not compile. re.escape first: a topic term is a
-            # literal, and an unescaped one would read '.' as any character.
-            rx = _TERM_RX[t] = re.compile(re.escape(canon_pattern(t)))
-        if rx.search(q):
-            return True
-    return False
+    return any(_term_rx(t).search(q) for t in _terms(row.get("topic_terms")))
 
 
 def bn_digits(text):
@@ -142,6 +202,11 @@ class Registry:
             i["_rx"] = compile_names([i["name_bn"], i["name_en"]])
         for t in self.term_updates:
             t["_rx"] = compile_names([t["old_term"]])
+        # Every topic term compiled at LOAD, so a mistyped product key stops
+        # the registry from loading instead of quietly never matching.
+        for r in self.rule_updates + self.not_available:
+            for term in _terms(r.get("topic_terms")):
+                _term_rx(term)
 
         # Real manual ids, for citations. rule_updates.manual holds the
         # SCOPE (dabi | progoti | both), which is not a manual id -- a row
@@ -296,7 +361,7 @@ def load(root="."):
 # The lookarounds are the Bengali block rather than \b, so কত does not match
 # inside কতিপয় and কয় does not match inside কয়েক -- a false positive here
 # puts the noise back on a complete answer, which is the bug being fixed.
-_BN = r"ঀ-৿"
+# _BN is defined at the top: the topic gate uses the same boundary.
 _ASK_BEYOND = re.compile(
     "(?<![%s])(?:%s)(?![%s])" % (
         _BN,
@@ -664,6 +729,58 @@ def scenarios(reg=None, verbose=True):
     t, _c, _m = run("পাসবই হারালে কত টাকা?", chunks=ch("2.1.2"))
     i = "উপরের" not in t and ("পুরনো" in t or not t)
     cases.append(("outdated suffix stands alone", i, t))
+
+    # --- the topic gate: word boundaries and product keys ------------------
+    # Product names come from productmatch.NAMED and terms from the rows
+    # themselves -- never typed here (Convention 2), so a rename cannot leave
+    # a scenario testing a name that no longer exists.
+    rule = {r["rule_id"]: r for r in reg.rule_updates}
+    pname = {k: n for k, n, _a, _p in NAMED}
+
+    # মুনাফা (rule 9) must not fire inside মুনাফাভিত্তিক. Each half proves the
+    # other is not vacuous: the naive substring DOES fire on the same
+    # question, so the case is real; and an inflected মুনাফার still fires,
+    # so the boundary is not simply refusing everything.
+    r9 = rule["9"]
+    dbl = pname["double_profit_savings"]
+    term = next(x for x in _terms(r9["topic_terms"])
+                if not x.startswith(PRODUCT_TERM) and canon(x) in canon(dbl))
+    q_in = "%s কী?" % dbl
+    naive = bool(re.search(re.escape(canon_pattern(term)), canon(q_in)))
+    j = (naive and not topic_match(r9, q_in)
+         and topic_match(r9, "%sর হার কত?" % term))
+    cases.append(("boundary: %s not inside a compound" % "rule 9", j,
+                  "naive=%s gate=%s" % (naive, topic_match(r9, q_in))))
+
+    # rule 8 names Money Plant by key: a question naming it is on-topic, one
+    # naming the দেড়গুণ scheme -- the product rule 8 was confused with -- is not.
+    r8 = rule["8"]
+    k = (topic_match(r8, "%s কীভাবে কাজ করে?" % pname["money_plant_savings"])
+         and not topic_match(r8, "%s কী?" % pname["onehalf_profit_savings"]))
+    cases.append(("product key: rule 8 is Money Plant only", k, ""))
+
+    # an unknown key must fail at load, not match nothing forever
+    try:
+        _term_rx(PRODUCT_TERM + "no_such_product_key")
+        bad_key = False
+    except ValueError:
+        bad_key = True
+    cases.append(("product key: unknown key is refused", bad_key, ""))
+
+    # rules 23 and 24 share §5.2.3 AND the product; only their topic terms
+    # separate them. Asked plainly and asked naming the product, because the
+    # way this breaks is a product key added to both rows -- then any
+    # question naming ছায়া-সঞ্চয় matches both, and only the named form shows it.
+    r23, r24 = rule["23"], rule["24"]
+    chaya = pname["chaya_savings_insurance"]
+    sep = True
+    for q_age, q_multi in (("ডিপিএসে বয়সসীমা কত?",
+                            "একাধিক বিমাসুবিধা পাওয়া যায় কি?"),
+                           ("%s এর বয়সসীমা কত?" % chaya,
+                            "%s এ একাধিক বিমাসুবিধা পাওয়া যায় কি?" % chaya)):
+        sep &= (topic_match(r23, q_age) and not topic_match(r24, q_age)
+                and topic_match(r24, q_multi) and not topic_match(r23, q_multi))
+    cases.append(("rules 23 and 24 still separate", sep, ""))
 
     for name, good, got in cases:
         ok &= bool(good)
