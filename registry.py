@@ -69,6 +69,19 @@ def _rows(path):
     return list(csv.DictReader(path.read_text(encoding="utf-8").splitlines()))
 
 
+def _chunk_scope(chunks):
+    """-> (clauses, manuals) of retrieved chunks. The one reading of them,
+    shared by apply_rules and generate.py's pre-check -- two readings once
+    disagreed about manuals and left a reply empty."""
+    return ([c.get("clause") for c in chunks if c.get("clause")],
+            [c.get("manual_id") or c.get("doc") for c in chunks])
+
+
+# not_available.lists: a products.csv status. A row that fires on a general
+# question appends the products with that status now.
+_LIST_LABEL_BN = {"suspended": "বর্তমানে স্থগিত প্রোডাক্ট: %s।"}
+
+
 def _clauses(field):
     """'5.1.8 / 5.2.6' -> ['5.1.8', '5.2.6']. One cell, two clauses."""
     return [c.strip() for c in (field or "").replace("/", " ").split() if c.strip()]
@@ -119,6 +132,24 @@ _ENDINGS = "(?:%s)?" % "|".join(
 # owner of what a product name looks like.
 PRODUCT_TERM = "product:"
 
+# A TERM MAY REQUIRE SEVERAL WORDS TOGETHER: a+b|c means a, and b or c.
+# Row 8 fires on a general "when did they stop?" -- কবে with বন্ধ or স্থগিত
+# and a word for products -- and no single word can say that: কবে alone is
+# every date question, বন্ধ alone is "closed". The product word keeps
+# "অফিস কবে বন্ধ থাকবে?" out of it.
+ALL_OF, ANY_OF = "+", "|"
+
+
+class _AllOf:
+    """Every part matches, each part by any of its alternatives. Answers
+    search() like a compiled pattern, so the gate treats it as one term."""
+
+    def __init__(self, parts):
+        self.parts = parts
+
+    def search(self, text):
+        return all(any(rx.search(text) for rx in alts) for alts in self.parts) or None
+
 
 def _term_rx(t):
     """One topic term -> its compiled pattern. Cached per string, because
@@ -128,7 +159,10 @@ def _term_rx(t):
     rx = _TERM_RX.get(t)
     if rx is not None:
         return rx
-    if t.startswith(PRODUCT_TERM):
+    if ALL_OF in t and not t.startswith(PRODUCT_TERM):
+        rx = _AllOf([[_term_rx(a.strip()) for a in part.split(ANY_OF) if a.strip()]
+                     for part in t.split(ALL_OF) if part.strip()])
+    elif t.startswith(PRODUCT_TERM):
         key = t[len(PRODUCT_TERM):].strip()
         pat = next((p for k, _n, _a, p in NAMED if k == key), None)
         if pat is None:
@@ -218,6 +252,14 @@ class Registry:
         for r in self.rule_updates + self.not_available:
             for term in _terms(r.get("topic_terms")):
                 _term_rx(term)
+        # A `lists` value must be a status the code can label and products.csv
+        # actually uses -- an unknown one would append an empty list.
+        statuses = {p["status"] for p in self.products}
+        for r in self.not_available:
+            listed = (r.get("lists") or "").strip()
+            if listed and (listed not in _LIST_LABEL_BN or listed not in statuses):
+                raise ValueError("not_available item %s: lists=%r is not a "
+                                 "listable status" % (r["item"], listed))
 
         # Real manual ids, for citations. rule_updates.manual holds the
         # SCOPE (dabi | progoti | both), which is not a manual id -- a row
@@ -319,6 +361,15 @@ class Registry:
         return text, used
 
     # ---------------------------------------------------------------- rule 4
+    def withheld_for(self, question, chunks=()):
+        """withheld() for retrieved chunks, read exactly as apply_rules reads
+        them. generate.py's pre-check must call this, not withheld(): it once
+        passed no manuals, saw a Progoti-only row on a Dabi chunk, skipped the
+        model, and apply_rules -- which did pass them -- then had nothing to
+        say. The reply was empty."""
+        clauses, manuals = _chunk_scope(chunks)
+        return self.withheld(question, clauses, manuals)
+
     def withheld(self, question, clauses=(), manuals=()):
         """not_available rows the question falls under.
 
@@ -376,6 +427,15 @@ class Registry:
                       and i["_rx"].search(canon(subject))]
             if named and (qw & _words(r.get("bot_says_bn"))):
                 out.append(dict(r, _why="subject"))
+                continue
+            # A GENERAL QUESTION, naming no product: a clause-less row fires
+            # on one of its several-word terms (ALL_OF). Row 8's "when did
+            # they stop?" -- T-03 -- named nothing, so the subject path above
+            # could never reach it.
+            if (not rc and not self.products_named(question)
+                    and any(ALL_OF in t and _term_rx(t).search(q)
+                            for t in _terms(r.get("topic_terms")))):
+                out.append(dict(r, _why="general"))
         # Same clause, two topics: the WHO row and the PERIOD row both name
         # the loan papers, and the question decides between them.
         by_clause = [r for r in out if r["_why"] == "clause"]
@@ -618,24 +678,41 @@ def _short_names(q, skip=()):
 # গুড কাস্টমার লোন still fires: গুড is in 4 chunks and no heading.
 ORDINARY_CHUNKS = 20
 MAX_SHORT_MATCHES = 3       # a short name fitting more products asks which
+# WORDS ABOUT THE MANUAL ITSELF are never a product name, in any inflection.
+# They are rare in the corpus precisely because a manual seldom describes
+# itself -- ম্যানুয়ালে is in 6 chunks and no heading -- so the ordinary-word
+# count cannot clear "দাবি আর প্রগতি ম্যানুয়ালে ঋণের হার ...". The one list.
+_META_WORDS = ("ম্যানুয়াল", "ধারা", "অধ্যায়", "পার্থক্য")
+
+
+@functools.lru_cache(maxsize=4)
+def _corpus_rows(root):
+    """[(manual_id, clause, canon'd text)] for every chunk of every built
+    manual; the clause from the tracked manifest. Raises if none is built --
+    the ordinary-word count cannot be guessed, and a silent zero would turn
+    every word into a name."""
+    import json
+    mp = Path(root) / "data/processed/chunk_manifest.json"
+    clause = {r["chunk_id"]: r.get("clause") or ""
+              for r in json.loads(mp.read_text(encoding="utf-8")).get("chunks") or []}
+    rows = []
+    for mid in _manual_ids(Path(root)):
+        p = Path(root) / "data/processed" / ("chunks_%s_final.jsonl" % mid)
+        if p.exists():
+            for l in p.read_text(encoding="utf-8").splitlines():
+                if l.strip():
+                    c = json.loads(l)
+                    rows.append((mid, clause.get(c["chunk_id"], ""),
+                                 canon(c["display_text"])))
+    if not rows:
+        raise RuntimeError("registry: no built corpus under %s/data/processed -- "
+                           "the ordinary-word check needs the chunk files" % root)
+    return rows
 
 
 @functools.lru_cache(maxsize=4)
 def _corpus(root):
-    """Canon'd chunk text of every built manual. Raises if none is built --
-    the ordinary-word count cannot be guessed, and a silent zero would turn
-    every word into a name."""
-    import json
-    texts = []
-    for mid in _manual_ids(Path(root)):
-        p = Path(root) / "data/processed" / ("chunks_%s_final.jsonl" % mid)
-        if p.exists():
-            texts += [canon(json.loads(l)["display_text"])
-                      for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
-    if not texts:
-        raise RuntimeError("registry: no built corpus under %s/data/processed -- "
-                           "the ordinary-word check needs the chunk files" % root)
-    return texts
+    return tuple(t for _m, _c, t in _corpus_rows(root))
 
 
 @functools.lru_cache(maxsize=4)
@@ -662,6 +739,8 @@ def _ordinary(word, root="."):
 def _name_like(word, root="."):
     """Could this describing word name something the manual does not have?"""
     if _numeral(word) or _ordinary(word, root):
+        return False
+    if any(_same_word(word, canon(m)) for m in _META_WORDS):
         return False
     rx = _term_rx(word)
     return not any(rx.search(h) for h in _headings(root))
@@ -710,7 +789,12 @@ def unknown_product_name(question, reg=None):
     নীলকমল ঋণ three times, ছাগলের বিমা -- and one still wrong, "দাবি আর প্রগতি
     ম্যানুয়ালে ঋণের হার ...", where ম্যানুয়ালে is in six chunks and no heading.
     """
-    reg = reg or load()
+    found = _unknown_phrase(question, reg or load())
+    return found[0] if found else None
+
+
+def _unknown_phrase(question, reg):
+    """-> (qualifier, the refusable name words, head noun) or None."""
     q = canon(question or "")
     if (reg.products_named(question) or reg.insurers_named(question)
             or reg.products_ambiguous(question)):
@@ -728,11 +812,60 @@ def unknown_product_name(question, reg=None):
         name = _refusable_name(words, str(reg.root))
         if not any(_name_like(w, str(reg.root)) for w in name):
             continue          # only ordinary words, numerals, headings
-        return qual
+        return qual, name, m.group(2)
     return None
 
 
-NO_SUCH_NAME_BN = "এই নামে কিছু ম্যানুয়ালে নেই।"
+def _stems(word):
+    """The word, and the word less one case ending: ছাগলের -> ছাগল."""
+    out = {word}
+    for e in (canon(e) for e in _TOPIC_ENDINGS):
+        if word.endswith(e) and len(word) - len(e) >= 2:
+            out.add(word[:-len(e)])
+    return out
+
+
+def _related_insurances(words, head, reg):
+    """The insurances of the manual sections that use the refused name's
+    word. -> [name_bn], in products.csv order; empty for a non-insurance head.
+
+    INSURANCE ONLY, because an insurance section is one product family --
+    §5.4 of the Dabi manual is livestock -- while a loan section is a whole
+    programme: ছাগল is also in §1.1.1, as a purpose of the স্বাধীন লোন, and
+    listing every Dabi loan for "ছাগল লোন" would answer nothing. A section is
+    the first two levels of the clause (5.4); its products come from
+    products.csv by manual and clause. Nothing here names an animal.
+    """
+    _prods, _generic, head_kind = _product_words()
+    if head_kind.get(head) != "insurance":
+        return []
+    sections = set()
+    for w in words:
+        rxs = [_term_rx(s) for s in _stems(w)]
+        for mid, clause, text in _corpus_rows(str(reg.root)):
+            if clause and any(rx.search(text) for rx in rxs):
+                sections.add((mid, ".".join(clause.split(".")[:2])))
+    out = []
+    for p in reg.products:
+        if p.get("category") != "insurance" or not p.get("clause"):
+            continue
+        sec = ".".join(p["clause"].split(".")[:2])
+        scope = (p.get("manual") or "both").strip()
+        if any(s == sec and (scope == "both" or mid.startswith(scope))
+               for mid, s in sections):
+            out.append(p["name_bn"])
+    return out
+
+
+# "No PRODUCT by this name", not "nothing by this name": গুড কাস্টমার ঋণ IS
+# in the manual -- a report in the Branch Manager Supervision Module, §9.2.2
+# -- so the old sentence was literally untrue of the T-06 name.
+NO_SUCH_NAME_BN = "এই নামে কোনো প্রোডাক্ট ম্যানুয়ালে নেই।"
+# Appended when the refused name is an insurance whose word the manual
+# uses inside one insurance section: "ছাগলের বিমা" gets the livestock
+# insurances, because ছাগল appears in §5.4 -- as background, and both §5.4
+# products say they are for cows only.
+RELATED_INSURANCE_BN = "ম্যানুয়ালে এই ধরনের যে বিমা আছে: %s।"
 AMBIGUOUS_NAME_BN = "এই নামে একাধিক প্রোডাক্ট আছে। কোনটির কথা জানতে চান? — %s"
 
 
@@ -750,12 +883,11 @@ def apply_rules(question, answer, citations=(), chunks=(), reg=None,
     clause and manual are read.
     """
     reg = reg or load()
-    clauses = [c.get("clause") for c in chunks if c.get("clause")]
-    manuals = [c.get("manual_id") or c.get("doc") for c in chunks]
+    clauses, manuals = _chunk_scope(chunks)
     meta = {"rules_fired": []}
 
     stale = reg.stale_rules(clauses, manuals, question)
-    wh = reg.withheld(question, clauses, manuals)
+    wh = reg.withheld_for(question, chunks)
 
     # A PRODUCT-SHAPED NAME NOTHING KNOWS, settled before any other rule.
     # Left to the model this became "which manual did you mean?" (T-06):
@@ -763,12 +895,20 @@ def apply_rules(question, answer, citations=(), chunks=(), reg=None,
     # manual, which invites the reader to pick one and be answered from it.
     # Says what is true and nothing more -- not that the product does not
     # exist, which the registry has no way to know.
-    unknown = unknown_product_name(question, reg)
-    if unknown and not wh:
+    found = _unknown_phrase(question, reg)
+    if found and not wh:
+        unknown, name_words, head = found
         meta["rules_fired"].append("6:unknown_product")
         meta["unknown_product"] = unknown
         meta["unknown_original"] = answer
-        return NO_SUCH_NAME_BN, [], meta
+        # Not a flat refusal when the manual has insurances of this kind: say
+        # which, from products.csv.
+        text = NO_SUCH_NAME_BN
+        related = _related_insurances(name_words, head, reg)
+        if related:
+            meta["related_products"] = related
+            text += " " + RELATED_INSURANCE_BN % ", ".join(related)
+        return text, [], meta
 
     # ONE CLAUSE, TWO TOPICS, AND THE COARSE CHECK WINS BY DEFAULT.
     #
@@ -806,7 +946,18 @@ def apply_rules(question, answer, citations=(), chunks=(), reg=None,
         meta["rules_fired"].append("4:not_available")
         meta["not_available"] = [w["item"] for w in wh]
         meta["withheld_original"] = answer
-        text = " ".join(dict.fromkeys(w["bot_says_bn"] for w in wh))
+        said = []
+        for w in wh:
+            s = w["bot_says_bn"]
+            # A general question -- "when did they stop?", naming no product
+            # -- gets the list the row asks for, from products.csv: the
+            # products with that status now. Never typed.
+            listed = (w.get("lists") or "").strip()
+            if w["_why"] == "general" and listed:
+                names = [p["name_bn"] for p in reg.products if p["status"] == listed]
+                s += " " + _LIST_LABEL_BN[listed] % ", ".join(names)
+            said.append(s)
+        text = " ".join(dict.fromkeys(said))
         text, terms = reg.apply_terms(text)
         if terms:
             meta["rules_fired"].append("3:term_updates")
@@ -1203,7 +1354,11 @@ def scenarios(reg=None, verbose=True):
                  "গ্রাহক কি নীলকমল ঋণ নিতে পারবেন?"]
     must_be_silent = ["নতুন লোন নিতে কী লাগে?", "এই ঋণ কত দিনের?",
                       # ঋণ inside ঋণীদের is not a head noun
-                      "৩.৯.১(খ) ধারায় ঋণীদের ক্ষেত্রে মামলার সিদ্ধান্ত কে নেবেন?"]
+                      "৩.৯.১(খ) ধারায় ঋণীদের ক্ষেত্রে মামলার সিদ্ধান্ত কে নেবেন?",
+                      # ...and these two only the head-noun boundary clears:
+                      # ধারায় above is also a meta word, which hid it
+                      "খেলাপী ঋণীদের তালিকা কে তৈরি করবেন?",
+                      "মৃত্যুজনিত বিমাদাবি কত দিনে নিষ্পত্তি হয়?"]
     missed = [x for x in must_fire if not unknown_product_name(x, reg)]
     noisy = [x for x in must_be_silent if unknown_product_name(x, reg)]
     cases.append(("unknown names refused; grammar silent",
@@ -1302,6 +1457,70 @@ def scenarios(reg=None, verbose=True):
     end = (t_who == who["bot_says_bn"] and t_per == period["bot_says_bn"])
     cases.append(("who-question gets row 10, not the period rule", end,
                   "who=%r period=%r" % (t_who, t_per)))
+
+    # --- the unknown-product reply says "no product", not "nothing" -------
+    # গুড কাস্টমার ঋণ is in the manual, as a §9.2.2 report.
+    t, _c, _m = run("“গুড কাস্টমার লোন” সম্পর্কে বলুন।")
+    cases.append(("refusal says no PRODUCT by this name",
+                  t == NO_SUCH_NAME_BN and canon("প্রোডাক্ট") in canon(t), t))
+
+    # --- words about the manual are never a product name ------------------
+    # Each is otherwise name-like: rare in the corpus, in no heading.
+    meta_qs = ["দাবি আর প্রগতি ম্যানুয়ালে ঋণের হার বা সিলিং এ কোন পার্থক্য আছে কি?",
+               "৫ম অধ্যায়ের বিমা প্রিমিয়াম কত?"]
+    noisy = [x for x in meta_qs if unknown_product_name(x, reg)]
+    cases.append(("meta words are not product names", not noisy,
+                  "refused: %s" % noisy))
+
+    # --- a refused insurance names the insurances of its section ----------
+    # ছাগল is in the manual only in §5.4's background, and both §5.4
+    # products are for cows, so goats are not covered: refuse, then list the
+    # §5.4 insurances. The expected list is products.csv's own insurance rows
+    # in the livestock product's section -- the livestock row named by its
+    # key, the rest read from the file.
+    lv = by_id["livestock_insurance"]
+    sec = ".".join(lv["clause"].split(".")[:2])
+    want = [p["name_bn"] for p in reg.products if p["category"] == "insurance"
+            and p["manual"] == lv["manual"] and p["clause"]
+            and ".".join(p["clause"].split(".")[:2]) == sec]
+    t, _c, m = run("ছাগলের বিমা করা যাবে কি? প্রিমিয়াম কত?")
+    t_flat, _c, _m = run("নীলকমল বিমা কী?")      # a name the corpus never uses
+    lvk = (t.startswith(NO_SUCH_NAME_BN) and m.get("related_products") == want
+           and len(want) >= 2 and t_flat == NO_SUCH_NAME_BN)
+    cases.append(("goat insurance: refusal names the livestock insurances",
+                  lvk, "%s | want=%s" % (t, want)))
+
+    # --- row 8: "when did they stop?" with no product named ---------------
+    sus = [p["name_bn"] for p in reg.products if p["status"] == "suspended"]
+    r8 = na["8"]
+    t3, _c, m3 = run("বন্ধ হয়ে যাওয়া প্রোডাক্টগুলো কবে থেকে বন্ধ?")
+    t_office, _c, m_office = run("অফিস কবে বন্ধ থাকবে?")
+    t_named, _c, _m = run("%s কবে থেকে বন্ধ?" % pname["shadhin_loan"])
+    gen = (m3.get("not_available") == [r8["item"]]
+           and t3.startswith(r8["bot_says_bn"]) and all(n in t3 for n in sus)
+           and not m_office.get("not_available")
+           and t_named == r8["bot_says_bn"])       # a named product: no list
+    cases.append(("row 8 answers a general 'when did they stop'", gen,
+                  "T-03=%r office=%r named=%r" % (t3, t_office, t_named)))
+
+    # --- the pre-check and apply_rules read chunks the same way -----------
+    # generate.py skips the model when withheld_for() says so and hands
+    # apply_rules an empty answer. Whenever the pre-check withholds, the
+    # rules must have something to say -- the Dabi §3.11.2 question once
+    # came back empty -- and on that Dabi chunk the pre-check must not
+    # withhold at all.
+    probes = [(q_who, ch("3.11.2", "dabi_2025")), (q_who, ch("3.11.2", "progoti")),
+              (q_who, ch("3.8.1", "progoti")), (q_period, ch("3.8.1", "dabi_2025")),
+              ("প্রিমিয়াম কত?", ch("5.1.3"))]
+    empty = []
+    for q, chs in probes:
+        if reg.withheld_for(q, chs):
+            t, _c, _m = run(q, answer="", chunks=chs)
+            if not t:
+                empty.append((q, chs[0]["manual_id"], chs[0]["clause"]))
+    pre = not empty and not reg.withheld_for(q_who, ch("3.11.2", "dabi_2025"))
+    cases.append(("pre-check never leads to an empty reply", pre,
+                  "empty: %s" % empty))
 
     for name, good, got in cases:
         ok &= bool(good)

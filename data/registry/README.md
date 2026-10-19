@@ -37,6 +37,12 @@ Read with `encoding="utf-8"` — no BOM handling needed.
     rows on the same clause the same product key: the topic words are then
     the only thing that tells them apart (rules 23 and 24).
   - An unknown key stops the registry loading, by design.
+  - `a+b|c` needs several words together: a, and b or c. A row with no
+    clause also fires on such a term when the question names no product —
+    row 8 answers "when did they stop?" that way.
+- `lists` (not_available): a products.csv status, e.g. `suspended`. When the
+  row fires on a general question, the reply ends with the products that have
+  that status now, read from products.csv.
 
 ## Names
 

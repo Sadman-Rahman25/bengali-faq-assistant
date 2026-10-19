@@ -1409,8 +1409,10 @@ def answer_one(row, floor, system=SYSTEM_PROMPT, glossary=False,
     if registry_rules:
         import registry as _registry
         reg = _registry.load()
-        clauses = [c.get("clause") for c in chunks if c.get("clause")]
-        if reg.withheld(question, clauses):
+        # withheld_for, not withheld: the same reading of the chunks that
+        # apply_rules makes. Passing clauses alone once let a Progoti-only
+        # row skip the model on a Dabi chunk, and the reply came back empty.
+        if reg.withheld_for(question, chunks):
             text, cites, rmeta = _registry.apply_rules(
                 question, "", [], chunks, reg)
             return ({"id": row["question_id"], "answer": text,
