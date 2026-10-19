@@ -959,7 +959,8 @@ def _anthropic_complete(system, user, cache_system, key, state):
     raise ProviderError(f"every model failed; tried {tried}")
 
 
-def _groq_complete(system, user, cache_system, key, state):
+def _groq_complete(system, user, cache_system, key, state,
+                   max_tokens=1024, reasoning_effort=None):
     """Groq. Same retry classification as gemini, plus TPM pacing.
 
     cache_system is accepted and recorded but not wired: Groq exposes no
@@ -984,10 +985,14 @@ def _groq_complete(system, user, cache_system, key, state):
                 # first call there is nothing to go on, so it does not sleep.
                 need = int(state.get("last_total", 0) * TPM_HEADROOM)
                 paced += _pace_from_headers(state, need)
+                extra = {}
+                if reasoning_effort:
+                    extra["reasoning_effort"] = reasoning_effort
                 raw = client.chat.completions.with_raw_response.create(
-                    model=model, temperature=0.0, max_tokens=1024,
+                    model=model, temperature=0.0, max_tokens=max_tokens,
                     messages=[{"role": "system", "content": system},
-                              {"role": "user", "content": user}])
+                              {"role": "user", "content": user}],
+                    **extra)
                 state["headers"] = {k.lower(): v
                                     for k, v in raw.headers.items()}
                 r = raw.parse()
@@ -996,9 +1001,23 @@ def _groq_complete(system, user, cache_system, key, state):
                 ct = getattr(u, "completion_tokens", None)
                 state["last_total"] = (pt or 0) + (ct or 0)
                 h = state["headers"]
-                return (r.choices[0].message.content or ""), {
+                body = r.choices[0].message.content or ""
+                # THE SILENT TRUNCATION. gpt-oss spends reasoning tokens
+                # before it writes anything, and they count against
+                # max_tokens. Hit the cap mid-reasoning and content comes
+                # back EMPTY with finish_reason "stop" -- indistinguishable
+                # from a model that chose to say nothing. Say so instead.
+                if not body.strip() and ct and ct >= max_tokens:
+                    raise ProviderError(
+                        f"{model} returned no content: completion_tokens "
+                        f"{ct} hit max_tokens {max_tokens}, so the reply was "
+                        f"truncated during reasoning. Raise max_tokens or "
+                        f"pass reasoning_effort='low'.")
+                return body, {
                     "model": model, "retries": retries, "tried": tried,
                     "prompt_tokens": pt, "output_tokens": ct,
+                    "max_tokens": max_tokens,
+                    "reasoning_effort": reasoning_effort,
                     "system_cached": False,
                     "paced_seconds": round(paced, 2),
                     "tpm_remaining": h.get("x-ratelimit-remaining-tokens"),
@@ -1046,7 +1065,7 @@ _BACKENDS = {"gemini": _gemini_complete,
 _STATE = {"provider": None, "pin": None, "cache": {}}
 
 
-def complete(system, user, cache_system=True):
+def complete(system, user, cache_system=True, **opts):
     """-> (text, meta). The only function that knows a provider or a model.
 
     Provider comes from configure(); meta records the model actually used,
@@ -1058,7 +1077,19 @@ def complete(system, user, cache_system=True):
         raise ProviderError("call configure(provider) before complete()")
     key = None if provider == "local" else load_key(provider)
     state = _STATE["cache"].setdefault(provider, {})
-    text, meta = _BACKENDS[provider](system, user, cache_system, key, state)
+    fn = _BACKENDS[provider]
+    if opts:
+        # opts are BACKEND-SPECIFIC (max_tokens and reasoning_effort are
+        # groq's). Passing one to a backend that does not take it should say
+        # so, not raise TypeError from three frames down.
+        import inspect
+        ok = set(inspect.signature(fn).parameters)
+        bad = [k for k in opts if k not in ok]
+        if bad:
+            raise ProviderError(
+                f"provider {provider!r} does not accept {bad}; "
+                f"it takes {sorted(ok - {'system', 'user', 'cache_system', 'key', 'state'})}")
+    text, meta = fn(system, user, cache_system, key, state, **opts)
     meta["provider"] = provider
     # THE LEDGER IS WRITTEN HERE, at the one door every call goes through, so
     # a new backend cannot forget to account for itself.
