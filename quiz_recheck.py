@@ -363,7 +363,7 @@ def step1_context(qs, reg, registry, canon):
     # not_available is not one of a-d, but a quiz figure on a withheld topic
     # is worth a reader's eye
     for q in qs:
-        w = reg.withheld(q["question_bn"], [q["clause"]])
+        w = reg.withheld(q["question_bn"], [q["clause"]], [q["manual_id"]])
         for row in w:
             lines.append(f"{q['id']} falls under not_available item "
                          f"{row['item']} ({row['topic']}, §{row['clause']}) "

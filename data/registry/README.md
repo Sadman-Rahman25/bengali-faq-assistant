@@ -15,14 +15,16 @@ Read with `encoding="utf-8"` — no BOM handling needed.
 | insurers.csv | 5 | insurer_id | whether each still carries BRAC policies, and what it covers |
 | rule_updates.csv | 26 | rule_id | manual rules checked by the field team |
 | term_updates.csv | 2 | old_term | job titles and system names that changed |
-| not_available.csv | 9 | item | what the bot must say it does not know |
+| not_available.csv | 10 | item | what the bot must say it does not know |
 
 ## Values
 
 - `status`: active · suspended (not offered now, may come back) · pilot
 - `availability`: all_branches · limited_branches · demand_basis · situation_based · unspecified
 - `verdict`: still_valid · changed · retired · not_confirmed
-- `manual`: dabi · progoti · both
+- `manual`: dabi · progoti · both. In rule_updates.csv and not_available.csv
+  it scopes the row: a row scoped to progoti never changes an answer built
+  from the Dabi manual.
 - `topic_terms` (rule_updates, not_available): semicolon-separated words a
   question about THIS row would contain. A row applies only when the question
   contains one, so a retrieved clause alone never triggers it.

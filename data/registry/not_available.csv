@@ -1,10 +1,11 @@
-item,topic,clause,bot_says_bn,reason,topic_terms
-1,Loan security insurance premium rates,5.1.3,ঋণ নিরাপত্তা বিমার বর্তমান প্রিমিয়াম হারের তথ্য পাওয়া যায়নি।,Not confirmed in review,প্রিমিয়াম;হার
-2,Call centre number,2.5.2,কল সেন্টারের নম্বর এখানে দেওয়া হয় না।,Field team: do not add,কল সেন্টার;নম্বর;হটলাইন;ফোন
-3,Bank deposit limit,3.3.2,"হিসাব কর্মকর্তা একা কত টাকা নিতে পারেন, সেই নতুন সীমা ম্যানুয়ালে নেই।",Old rule retired; new limit not given,ব্যাংক;জমা;সীমা;একা
-4,Weekly cash demand,3.3.1,বর্তমান প্রক্রিয়ার তথ্য ম্যানুয়ালে নেই।,Old rule retired; replacement not given,চাহিদাপত্র;অর্থের চাহিদা;সাপ্তাহিক
-5,Keeping loan documents,3.8.1,বর্তমান সংরক্ষণকালের তথ্য ম্যানুয়ালে নেই।,Old rule retired; new period not given,দলিল;সংরক্ষণ;কাগজপত্র;নথি
-6,Selling or disposing of fixed assets,3.8.1,বর্তমান নিয়মের তথ্য পাওয়া যায়নি।,Not confirmed in review,স্থায়ী সম্পত্তি;বিক্রি;অকেজো;ফেলা
-7,Insurance on more than one DPS,5.2.3,বর্তমান নিয়মের তথ্য পাওয়া যায়নি।,Old rule retired; new rule not confirmed,একাধিক;বিমাসুবিধা
-8,When suspended products stopped,,"কবে থেকে বন্ধ, সেই তারিখ ম্যানুয়ালে নেই।","স্বাধীন লোন, গতি লোন, এককালীন স্থায়ী সঞ্চয়, আরোগ্য ঋণ",কবে;তারিখ;কখন;বন্ধ
-9,Products carried by Chartered Life,,"চার্টার্ড লাইফ কোন পণ্য দেয়, তা ম্যানুয়ালে নেই।",Not in either manual. Pioneer REMOVED from this item on 2026-10-19: it is in progoti §5.4.6.,পণ্য;প্রোডাক্ট;কী দেয়
+item,topic,clause,bot_says_bn,reason,topic_terms,manual
+1,Loan security insurance premium rates,5.1.3,ঋণ নিরাপত্তা বিমার বর্তমান প্রিমিয়াম হারের তথ্য পাওয়া যায়নি।,Not confirmed in review,প্রিমিয়াম;হার,both
+2,Call centre number,2.5.2,কল সেন্টারের নম্বর এখানে দেওয়া হয় না।,Field team: do not add,কল সেন্টার;নম্বর;হটলাইন;ফোন,both
+3,Bank deposit limit,3.3.2,"হিসাব কর্মকর্তা একা কত টাকা নিতে পারেন, সেই নতুন সীমা ম্যানুয়ালে নেই।",Old rule retired; new limit not given,ব্যাংক;জমা;সীমা;একা,both
+4,Weekly cash demand,3.3.1,বর্তমান প্রক্রিয়ার তথ্য ম্যানুয়ালে নেই।,Old rule retired; replacement not given,চাহিদাপত্র;অর্থের চাহিদা;সাপ্তাহিক,both
+5,Keeping loan documents,3.8.1,বর্তমান সংরক্ষণকালের তথ্য ম্যানুয়ালে নেই।,Old rule retired; new period not given,দলিল;সংরক্ষণ;কাগজপত্র;নথি;কত দিন;কতদিন;কত বছর;সময়সীমা;সংরক্ষণকাল,both
+6,Selling or disposing of fixed assets,3.8.1,বর্তমান নিয়মের তথ্য পাওয়া যায়নি।,Not confirmed in review,স্থায়ী সম্পত্তি;বিক্রি;অকেজো;ফেলা,both
+7,Insurance on more than one DPS,5.2.3,বর্তমান নিয়মের তথ্য পাওয়া যায়নি।,Old rule retired; new rule not confirmed,একাধিক;বিমাসুবিধা,both
+8,When suspended products stopped,,"কবে থেকে বন্ধ, সেই তারিখ ম্যানুয়ালে নেই।","স্বাধীন লোন, গতি লোন, এককালীন স্থায়ী সঞ্চয়, আরোগ্য ঋণ",কবে;তারিখ;কখন;বন্ধ,both
+9,Products carried by Chartered Life,,"চার্টার্ড লাইফ কোন পণ্য দেয়, তা ম্যানুয়ালে নেই।",Not in either manual. Pioneer REMOVED from this item on 2026-10-19: it is in progoti §5.4.6.,পণ্য;প্রোডাক্ট;কী দেয়,both
+10,Who keeps Progoti's loan papers,3.8.1 / 3.11.2,"এই দায়িত্ব এখন কার, সেই তথ্য ম্যানুয়ালে নেই।","Progoti §3.8.1(খ) and §3.11.2 give it to সিনিয়র পিও প্রগতি; programme team, 2026-10-19: no such post",কে;কার;কারা;কাদের;কাকে;দায়িত্ব;দলিল;কাগজপত্র;নথি;সংরক্ষণ,progoti

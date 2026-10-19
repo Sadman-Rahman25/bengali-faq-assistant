@@ -162,6 +162,15 @@ def topic_match(row, question):
     return any(_term_rx(t).search(q) for t in _terms(row.get("topic_terms")))
 
 
+def _term_hits(row, question):
+    """How many of the row's topic terms the question contains. Two rows on
+    one clause are told apart by this: a question about WHO keeps the loan
+    papers shares more terms with the who-row than with the retention-PERIOD
+    row, though both name the papers."""
+    q = canon(question or "")
+    return sum(1 for t in _terms(row.get("topic_terms")) if _term_rx(t).search(q))
+
+
 def bn_digits(text):
     """'5.2.3' -> '৫.২.৩'. One owner for the digit table: bn_shared."""
     return "".join(BN_DIGITS[int(c)] if c.isdigit() else c for c in str(text))
@@ -213,6 +222,7 @@ class Registry:
         # Real manual ids, for citations. rule_updates.manual holds the
         # SCOPE (dabi | progoti | both), which is not a manual id -- a row
         # scoped to both used to be cited as "both §5.2.3".
+        self.root = Path(root)
         self.manual_ids = _manual_ids(Path(root))
 
     def manuals_for(self, scope):
@@ -227,13 +237,37 @@ class Registry:
         return hit or [scope]
 
     # ---------------------------------------------------------------- rule 1
+    def _full_name_spans(self, q):
+        return [(m.start(), m.end()) for x in self.products + self.insurers
+                if x["_rx"] for m in x["_rx"].finditer(q)]
+
     def products_named(self, question):
         """Registry rows whose product the question names. Suspended first,
         so rule 1's 'say that before giving any terms' holds by construction
-        when several products are named at once."""
+        when several products are named at once.
+
+        BY FULL NAME OR BY SHORT NAME, through the same matching that
+        unknown_product_name() uses -- otherwise a short name of a suspended
+        product was neither refused nor flagged: স্বাধীন ঋণ, গতি ঋণ, আরোগ্য
+        লোন reached the model, which answers from manuals that still list them
+        as active. A short name fitting up to MAX_SHORT_MATCHES products names
+        each of them; more than that is products_ambiguous().
+        """
         q = canon(question or "")
         hit = [p for p in self.products if p["_rx"] and p["_rx"].search(q)]
+        by_id = {p["product_id"]: p for p in self.products}
+        for _qual, _words, keys in _short_names(q, self._full_name_spans(q)):
+            if len(keys) <= MAX_SHORT_MATCHES:
+                hit += [by_id[k] for k in keys
+                        if k in by_id and by_id[k] not in hit]
         return sorted(hit, key=lambda p: p["status"] != "suspended")
+
+    def products_ambiguous(self, question):
+        """Short names fitting more than MAX_SHORT_MATCHES products.
+        -> [[productmatch key]], one list per such name."""
+        q = canon(question or "")
+        return [keys for _q, _w, keys in _short_names(q, self._full_name_spans(q))
+                if len(keys) > MAX_SHORT_MATCHES]
 
     def insurers_named(self, question):
         q = canon(question or "")
@@ -285,8 +319,16 @@ class Registry:
         return text, used
 
     # ---------------------------------------------------------------- rule 4
-    def withheld(self, question, clauses=()):
+    def withheld(self, question, clauses=(), manuals=()):
         """not_available rows the question falls under.
+
+        `manual` is honoured exactly as stale_rules honours it: a row scoped
+        to progoti does not withhold an answer built from the Dabi manual.
+        Row 10 needs it -- Progoti's §3.8.1(খ)/§3.11.2 give the loan papers to
+        a post that does not exist, while Dabi's give them to real ones.
+
+        Rows that share a retrieved clause defer to the one the question
+        shares the MOST topic terms with; a tie keeps all of them.
 
         TWO WAYS IN, because the table has rows of two shapes.
 
@@ -305,6 +347,7 @@ class Registry:
         the table contains.
         """
         want = {canon(c) for c in clauses if c}
+        ms = {m for m in manuals if m}
         q = canon(question or "")
         qw = _words(question)
         out = []
@@ -316,9 +359,13 @@ class Registry:
             # thing. A row with no topic_terms cannot fire at all.
             if not topic_match(r, question):
                 continue
+            scope = (r.get("manual") or "both").strip()
+            if ms and scope != "both" and not any(m.startswith(scope) for m in ms):
+                continue
             rc = {canon(c) for c in _clauses(r["clause"])}
             if rc and (want & rc):
-                out.append(dict(r, _why="clause"))
+                out.append(dict(r, _why="clause", _rc=rc,
+                                _hits=_term_hits(r, question)))
                 continue
             subject = " ".join((r.get("reason") or "", r.get("bot_says_bn") or ""))
             named = [p for p in self.products
@@ -329,7 +376,13 @@ class Registry:
                       and i["_rx"].search(canon(subject))]
             if named and (qw & _words(r.get("bot_says_bn"))):
                 out.append(dict(r, _why="subject"))
-        return out
+        # Same clause, two topics: the WHO row and the PERIOD row both name
+        # the loan papers, and the question decides between them.
+        by_clause = [r for r in out if r["_why"] == "clause"]
+        drop = [r for r in by_clause
+                if any(o["_hits"] > r["_hits"] and (o["_rc"] & r["_rc"] & want)
+                       for o in by_clause if o is not r)]
+        return [r for r in out if not any(r is d for d in drop)]
 
 
 _CACHE = {}
@@ -414,16 +467,23 @@ _PUNCT = "“”\"'‘’()[]" + _CLAUSE_END
 # same boundary. Without it ঋণ matched inside ঋণী / ঋণীদের (borrowers) and
 # বিমা inside বিমাদাবি, so "৩.৯.১(খ) ধারায় ঋণীদের ক্ষেত্রে ..." was a question
 # about a product called ধারায়.
+#
+# The qualifier needs three characters, not MIN_WORD's four: গতি is a
+# product name in three, and "গতি ঋণ" -- a suspended loan -- was invisible
+# both to the status line and to the refusal. The two-letter grammar words
+# (এই, সব) stay out, and the stop words and the ordinary-word count below
+# handle the longer ones.
+_MIN_QUALIFIER = 3
 _PRODUCT_SHAPED = re.compile(
     r"([%s\w]{%d,})\s+(%s)%s(?![%s])" % (
-        _BN, MIN_WORD,
+        _BN, _MIN_QUALIFIER,
         "|".join(re.escape(canon_pattern(h)) for h in _HEAD),
         _ENDINGS, _BN))
 
 
 @functools.lru_cache(maxsize=1)
 def _product_words():
-    """-> ([(kind, words)] per product, generic words, {head word: kind}).
+    """-> ([(key, kind, words)] per product, generic words, {head word: kind}).
 
     From productmatch.NAMED, canon'd -- the one owner of product names. A
     product's kind is its LAST head word: ঋণ নিরাপত্তা বিমা is insurance, not a
@@ -436,11 +496,11 @@ def _product_words():
     """
     head_kind = {canon(w): k for k, ws in _HEAD_KIND for w in ws}
     prods = []
-    for _key, name, _aliases, _pat in NAMED:
+    for key, name, _aliases, _pat in NAMED:
         words = [w for w in _NAME_SPLIT.split(canon(name)) if w]
         heads = [head_kind[w] for w in words if w in head_kind]
-        prods.append((heads[-1] if heads else None, words))
-    df = Counter(w for _kind, ws in prods for w in set(ws))
+        prods.append((key, heads[-1] if heads else None, words))
+    df = Counter(w for _key, _kind, ws in prods for w in set(ws))
     generic = {w for w, n in df.items() if n >= _GENERIC_DF}
     generic |= {canon(n) for n, _a in PROGRAMME_NAMES.values()}
     return prods, frozenset(generic), head_kind
@@ -462,22 +522,39 @@ def _describing_words(q, head_start):
     previous clause, after an opening quote, and after _NAME_WINDOW tokens.
     Hyphenated and '+'-joined tokens split: ছায়া-সঞ্চয় -> ছায়া, সঞ্চয়.
     """
+    return _describing(q, head_start)[0]
+
+
+def _describing(q, head_start):
+    """-> (describing words, the stop word the walk ended on or None)."""
     stop = {canon(w) for w in _NAME_STOP}
     out = []
     for tok in reversed(q[:head_start].split()[-_NAME_WINDOW:]):
         if tok[-1] in _CLAUSE_END:
-            break
+            return out, None
         bare = tok.strip(_PUNCT)
-        if not bare or bare in stop:
-            break
+        if not bare:
+            return out, None
+        if bare in stop:
+            return out, bare
         out += [w for w in _NAME_SPLIT.split(bare) if w and w not in stop]
         if tok[0] in _OPEN_QUOTE:
-            break
-    return out
+            return out, None
+    return out, None
 
 
-def _short_form_of_a_product(words, head):
-    """Do these describing words, with this head noun, name a real product?
+# "কোন X ঋণ" ASKS WHICH X; it does not name one. "গ্রুপ ঋণে কোন অঙ্কের ঋণ কে
+# অনুমোদন করেন?" -- a loan of which amount -- was refused on অঙ্কের, a word
+# the manual never uses (it writes পরিমাণ), so the ordinary-word count could
+# not clear it. Only these determiners, which stand before a noun: the
+# particle কি stands there too in "গ্রাহক কি নীলকমল ঋণ নিতে পারবেন?", and
+# that name must still be refused.
+_WHICH = ("কোন", "কোনো")
+
+
+def _products_for(words, head):
+    """The products these describing words, with this head noun, name.
+    -> [productmatch key], best fit first-come.
 
     A word counts when it is a word of some product's name (one case ending
     allowed either side) AND that product is the same kind as the head noun:
@@ -486,17 +563,128 @@ def _short_form_of_a_product(words, head):
 
     TOO-COMMON WORDS DO NOT COUNT BY THEMSELVES. If the name has any word that
     is not generic, only those words decide: "সাধারণ কৃষি লোন" is judged on
-    কৃষি, which names nothing, so it is still unknown -- although সাধারণ is
-    in two loan names. Only a name made of nothing but common words falls back
-    to them: "সাধারণ লোন" is the general loan of either programme, and
-    "ঋণ বিমা" is ঋণ নিরাপত্তা বিমা -- ঋণ being in three product names.
+    কৃষি, which names nothing -- although সাধারণ is in two loan names. Only a
+    name made of nothing but common words falls back to them: "সাধারণ লোন" is
+    the general loan of either programme, and "ঋণ বিমা" is ঋণ নিরাপত্তা বিমা.
+
+    BEST FIT, not any fit: the products sharing the most of the words win, so
+    "দাবি সাধারণ লোন" is the Dabi general loan alone, while "সাধারণ লোন" --
+    one word, two equal fits -- is both.
     """
     prods, generic, head_kind = _product_words()
     kind = head_kind.get(head)
     distinctive = [w for w in words
                    if not any(_same_word(w, g) for g in generic)]
-    return any(k == kind and any(_same_word(w, t) for t in ws)
-               for w in (distinctive or words) for k, ws in prods)
+    use = distinctive or words
+    score = {}
+    for key, k, ws in prods:
+        if k != kind:
+            continue
+        n = sum(1 for w in use if any(_same_word(w, t) for t in ws))
+        if n:
+            score[key] = n
+    best = max(score.values(), default=0)
+    return [key for key, n in score.items() if n == best]
+
+
+def _short_names(q, skip=()):
+    """[(qualifier, describing words, [product keys])] for each product-shaped
+    phrase in canon'd `q`. A phrase whose head noun sits inside `skip` -- the
+    spans of names already matched in full -- is left out, or "দাবি + সাধারণ
+    লোন" would also resolve its own সাধারণ লোন to the Progoti general loan."""
+    out = []
+    for m in _PRODUCT_SHAPED.finditer(q):
+        if any(a <= m.start(2) < b for a, b in skip):
+            continue
+        qual = m.group(1)
+        if any(canon_pattern(w) == qual for w in _NOT_A_NAME):
+            continue
+        words = _describing_words(q, m.start(2))
+        if words:
+            out.append((qual, words, _products_for(words, m.group(2))))
+    return out
+
+
+# AN ORDINARY WORD IS NOT A NAME. With no product found, the refusal still
+# needs a describing word that could be the name of something the manual
+# lacks. Without this, "৭০,০০০ টাকা পর্যন্ত ঋণ ..." was a question about a
+# product called পর্যন্ত, and "গ্রুপ ঋণে ..." about one called গ্রুপ.
+#   ordinary  -- the word is in more than ORDINARY_CHUNKS chunks of the corpus
+#   numeral   -- any token with a digit: ৭০,০০০, the clause number ২.১.১(ট)
+#   heading   -- the word titles a section of the manual (ইন্ডিভিজুয়াল in
+#                "২.১.২(গ) ইন্ডিভিজুয়াল ক্লায়েন্ট"): a term the manual uses
+#                for its own structure, which is what makes a lending mode a
+#                real term. Read from the tracked manifest's headings.
+# গুড কাস্টমার লোন still fires: গুড is in 4 chunks and no heading.
+ORDINARY_CHUNKS = 20
+MAX_SHORT_MATCHES = 3       # a short name fitting more products asks which
+
+
+@functools.lru_cache(maxsize=4)
+def _corpus(root):
+    """Canon'd chunk text of every built manual. Raises if none is built --
+    the ordinary-word count cannot be guessed, and a silent zero would turn
+    every word into a name."""
+    import json
+    texts = []
+    for mid in _manual_ids(Path(root)):
+        p = Path(root) / "data/processed" / ("chunks_%s_final.jsonl" % mid)
+        if p.exists():
+            texts += [canon(json.loads(l)["display_text"])
+                      for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
+    if not texts:
+        raise RuntimeError("registry: no built corpus under %s/data/processed -- "
+                           "the ordinary-word check needs the chunk files" % root)
+    return texts
+
+
+@functools.lru_cache(maxsize=4)
+def _headings(root):
+    """Canon'd heading path of every chunk, from the tracked manifest."""
+    import json
+    p = Path(root) / "data/processed/chunk_manifest.json"
+    rows = json.loads(p.read_text(encoding="utf-8")).get("chunks") or []
+    return sorted({canon(" ".join(r.get("heading_path") or [])) for r in rows})
+
+
+def _numeral(word):
+    return any(ch.isdigit() for ch in word)
+
+
+@functools.lru_cache(maxsize=4096)
+def _ordinary(word, root="."):
+    """In more than ORDINARY_CHUNKS chunks of the built corpus."""
+    rx = _term_rx(word)
+    return sum(1 for c in _corpus(root) if rx.search(c)) > ORDINARY_CHUNKS
+
+
+@functools.lru_cache(maxsize=4096)
+def _name_like(word, root="."):
+    """Could this describing word name something the manual does not have?"""
+    if _numeral(word) or _ordinary(word, root):
+        return False
+    rx = _term_rx(word)
+    return not any(rx.search(h) for h in _headings(root))
+
+
+def _refusable_name(words, root="."):
+    """The part of the describing words that could be an unknown NAME.
+
+    Read outward from the head noun: numerals are skipped, and the first
+    ordinary word ENDS the name -- an ordinary word is not a product name, so
+    nothing beyond it belongs to this one. "একাধিক ডিপিএসের উপর বিমা" is
+    insurance ON several DPS; উপর ends the name and ডিপিএসের is not part of
+    it. Refusal only: resolving a product reads all the words, because real
+    names contain ordinary ones (সাধারণ, in দাবি + সাধারণ লোন).
+    """
+    run = []
+    for w in words:                 # nearest the head noun first
+        if _numeral(w):
+            continue
+        if _ordinary(w, root):
+            break
+        run.append(w)
+    return run
 
 
 def unknown_product_name(question, reg=None):
@@ -509,34 +697,43 @@ def unknown_product_name(question, reg=None):
     দাবি লোন; the registry knows each product only by its full names, so all
     of them used to get "এই নামে কিছু ম্যানুয়ালে নেই" -- a confident wrong
     answer about a product that is in the manual, the T-08 shape again.
-    It fires now only when the name's describing words name no product of
-    that kind.
+    It fires only when the describing words name no product of that kind AND
+    one of them could be a name: see _name_like (not ordinary, not a
+    numeral, not a section-heading term), _refusable_name (an ordinary word
+    ends the name) and _WHICH ("কোন X ঋণ" asks which X).
 
-    Measured on 221 distinct real questions (FAQ, gold, quiz): the old rule
-    refused 36. Fifteen were real products named short or inflected (দাবি+
-    সাধারণ লোন, মাসিক মুনাফাভিত্তিক সঞ্চয়ে, মানি-প্লান্ট সঞ্চয়ে ...) and four
-    were ঋণ or বিমা inside another word. It now refuses 17 and none that it
-    did not refuse before. KNOWN, NOT FIXED HERE: about eleven of the 17 are
-    still wrong for a different reason -- the "name" is a postposition, a unit
-    or a place (পর্যন্ত, অনুযায়ী, টাকা, ম্যানুয়ালে, মডিউলে: "৭০,০০০ টাকা
-    পর্যন্ত ঋণ ...") or a lending mode (গ্রুপ ঋণ, ইন্ডিভিজুয়াল ঋণ).
+    Measured on 222 distinct real questions (FAQ, gold, quiz): the original
+    rule refused 36. Fifteen were real products named short or inflected,
+    four were ঋণ or বিমা inside another word, and eleven were ordinary words,
+    numerals or lending modes ("৭০,০০০ টাকা পর্যন্ত ঋণ ...", "গ্রুপ ঋণে ...",
+    "ইন্ডিভিজুয়াল ঋণে ..."). It now refuses 7: গুড কাস্টমার লোন twice,
+    নীলকমল ঋণ three times, ছাগলের বিমা -- and one still wrong, "দাবি আর প্রগতি
+    ম্যানুয়ালে ঋণের হার ...", where ম্যানুয়ালে is in six chunks and no heading.
     """
     reg = reg or load()
     q = canon(question or "")
-    if reg.products_named(question) or reg.insurers_named(question):
+    if (reg.products_named(question) or reg.insurers_named(question)
+            or reg.products_ambiguous(question)):
         return None
+    which = {canon(w) for w in _WHICH}
     for m in _PRODUCT_SHAPED.finditer(q):
         qual = m.group(1)
         if any(canon_pattern(w) == qual for w in _NOT_A_NAME):
             continue
-        words = _describing_words(q, m.start(2))
-        if not words or _short_form_of_a_product(words, m.group(2)):
+        words, stopped_on = _describing(q, m.start(2))
+        if not words or _products_for(words, m.group(2)):
             continue
+        if stopped_on in which:
+            continue          # "কোন X ঋণ": asks which X
+        name = _refusable_name(words, str(reg.root))
+        if not any(_name_like(w, str(reg.root)) for w in name):
+            continue          # only ordinary words, numerals, headings
         return qual
     return None
 
 
 NO_SUCH_NAME_BN = "এই নামে কিছু ম্যানুয়ালে নেই।"
+AMBIGUOUS_NAME_BN = "এই নামে একাধিক প্রোডাক্ট আছে। কোনটির কথা জানতে চান? — %s"
 
 
 def asks_beyond_status(question):
@@ -558,7 +755,7 @@ def apply_rules(question, answer, citations=(), chunks=(), reg=None,
     meta = {"rules_fired": []}
 
     stale = reg.stale_rules(clauses, manuals, question)
-    wh = reg.withheld(question, clauses)
+    wh = reg.withheld(question, clauses, manuals)
 
     # A PRODUCT-SHAPED NAME NOTHING KNOWS, settled before any other rule.
     # Left to the model this became "which manual did you mean?" (T-06):
@@ -582,18 +779,22 @@ def apply_rules(question, answer, citations=(), chunks=(), reg=None,
     # refusal, when the registry holds the answer. Right by the letter of
     # rule 4 and wrong for the person asking.
     #
-    # The discriminator is in the data: each row carries its own Bengali
-    # statement of its topic. The row whose words the question actually
-    # shares is the row the question is about. A withheld row only wins the
-    # clause when no stale rule describes the question better -- and with no
-    # overlap on either side it still wins, because withholding is the safe
-    # direction.
+    # The discriminator is in the data. FIRST the topic terms the question
+    # shares with each row, THEN the words it shares with the row's own
+    # Bengali statement. Words alone were not enough: "ঋণের কাগজপত্র কে
+    # সংরক্ষণ করবেন?" shares nothing with row 10's sentence ("এই দায়িত্ব এখন
+    # কার ...") and two words with retired rule 17's, so a WHO question was
+    # answered with the retention-PERIOD rule. On topic terms it is 3 to 2.
+    # A withheld row only wins the clause when no stale rule describes the
+    # question better -- and a full tie still goes to the withheld row,
+    # because withholding is the safe direction.
     if wh and stale:
         def fit(row, *fields):
-            return len(_words(question) & _words(" ".join(row.get(f) or ""
-                                                          for f in fields)))
+            return (_term_hits(row, question),
+                    len(_words(question) & _words(" ".join(row.get(f) or ""
+                                                           for f in fields))))
         best_stale = max((fit(r, "rule_summary", "current_rule_bn")
-                          for r in stale), default=0)
+                          for r in stale), default=(0, 0))
         kept = [w for w in wh
                 if w["_why"] != "clause" or fit(w, "bot_says_bn") >= best_stale]
         if kept != wh:
@@ -611,6 +812,19 @@ def apply_rules(question, answer, citations=(), chunks=(), reg=None,
             meta["rules_fired"].append("3:term_updates")
             meta["terms_applied"] = terms
         return text, [], meta
+
+    # -- rule 1, ambiguous: a short name fitting too many products to list
+    # their statuses usefully. Say none of them and ask which is meant --
+    # the names are real, so offering them is not the T-06 trap of inviting
+    # a choice between manuals for a product that is in neither.
+    amb = reg.products_ambiguous(question)
+    if amb:
+        names = {k: n for k, n, _a, _p in NAMED}
+        meta["rules_fired"].append("1:ambiguous_product")
+        meta["ambiguous"] = amb
+        meta["ambiguous_original"] = answer
+        listed = "; ".join(names[k] for k in amb[0])
+        return (AMBIGUOUS_NAME_BN % listed), [], meta
 
     parts = []
 
@@ -959,6 +1173,16 @@ def scenarios(reg=None, verbose=True):
               short("cattle_fattening_insurance"),
               short("loan_security_insurance")]
     sv = [s for s in shorts if unknown_product_name("%s কী?" % s, reg)]
+    # A productmatch product the registry has no row for is still a real
+    # product. products_named() cannot name it, so only the short-form check
+    # keeps it from the refusal. Tested on a registry with গতি লোন's row
+    # removed: গতি is in few enough chunks to look like a name.
+    import copy
+    lean = copy.copy(reg)
+    lean.products = [p for p in reg.products if p["product_id"] != "goti_loan"]
+    goti = "%s %s কী?" % (pname["goti_loan"].split()[0], "ঋণ")
+    if unknown_product_name(goti, lean):
+        sv.append(goti + " (no registry row)")
     cases.append(("short names of real products: no refusal", not sv,
                   "refused: %s" % sv))
 
@@ -970,12 +1194,13 @@ def scenarios(reg=None, verbose=True):
     progs = {canon(n) for n, _a in PROGRAMME_NAMES.values()}
     common = sorted(w for w in generic
                     if w not in head_kind and w not in progs
-                    and any(k == "loan" and w in ws for k, ws in prods))[0]
+                    and any(k == "loan" and w in ws for _key, k, ws in prods))[0]
     dabi = PROGRAMME_NAMES["dabi"][0]
     must_fire = ["“গুড কাস্টমার লোন” সম্পর্কে বলুন।",
                  "%s কৃষি লোন কী?" % common,     # judged on কৃষি, which names nothing
-                 "%s বিমা কী?" % common,          # no insurance has the common word
-                 "%sর গুড কাস্টমার লোন কী?" % dabi]  # a programme name, inflected, is generic
+                 "%sর গুড কাস্টমার লোন কী?" % dabi,  # a programme name, inflected, is generic
+                 # the particle কি before a name is not "কোন X ঋণ"
+                 "গ্রাহক কি নীলকমল ঋণ নিতে পারবেন?"]
     must_be_silent = ["নতুন লোন নিতে কী লাগে?", "এই ঋণ কত দিনের?",
                       # ঋণ inside ঋণীদের is not a head noun
                       "৩.৯.১(খ) ধারায় ঋণীদের ক্ষেত্রে মামলার সিদ্ধান্ত কে নেবেন?"]
@@ -984,6 +1209,64 @@ def scenarios(reg=None, verbose=True):
     cases.append(("unknown names refused; grammar silent",
                   not missed and not noisy,
                   "missed=%s noisy=%s" % (missed, noisy)))
+
+    # An ordinary word, a numeral or a section-heading term is not the name
+    # of something missing. One question per guard, each from the real set,
+    # so each guard switched off fails this scenario by itself.
+    ordinary = ["৭০,০০০ টাকা পর্যন্ত ঋণ অনুমোদনের ক্ষমতা কার?",  # numeral + ordinary
+                "১৫,০০০ ঋণ কে অনুমোদন করেন?",                     # a numeral beside the head
+                "গ্রুপ ঋণে কোন অঙ্কের ঋণ কে অনুমোদন করেন?",      # ordinary, a lending mode
+                "ইন্ডিভিজুয়াল ঋণে সর্বোচ্চ স্তরে কে অনুমোদন করেন?",  # a section-heading term
+                "%s বিমা কী?" % common,                             # a common word alone
+                # an ordinary word ends the name: উপর, অনুযায়ী
+                "একাধিক ডিপিএসের উপর বিমা করা যায় কি?",
+                "ধারা ২.১.১(ট) অনুযায়ী ঋণ অনুমোদনের সিলিং কত?"]
+    noisy = [x for x in ordinary if unknown_product_name(x, reg)]
+    cases.append(("ordinary words, numerals, headings: no refusal",
+                  not noisy, "refused: %s" % noisy))
+
+    # --- the status line follows short names too ---------------------------
+    # A suspended product asked by another spelling of its head noun --
+    # লোন for ঋণ and back -- must lead with its suspension, not reach the
+    # model, which answers from manuals that still list it as active.
+    other_head = {canon("লোন"): "ঋণ", canon("ঋণ"): "লোন"}
+    by_id = {p["product_id"]: p for p in reg.products}
+    wrong = []
+    for key in ("shadhin_loan", "goti_loan", "arogya_loan"):
+        words = pname[key].split()
+        q = "%s %s কী?" % (words[0], other_head[canon(words[-1])])
+        row = by_id[key]
+        t, _c, m = run(q)
+        first = t.split("।")[0]
+        if not (row["status"] == "suspended"
+                and t.startswith(row["status_line_bn"])
+                and canon("বর্তমানে স্থগিত আছে") in canon(first)
+                and "6:unknown_product" not in m["rules_fired"]):
+            wrong.append((q, t))
+    cases.append(("suspended short names lead with the suspension",
+                  not wrong, "%s" % wrong))
+
+    # A short name fitting two products shows both: the general loan of each
+    # programme, the common word picked from the data above.
+    both = sorted(key for key, k, ws in prods if k == "loan" and common in ws)
+    t, _c, m = run("%s লোন কী?" % common)
+    g = (len(both) == 2 and sorted(m.get("products") or []) == both
+         and all(by_id[k]["status_line_bn"] in t for k in both))
+    cases.append(("short name of two products: both statuses", g, t))
+
+    # More than three: no status line, ask which. Three is the brief's
+    # number, written here on purpose rather than read from
+    # MAX_SHORT_MATCHES -- a test that reads the threshold it tests cannot
+    # notice the threshold moving. The word is found in the data, not typed:
+    # the first non-head word that more than three products of one kind share.
+    kind_head = {k: canon(ws[0]) for k, ws in _HEAD_KIND}
+    w_amb, h_amb = next((w, kind_head[k]) for w in sorted({w for _x, _k, ws in prods for w in ws})
+                        for k in kind_head if w not in head_kind
+                        and len(_products_for([w], kind_head[k])) > 3)
+    t, _c, m = run("%s %s কী?" % (w_amb, h_amb))
+    a = ("1:ambiguous_product" in m["rules_fired"] and not m.get("products")
+         and t.startswith(AMBIGUOUS_NAME_BN.split("%s")[0]))
+    cases.append(("short name of 4+ products: asks which", a, t))
 
     # The enrolment question, end to end: a short product name, an age, and
     # the clause rule 23 governs. It must reach rule 23 -- not the
@@ -997,6 +1280,28 @@ def scenarios(reg=None, verbose=True):
                            for a in ages)
              and canon("যেকোনো") not in canon(t))
     cases.append(("enrolment question reaches rule 23", e, t))
+
+    # --- who keeps the papers, and for how long: two rows, one clause ------
+    # Row 10 (WHO, Progoti only) and row 5 (the retention PERIOD) both name
+    # the loan papers. Each must fire only on its own question, row 10 must
+    # stay out of Dabi, whose clause names a real post -- and end to end the
+    # WHO question must get row 10's sentence, not retired rule 17's.
+    na = {r["item"]: r for r in reg.not_available}
+    who, period = na["10"], na["5"]
+    q_who, q_period = ("ঋণের কাগজপত্র কে সংরক্ষণ করবেন?",
+                       "ঋণের কাগজপত্র কত দিন সংরক্ষণ করতে হয়?")
+    items = lambda q, cl, mid: [r["item"] for r in reg.withheld(q, [cl], [mid])]
+    s = (items(q_who, "3.8.1", "progoti") == [who["item"]]
+         and items(q_period, "3.8.1", "progoti") == [period["item"]]
+         and items(q_who, "3.11.2", "progoti") == [who["item"]]
+         and who["item"] not in items(q_who, "3.8.1", "dabi_2025"))
+    cases.append(("row 10 and row 5 each fire only on their own question", s, ""))
+
+    t_who, _c, m_who = run(q_who, chunks=ch("3.8.1", "progoti"))
+    t_per, _c, _m = run(q_period, chunks=ch("3.8.1", "progoti"))
+    end = (t_who == who["bot_says_bn"] and t_per == period["bot_says_bn"])
+    cases.append(("who-question gets row 10, not the period rule", end,
+                  "who=%r period=%r" % (t_who, t_per)))
 
     for name, good, got in cases:
         ok &= bool(good)
