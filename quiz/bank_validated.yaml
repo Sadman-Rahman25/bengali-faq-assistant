@@ -3,7 +3,7 @@
 # written by a model. See quiz_build.py's docstring.
 meta:
   note: reconstructed from out/quiz_review.md
-  n_questions: 71
+  n_questions: 70
   n_dropped_on_revalidate: 31
   hand_deleted_semantic:
   - dabi_2025_0044
@@ -18,12 +18,8 @@ meta:
   registry_recheck:
     by: quiz_recheck.py
     n_before: 74
-    n_after: 71
+    n_after: 70
     dropped:
-    - id: Q-017
-      reason: '1d distractor ''৫০ হাজার'' is now correct: rule 8 (still_valid) says ''দ্বিগুণ/দেড়গুণ
-        সঞ্চয় প্রকল্প, ৫০,০০০ থেকে ২,০০,০০০ টাকা চালু আছে।''; the keyed answer ''১০ হাজার'' is not in
-        it'
     - id: Q-021
       reason: '1a rule 17 is retired: ঋণ দলিল ১ বছর, খেলাপী ঋণের দলিল ৫ বছর সংরক্ষণ (§3.8.1)'
     - id: Q-058
@@ -33,6 +29,7 @@ meta:
     - Q-002
     - Q-011
     - Q-016
+    - Q-017
     - Q-020
     - Q-024
     - Q-060
@@ -44,6 +41,26 @@ meta:
     - Q-073
     - Q-074
     repick_seed: 20261019
+  hand_edits:
+  - id: Q-017
+    action: restored
+    reason: 'its 1d drop was wrong: rule 8''s summary described মানি-প্লান্ট সঞ্চয় প্রকল্প (dabi_2025_0030
+      / progoti_0037, ৫০,০০০-২,০০,০০০) under the দ্বিগুণ/দেড়গুণ name; দেড়গুণ মুনাফাভিত্তিক is progoti_0035
+      (১০ হাজার-২০ লক্ষ), so the keyed ১০ হাজার is correct. Rule 8 corrected in data/registry/rule_updates.csv.'
+  - id: Q-061
+    action: dropped
+    reason: 'no plausible distractor exists: it kept ৭০ বছর (70x the answer) and ৬ বছর, which occurs in
+      its own clause §1.2.2'
+  - id: Q-063
+    action: dropped
+    reason: falls under not_available item 1 (premium rates not confirmed); its distractors ৬ মাস and
+      ১২ মাস occur in its own clause §5.1.3 and no plausible replacement exists
+  - id: Q-068
+    action: question_bn edited
+    reason: old composite title replaced with the term_updates new term; the question text is ours, not
+      a manual quote. The explanation, which quotes the manual, is unchanged.
+    before: ইনসিডেন্ট নোটিফিকেশন ও সেটআপ প্রক্রিয়ায় শাখা/এলাকা ব্যবস্থাপক-প্রগতি/এডিসি এবং শাখা হিসাব
+      কর্মকর্তার পাশাপাশি কোন উচ্চপদস্থ কর্মকর্তা উপস্থিত থাকতে হবে?
 questions:
 - id: Q-001
   kind: figure
@@ -285,6 +302,20 @@ questions:
   - ২৪%
   explanation: এখানে ২৪% হার সুদে একজন সদস্য ১২ মাস মেয়াদী ২০,০০০/— লোন গ্রহণ করলে তার মাসিক কিস্তি হবে—
     ২০×৯৫ = ১৯০০/—।
+- id: Q-017
+  kind: figure
+  question_bn: দেড়গুণ মুনাফাভিত্তিক সঞ্চয় প্রকল্পের ন্যূনতম আমানত কত টাকা?
+  chunk_id: progoti_0035
+  manual_id: progoti
+  clause: 1.2.2
+  clause_display: ১.২.২
+  correct: ১০ হাজার
+  options:
+  - ১৫ হাজার
+  - ১,০০,০০০ টাকা
+  - ৭৫ হাজার
+  - ১০ হাজার
+  explanation: 'আমানত : ১০ হাজার টাকা হতে ২০ দশ লক্ষ টাকা পর্যন্ত'
 - id: Q-018
   kind: role
   question_bn: তৃতীয় অধ্যায়ের ৩.৩.৩ লেন-দেন সময়সীমা অনুযায়ী মাঠ পর্যায়ে সরাসরি উপকারভোগীর নিকট থেকে
@@ -924,20 +955,6 @@ questions:
   - ৭৫০ টাকা
   - ২,০০০ টাকা
   explanation: 'অফিসের ধরণ: বিভাগীয় অফিস — বাজেট: ২,০০০ টাকা ।'
-- id: Q-061
-  kind: figure
-  question_bn: মেয়াদী সঞ্চয় পণ্যের মেয়াদ কত বছর?
-  chunk_id: dabi_2025_0025
-  manual_id: dabi_2025
-  clause: 1.2.2
-  clause_display: ১.২.২
-  correct: ১ বছর
-  options:
-  - ১.৫ বছর
-  - ১ বছর
-  - ৭০ বছর
-  - ৬ বছর
-  explanation: 'বছর: ১ বছর পূর্ণ না হলে — মুনাফা বা সুদের হার: পূর্ণ মাসের জন্য ৭% লভ্যাংশ ।'
 - id: Q-062
   kind: figure
   question_bn: সাধারণ সঞ্চয় (পাশবই সঞ্চয়) এর সুদের হার কত শতাংশ?
@@ -952,21 +969,6 @@ questions:
   - ৭.৮০%
   - ২.৪০%
   explanation: জমাকৃত টাকার উপর সদস্য বার্ষিক ৬% হারে মুনাফা পাবে।
-- id: Q-063
-  kind: figure
-  question_bn: ঋণ নিরাপত্তা বিমার প্রিমিয়ামের জন্য নির্ধারিত ঋণের মেয়াদ কত মাস?
-  chunk_id: dabi_2025_0188_p1
-  manual_id: dabi_2025
-  clause: 5.1.3
-  clause_display: ৫.১.৩
-  correct: ১ মাস
-  options:
-  - ৩৬ মাস
-  - ১২ মাস
-  - ৬ মাস
-  - ১ মাস
-  explanation: 'ঋণের মেয়াদ: ১ মাস — সাপ্তাহিক/মাসিক হারে পরিশোধযোগ্য ঋণের ক্ষেত্রে: ০.২৫ টাকা — ০.৫০
-    টাকা — এককালিন পরিশোধযোগ্য (বুলেট পেমেন্ট) ঋণের ক্ষেত্রে: ০.৩৭৫ টাকা — ০.৭৫ টাকা ।'
 - id: Q-064
   kind: role
   question_bn: তৃতীয় অধ্যায়ের ৩.৯.১(ক) ধারা অনুযায়ী কর্মীর ক্ষেত্রে উল্লেখিত ভূমিকা (role) কী?
@@ -1030,8 +1032,8 @@ questions:
     একজন নিয়ে কমিটি গঠিত হবে।
 - id: Q-068
   kind: role
-  question_bn: ইনসিডেন্ট নোটিফিকেশন ও সেটআপ প্রক্রিয়ায় শাখা/এলাকা ব্যবস্থাপক-প্রগতি/এডিসি এবং শাখা হিসাব
-    কর্মকর্তার পাশাপাশি কোন উচ্চপদস্থ কর্মকর্তা উপস্থিত থাকতে হবে?
+  question_bn: ইনসিডেন্ট নোটিফিকেশন ও সেটআপ প্রক্রিয়ায় এলাকা ব্যবস্থাপক এবং শাখা হিসাব কর্মকর্তার পাশাপাশি
+    কোন উচ্চপদস্থ কর্মকর্তা উপস্থিত থাকতে হবে?
   chunk_id: progoti_0246
   manual_id: progoti
   clause: 5.1.9
