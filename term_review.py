@@ -98,7 +98,7 @@ HEADER_COMMENTS = [
     " title is defined anywhere in either manual",
     "corpus_count is bn_shared.count_literal over dabi_2025 + progoti +"
     " livestock_grow_2026 -- the owning registry's count, with its exclusions",
-    "quiz_questions is how many of the 74 bank questions this term answers;"
+    "quiz_questions is how many bank questions this term answers;"
     " it is what a not_used verdict would cost",
     "manual is the manual first_clause belongs to, not a list of every manual"
     " the term appears in",
