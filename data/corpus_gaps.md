@@ -368,6 +368,42 @@ Recorded so nobody re-reports them as source problems:
 The spelling variants above are worth a light copy-edit pass in the source,
 but they do not block anything.
 
+### 5.1 Safeguarding is covered, at §10.7 — it was reported missing on a spelling
+
+**Corrected 2026-10-20.** Safeguarding was listed as absent from both
+manuals and two of the chatbot's tests were written to expect a refusal on
+it. That verdict came from searching **সেফগার্ডিং**, which occurs twice, as
+a training title in §6.2. The manuals mostly spell it **সেইফগার্ডিং** —
+with the extra ই — and that occurs **8 times in 4 chunks**.
+
+§10.7 (অরগানোগ্রাম > জেন্ডার ইনক্লুশন অ্যান্ড উইম্যান অন্ট্রপ্রোনারশিপ
+ইউনিট) carries a section headed *"সেইফগার্ডিং সংক্রান্ত যে সকল কাজ জেন্ডার
+ইউনিট করে থাকে"*: a nominated সুরক্ষা চ্যাম্পিয়ন per programme, a
+district-level সুরক্ষাবন্ধু team, awareness of সুরক্ষাঝুঁকি, particular
+attention to নারী, শিশু-কিশোর and প্রতিবন্ধী, and a duty to report a
+সুরক্ষাভঙ্গ and support the person affected.
+
+**What is still absent is the POLICY DOCUMENT**, not the topic: §10.7 says
+what the unit does, not what the Safeguarding/PSEA policy requires. A
+question about the policy's contents is still partly unanswerable; a
+question about how safeguarding is handled is not.
+
+**The lesson is the search, not the topic.** One spelling decided a coverage
+verdict, and the project has recorded this failure mode before under a
+different name — silent under-matching, where nothing throws and the only
+signal is a count that looks low to someone who knows what to expect. Any
+"not in the corpus" finding should be re-run across spellings before it is
+written down. Re-checked the same way on 2026-10-20:
+
+| topic | verdict |
+|---|---|
+| leave entitlement (ছুটি, অর্জিত, নৈমিত্তিক, মাতৃত্বকালীন) | still absent — ছুটি occurs only as office hours §3.1.1, handover §3.1.3, approval routing §7.1 / §9.1.5 |
+| dining room rules (ডাইনিং, খাবার ঘর, ক্যান্টিন, রান্নাঘর) | still absent — only §7.1's procurement authority rows |
+| HR rules (মানবসম্পদ, এইচআর, চাকরি বিধি, সার্ভিস রুলস) | partly — chapter 6 and §10.10 Staff Development Unit; no service rules |
+| disciplinary (শৃঙ্খলা, ডিসিপ্লিনারী, শাস্তিমূলক) | partly — §2.4 cites BRAC's Disciplinary Rules as an external document, and **§10.14.6 ন্যয়পাল ব্যবস্থাপনা** describes the appeal route against a শাস্তিমূলক decision |
+
+§10.14.6 was missed by the first survey for the same reason.
+
 ---
 
 ## 6. Cross-manual duplication makes text-match gold location unusable
@@ -585,6 +621,7 @@ python -c "import json;print(sum(1 for c in map(json.loads,open('data/processed/
 | High | Re-run `dedupe.py` over `*_final.jsonl` so `dup_*` survives (see §6) | Pipeline |
 | Medium | Decide whether the Dabi manual should state the Progoti bill-voucher rule in §3.9.6 (see §7) | Operations |
 | Medium | Label the second §2.1.1(চ) approval table, or say which branches it covers (see §3.4) | Operations |
+| Low | Settle one spelling for সেফগার্ডিং / সেইফগার্ডিং (§6.2 vs §10.7) — see §5.1 | Copy-edit |
 | Low | Fix শস্য নি**া**পত্তা in §5.3.1 | Copy-edit |
 | Low | Decide on অরগানোগ্রাম vs অর্গানোগ্রাম | Copy-edit |
 | Low | Introduce the underwriters where first named | Insurance unit |

@@ -242,13 +242,24 @@ GLOSSARY = False                      # measured, not adopted; see generate.py
 # it actually buys is unchanged: it catches a retrieval that came back
 # near-empty, and nothing else.
 #
-# What it costs: two of the eleven live tests score below it (T-08 0.6018,
-# T-09 0.6246) and now abstain before the model instead of answering. Both
-# are out-of-scope questions whose correct answer is a refusal, so the
-# outcome is right by a different route -- but a legitimate question
-# landing at 0.61 would be refused too, and that is the risk this number
-# carries.
-INDEX_FLOOR = {"out/index_gemini": 0.6253}
+# SET BELOW THE LOWEST HIT, NOT AT IT. 0.6253 was the measured lowest hit
+# and it is the wrong number to ship, for the reason the distribution
+# already gives: the floor cannot separate a found answer from a lost one
+# here, so every point of it above the degenerate case is pure cost. At
+# 0.6253 two of the eleven live tests (T-08 0.6018, T-09 0.6246) stopped
+# before the model, and a legitimate question landing at 0.61 would stop
+# too -- refusing real questions to catch nothing.
+#
+# 0.55 is below every observed hit (min 0.6253) with room to spare, so it
+# refuses nothing the retriever actually found, and it still does the one
+# job a floor can do on this distribution: catch a search that came back
+# with nothing related. `not chunks` in generate.answer_one catches the
+# empty case; this catches the near-empty one.
+#
+# Re-derive it when the corpus, the chunking or the weighting changes --
+# and re-derive it on MORE questions than 23. With n=19 hits the minimum
+# is one question's score, not a property of the index.
+INDEX_FLOOR = {"out/index_gemini": 0.55}
 FLOOR = INDEX_FLOOR.get(str(INDEX_DIR).replace("\\", "/"),
                         generate.SCORE_FLOOR)
 
