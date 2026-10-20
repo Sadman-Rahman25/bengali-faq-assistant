@@ -330,80 +330,208 @@ meta:
     explanation_before: • প্রিমিয়াম ২.৪০% হরে (১,০০,০০০ x ২.৪০%) = ২,৪০০ টাকা (সেনা ইন্স্যুরেন্স পিএলসি
       ক্ষেত্রে)
     chunk_id_before: dabi_2025_0253
-  manual_read:
-    date: '2026-10-20'
-    by: hand, against each question's source chunk
-    ids:
-    - Q-001
-    - Q-002
-    - Q-011
-    - Q-016
-    - Q-017
-    - Q-020
-    - Q-024
-    - Q-030
-    - Q-031
-    - Q-032
-    - Q-033
-    - Q-034
-    - Q-035
-    - Q-036
-    - Q-037
-    - Q-038
-    - Q-039
-    - Q-040
-    - Q-041
-    - Q-042
-    - Q-043
-    - Q-044
-    - Q-045
-    - Q-046
-    - Q-047
-    - Q-048
-    - Q-049
-    - Q-050
-    - Q-051
-    - Q-052
-    - Q-053
-    - Q-054
-    - Q-055
-    - Q-056
-    - Q-057
-    - Q-059
-    - Q-060
-    - Q-062
-    - Q-064
-    - Q-065
-    - Q-066
-    - Q-067
-    - Q-068
-    - Q-069
-    - Q-070
-    - Q-071
-    - Q-072
-    - Q-073
-    - Q-074
-    edited_since:
-    - Q-006
-    - Q-009
-    - Q-010
-    - Q-011
-    - Q-013
-    - Q-022
-    - Q-024
-    - Q-038
-    - Q-040
-    - Q-042
-    - Q-043
-    - Q-044
-    - Q-052
-    - Q-053
-    - Q-057
-    - Q-064
-    - Q-065
-    - Q-068
-    - Q-069
-    - Q-070
+  review_state:
+    note: checked = an automated or Claude check; reviewed = a person read it and ticked it correct. Only
+      reviewed counts for shipping. Each record holds the question's fingerprint at that time; any later
+      change to the question voids it.
+    checked:
+      Q-001:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 53548b2240994ae4
+      Q-002:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 45e9ba2692ddfc2a
+      Q-011:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 7e759f1b16e987b5
+      Q-016:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 8f4bbb3b4dbfcf65
+      Q-017:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 1524c78e0bc37a29
+      Q-020:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 778be860938c88ac
+      Q-024:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 7975f71d14c6bdd0
+      Q-030:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: e9861542e90c4c6c
+      Q-031:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: a92ef36e14b3fdb9
+      Q-032:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 2e438bb4f18e678a
+      Q-033:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 63c28693ddb5eacb
+      Q-034:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: cde976589d1668b7
+      Q-035:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 5a10916d17191545
+      Q-036:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: b746af555c994f98
+      Q-037:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: f53d54eafe21ea4c
+      Q-038:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: e9722cdba491703c
+      Q-039:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: a5834c6568613ce0
+      Q-040:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 51551c66daca1ba4
+      Q-041:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: f1f6286834ddbfc1
+      Q-042:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 06c088e3f841d75b
+      Q-043:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: f3da155f506ffad8
+      Q-044:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: b95db0fd349a9127
+      Q-045:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: ccc640ddd490dc3b
+      Q-046:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 04b3826d9d39342c
+      Q-047:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 17b6644274315181
+      Q-048:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: d51c0217ef802737
+      Q-049:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 0c02f66e83162338
+      Q-050:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: e6ff51431ffa3542
+      Q-051:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 6767b3a6b214eafb
+      Q-052:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: df2671b9a4cde41d
+      Q-053:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 9eb511ea73aa9867
+      Q-054:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: bee398bcecdd1ba0
+      Q-055:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 67271ce061dd4e53
+      Q-056:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 33f391f2b315be44
+      Q-057:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 179f3921a897e3e6
+      Q-059:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 60b4989cb6ef6367
+      Q-060:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: a25aa965c110ff90
+      Q-062:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 46797d883a3a7a4a
+      Q-064:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 780996655e02261c
+      Q-065:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 7ffa8f22c4c06159
+      Q-066:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 7503263295283c63
+      Q-067:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: aa417af3d6402cca
+      Q-068:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: f49c2e93af639caa
+      Q-069:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: c7574da46ac4a232
+      Q-070:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 5b04a8a26af8401f
+      Q-071:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 1a39b72790dd59a0
+      Q-072:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 515ab88f2c14f896
+      Q-073:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 3b51bad4e6127f9b
+      Q-074:
+        date: '2026-10-20'
+        by: Claude, each question against its source chunk
+        fingerprint: 20ca72f6c56575b9
+    reviewed: {}
 questions:
 - id: Q-001
   kind: figure

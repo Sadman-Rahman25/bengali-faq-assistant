@@ -63,20 +63,24 @@ source is a worked example; (d) a role answer found only inside a longer
 word. Each check proves on stored chunks that it fires and that it stays
 silent on a sound case, before it reads the bank.
 
-STEP 3 -- out/quiz_unread.csv. The v3 additions (quiz/_v3_new_ids.json;
-out/quiz_review_v3.md records the other 29 as read) that survive step 1,
-PLUS any read question whose options step 2 changed -- its options are new,
-so nobody has read the question as it now stands. A later manual read is
-recorded in the bank's meta.manual_read: the ids read, and the ids changed
-since, by hand or by a re-pick. The read ids leave the sheet; the changed
-ones come back onto it.
+STEP 3 -- out/quiz_unread.csv: every question no PERSON has reviewed as it
+now stands. The bank's meta.review_state keeps two records per question,
+"checked" (an automated or Claude check) and "reviewed" (a person read it
+and ticked it correct), each with the question's fingerprint at that time.
+Only "reviewed" ships, and any change to the question voids either record.
+The sheet's header says which questions were checked, which changed since,
+and which were never checked.
 
 Usage:
     python quiz_recheck.py           # report only; writes nothing
     python quiz_recheck.py --write   # also rewrite the bank and the CSV
+    python quiz_recheck.py --write --mark-reviewed Q-001,Q-002 --by NAME
+                                     # record a person's review
 """
 import argparse
 import csv
+import datetime
+import hashlib
 import importlib
 import importlib.abc
 import json
@@ -86,7 +90,6 @@ import sys
 from pathlib import Path
 
 BANK = Path("quiz/bank_validated.yaml")
-V3_IDS = Path("quiz/_v3_new_ids.json")
 MANIFEST = Path("data/processed/chunk_manifest.json")
 UNREAD = Path("out/quiz_unread.csv")
 
@@ -736,10 +739,75 @@ def citation(q, manuals):
     return f"{name} §{disp}" if disp else name
 
 
+# TWO STATES, AND ONLY ONE SHIPS. "checked" is an automated or Claude check
+# of a question against its source; "reviewed" is a person reading it and
+# ticking it correct. They were once one "read" record, and 49 questions
+# Claude had checked were filed as read -- which would have let them ship
+# unseen. Each record holds the question's fingerprint at the time, so ANY
+# later change -- a hand edit, a re-pick -- voids it without anyone having
+# to remember to say so.
+REVIEW_NOTE = ("checked = an automated or Claude check; reviewed = a person "
+               "read it and ticked it correct. Only reviewed counts for "
+               "shipping. Each record holds the question's fingerprint at "
+               "that time; any later change to the question voids it.")
+REVIEW_FIELDS = ("question_bn", "options", "correct", "explanation",
+                 "chunk_id")
+STATUSES = ("reviewed", "reviewed, changed since", "checked",
+            "checked, changed since", "no check recorded")
+
+
+def fingerprint(q):
+    """Everything a reviewer sees, hashed. Option ORDER counts: it is part
+    of what was read."""
+    blob = json.dumps([q.get(f) for f in REVIEW_FIELDS], ensure_ascii=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
+
+
+def review_status(q, state):
+    """One of STATUSES. A review outranks a check; a stale review is
+    reported as such, never as a fresher check."""
+    fp = fingerprint(q)
+    rv = (state.get("reviewed") or {}).get(q["id"])
+    if rv:
+        return "reviewed" if rv["fingerprint"] == fp \
+            else "reviewed, changed since"
+    ck = (state.get("checked") or {}).get(q["id"])
+    if ck:
+        return "checked" if ck["fingerprint"] == fp \
+            else "checked, changed since"
+    return "no check recorded"
+
+
+def review_canary():
+    """Convention 3. A check never counts as a review, and a change to any
+    field a reviewer sees voids the review. -> (ok, [lines])"""
+    base = {"id": "X", "question_bn": "q", "options": ["a", "b", "c", "d"],
+            "correct": "a", "explanation": "e", "chunk_id": "c"}
+    rec = {"date": "d", "by": "b", "fingerprint": fingerprint(base)}
+    cases = [("checked only is not reviewed", base,
+              {"checked": {"X": rec}}, "checked"),
+             ("reviewed as it stands", base,
+              {"reviewed": {"X": rec}, "checked": {"X": rec}}, "reviewed")]
+    # The fixture's own fields, not REVIEW_FIELDS: a field dropped from the
+    # fingerprint must still be changed here, or its loss goes unseen.
+    for f in (k for k in base if k != "id"):
+        v = base[f][::-1] if isinstance(base[f], list) else base[f] + "x"
+        cases.append((f"{f} changed voids the review", dict(base, **{f: v}),
+                      {"reviewed": {"X": rec}}, "reviewed, changed since"))
+    lines, ok = [], True
+    for name, q, st, want in cases:
+        got = review_status(q, st)
+        ok &= got == want
+        lines.append(f"  {name:<36} {got:<24} "
+                     f"[{'PASS' if got == want else 'FAIL'}]")
+    lines.append("  " + ("DETECTED" if ok else "FAILED"))
+    return ok, lines
+
+
 def write_unread(rows, notes, manuals, out):
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="", encoding="utf-8-sig") as f:
-        f.write("# Quiz questions no person has read as they now stand.\n")
+        f.write("# Quiz questions no person has reviewed as they now stand.\n")
         for line in notes:
             f.write("# " + line + "\n")
         w = csv.writer(f)
@@ -753,6 +821,14 @@ def write_unread(rows, notes, manuals, out):
 # ------------------------------------------------------------------ main
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--mark-reviewed", metavar="IDS",
+                    help="comma-separated ids a PERSON has read and ticked "
+                         "correct. Records each question's fingerprint as it "
+                         "stands now; needs --by and --write")
+    ap.add_argument("--by", metavar="NAME", help="who reviewed them")
+    ap.add_argument("--date", metavar="YYYY-MM-DD",
+                    default=datetime.date.today().isoformat(),
+                    help="when they were reviewed (default today)")
     ap.add_argument("--write", action="store_true",
                     help="rewrite quiz/bank_validated.yaml and "
                          "out/quiz_unread.csv")
@@ -783,13 +859,19 @@ def main(argv=None):
     if not registry.canary(verbose=False):
         print("STOPPED -- registry canary failed; its rules would fail open.")
         return 2
+    ok_rv, lines_rv = review_canary()
+    if not ok_rv:
+        print("REVIEW-STATE CANARY")
+        print("\n".join(lines_rv))
+        print("STOPPED -- a check could pass for a review, or a change "
+              "could keep one.")
+        return 2
 
     raw = BANK.read_text(encoding="utf-8")
     doc = yaml.safe_load(raw)
     qs = doc["questions"]
     n_before = len(qs)
     manuals = json.loads(MANIFEST.read_text(encoding="utf-8"))["manuals"]
-    v3 = set(json.loads(V3_IDS.read_text(encoding="utf-8")))
 
     # ---- step 1
     drops, notes = step1(qs, reg, registry, qb, bn_shared, canon,
@@ -893,43 +975,51 @@ def main(argv=None):
     for q in kept:
         if q["id"] in changes:
             q["options"] = changes[q["id"]][1]
-    # A RE-RUN MUST NOT FORGET. Which read questions were re-optioned is only
-    # visible in the pass that changed them; a later pass finds them already
-    # plausible and changes nothing. So the record in the bank's meta is the
-    # memory, and unread is computed from it as well as from this run --
-    # measured: without this, a second --write shrank the sheet from 50 rows
-    # to 44 and replaced the drop record with an empty one.
+    # The re-pick record is history now, not what decides the sheet: kept so
+    # a later reader can see which options were drawn by this module.
     meta = doc["meta"]
     prior = meta.get("registry_recheck") or {}
     repicked = set(changes) | set(prior.get("distractors_repicked") or [])
     kept_ids = {q["id"] for q in kept}
-    # A MANUAL READ CLEARS WHAT IT READ, and only that. Anything changed
-    # after it -- a hand edit, or a re-pick in this run -- is unread again.
-    read = meta.get("manual_read") or {}
-    read_ids = set(read.get("ids") or [])
-    since = set(read.get("edited_since") or []) | (set(changes) if read
-                                                   else set())
-    pending = ((v3 | repicked) - read_ids) | since
-    unread = [q for q in kept if q["id"] in pending]
-    never = sorted(i for i in kept_ids & v3 if i not in read_ids)
-    repick_unread = sorted(i for i in kept_ids & repicked
-                           if i not in v3 and i not in read_ids)
-    edited = sorted(kept_ids & since)
-    notes = [f"never reviewed: {', '.join(never) or 'none'}",
-             f"re-picked and not read since: "
-             f"{', '.join(repick_unread) or 'none'}"]
-    if read:
-        notes.append(f"changed since the manual read of {read.get('date')} "
-                     f"({len(read_ids)} read): {', '.join(edited) or 'none'}")
-    print(f"\nSTEP 3 -- unread: {len(unread)} ({len(never)} never reviewed, "
-          f"{len(repick_unread)} re-picked and unread, {len(edited)} changed "
-          f"since the manual read of {read.get('date') or 'never'})")
+    state = meta.setdefault("review_state", {"note": REVIEW_NOTE,
+                                             "checked": {}, "reviewed": {}})
+    marked = []
+    if args.mark_reviewed:
+        ids = [i.strip() for i in args.mark_reviewed.split(",") if i.strip()]
+        unknown = [i for i in ids if i not in kept_ids]
+        if unknown or not args.by:
+            print(f"STOPPED -- --mark-reviewed needs --by and ids in the bank; "
+                  f"unknown: {unknown or 'none'}, by: {args.by or 'missing'}")
+            return 2
+        for q in kept:
+            if q["id"] in ids:
+                state["reviewed"][q["id"]] = {
+                    "date": args.date, "by": args.by,
+                    "fingerprint": fingerprint(q)}
+                marked.append(q["id"])
+    groups = {}
+    for q in kept:
+        groups.setdefault(review_status(q, state), []).append(q["id"])
+    unread = [q for q in kept if review_status(q, state) != "reviewed"]
+    notes = ["Only a person's review counts for shipping. checked = an "
+             "automated or Claude check; reviewed = a person read it and "
+             "ticked it correct. A change to the question voids either."]
+    for s in STATUSES:
+        if s != "reviewed":
+            notes.append(f"{s}: {', '.join(groups.get(s, [])) or 'none'}")
+    print(f"\nSTEP 3 -- not reviewed by a person: {len(unread)} of "
+          f"{len(kept)}  ("
+          + ", ".join(f"{s}: {len(groups.get(s, []))}" for s in STATUSES)
+          + ")" + (f"\n  marked reviewed now: {marked}" if marked else ""))
 
     if not args.write:
+        if marked:
+            print("STOPPED -- --mark-reviewed writes the bank; add --write.")
+            return 2
         print("\nreport only -- nothing written. Re-run with --write.")
         return 0
 
-    if drops or changes:
+    if drops or changes or marked:
         dropped = {d["id"]: d["reason"] for d in prior.get("dropped") or []}
         dropped.update({i: "; ".join(drops[i]) for i in drops})
         doc["questions"] = kept
@@ -942,8 +1032,6 @@ def main(argv=None):
             "distractors_repicked": sorted(repicked),
             "repick_seed": SEED,
         }
-        if read:
-            read["edited_since"] = sorted(since & kept_ids)
         out = qb.BANK_HEADER + yaml.safe_dump(doc, allow_unicode=True,
                                               sort_keys=False, width=100)
         # LF, explicitly: the repo stores LF (.gitattributes eol=lf) and the
@@ -952,7 +1040,7 @@ def main(argv=None):
         BANK.write_text(out, encoding="utf-8", newline=chr(10))
         print(f"\nwrote {BANK} ({len(kept)} questions)")
     else:
-        print(f"\n{BANK} unchanged -- nothing dropped, nothing re-picked")
+        print(f"\n{BANK} unchanged -- nothing dropped, re-picked or marked")
     write_unread(unread, notes, manuals, UNREAD)
     print(f"wrote {UNREAD} ({len(unread)} rows)")
     return 0
