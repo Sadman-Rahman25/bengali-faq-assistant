@@ -3,7 +3,7 @@
 # written by a model. See quiz_build.py's docstring.
 meta:
   note: reconstructed from out/quiz_review.md
-  n_questions: 55
+  n_questions: 54
   n_dropped_on_revalidate: 31
   hand_deleted_semantic:
   - dabi_2025_0044
@@ -64,69 +64,87 @@ meta:
   - id: Q-016
     action: dropped
     reason: ২৪% is the rate in a worked example, not the rate
+    date: '2026-10-20'
   - id: Q-073
     action: dropped
     reason: trivia from the same worked example
+    date: '2026-10-20'
   - id: Q-030
     action: dropped
     reason: the post named is the one whose work is checked (পিও ভিত্তিক রিপোর্ট), not the one doing the
       checking
+    date: '2026-10-20'
   - id: Q-034
     action: dropped
     reason: the post named is the one whose work is checked (সিডিও ভিত্তিক রিপোর্ট), not the one doing
       the checking
+    date: '2026-10-20'
   - id: Q-037
     action: dropped
     reason: the post named is the one whose work is checked (পিও-এর কাজের মান যাচাই করবেন), not the one
       doing the checking
+    date: '2026-10-20'
   - id: Q-051
     action: dropped
     reason: the post named is the one whose work is checked (বিএম-এর করা ফলোআপ), not the one doing the
       checking
+    date: '2026-10-20'
   - id: Q-031
     action: dropped
     reason: the AM checks for long illness, it does not approve; and এএম and এলাকা ব্যবস্থাপক are both
       options -- the same post
+    date: '2026-10-20'
   - id: Q-039
     action: dropped
     reason: answer পিএ came from the পিএলসি in সেনা ইন্স্যুরেন্স পিএলসি -- the bug fixed in roles.py
+    date: '2026-10-20'
   - id: Q-045
     action: dropped
     reason: near-duplicate of Q-033
+    date: '2026-10-20'
   - id: Q-049
     action: dropped
     reason: the module applies to AM, RM and DM -- several options are right
+    date: '2026-10-20'
   - id: Q-054
     action: dropped
     reason: the plaintiff and the LC lawyer do it, not the RM
+    date: '2026-10-20'
   - id: Q-056
     action: dropped
     reason: asks the branch manager's role; the answer is BM (and বিএম in the source is inside এবিএম)
+    date: '2026-10-20'
   - id: Q-066
     action: dropped
     reason: ১৮ মাস is another product's name, not this loan's term
+    date: '2026-10-20'
   - id: Q-047
     action: dropped
     reason: 'checked against §9.1.3: the CRM module applies to the whole operations team as well as accounts
       staff, and কর্মীবৃন্দ record the problems -- more than one option is right'
+    date: '2026-10-20'
   - id: Q-067
     action: dropped
     reason: 'checked against §7.1: the committee is the programme''s manager (BM or RM, by level), an
       accounts officer and one person from another programme (any post) -- বিএম, আরএম and পিও can all
       be members'
+    date: '2026-10-20'
   - id: Q-011
     action: edited
     reason: 'question names the value band: Sena''s ১.৬০% applies only to a cow worth ৮০,০০০ টাকা or more'
     before: সেনা ইন্স্যুরেন্স পিএলসি ক্ষেত্রে গরু মোটাতাজাকরণ বিমার প্রিমিয়াম হার কত শতাংশ?
+    date: '2026-10-20'
   - id: Q-024
     action: edited
     reason: 'question reworded so the PO is not the doer: the area manager (প্রগতি) checks 10% of each
       PO''s shortlist'
     before: প্রতিটি পিওকে তার শর্ট লিস্ট থেকে কমপক্ষে কত শতাংশ জরিপকৃত উদ্যোক্তা ফলোআপ করতে হবে?
+    date: '2026-10-20'
   - id: Q-036
     action: checked, unchanged
     reason: 'checked: the CRM in §9.1.3 is Client Relationship Management (software/hardware problems
       and requisitions), a different system from the complaint system -- kept CMS, unchanged'
+    date: '2026-10-20'
   - id: Q-038
     action: edited
     reason: 'বিএম replaced: বিএম and শাখা ব্যবস্থাপক are the same post'
@@ -135,18 +153,22 @@ meta:
     - বিএম
     - সিডিও
     - সিও
+    date: '2026-10-20'
   - id: Q-043
     action: edited
     reason: 'question names the complaint: বন্ধকী দলিল/অন্যান্য নথি ফেরত না দেওয়া (প্রগতি)'
     before: কমপ্লেইন্ট ডাটার ব্যবহার অংশে সমাধানকারী হিসেবে কোন ভূমিকা উল্লেখ আছে?
+    date: '2026-10-20'
   - id: Q-044
     action: edited
     reason: 'question says দাবি কর্মসূচিতে: in Progoti this duty sits with a post that does not exist'
     before: ফাইল ও রেজিস্টার সংরক্ষণ পদ্ধতি অনুযায়ী কাগজপত্র সংরক্ষণ করার দায়িত্ব কার উপর নির্ধারিত?
+    date: '2026-10-20'
   - id: Q-052
     action: edited
     reason: question asks who keeps the prospective-member list updated
     before: সদস্য ভর্তি প্রক্রিয়ায় কোন ভূমিকা (role) দায়িত্বশীল?
+    date: '2026-10-20'
   - id: Q-057
     action: edited
     reason: 'আঞ্চলিক ব্যবস্থাপক replaced: আরএম and আঞ্চলিক ব্যবস্থাপক are the same post'
@@ -155,6 +177,7 @@ meta:
     - এএম
     - আঞ্চলিক ব্যবস্থাপক
     - শাখা ব্যবস্থাপক
+    date: '2026-10-20'
   - id: Q-059
     action: edited
     reason: 'আঞ্চলিক ব্যবস্থাপক replaced: the answer is আরএম, the same post'
@@ -163,6 +186,7 @@ meta:
     - পিএস
     - পিও
     - আঞ্চলিক ব্যবস্থাপক
+    date: '2026-10-20'
   - id: Q-064
     action: edited
     reason: 'শাখা ব্যবস্থাপক replaced (the answer is বিএম, the same post); question names the duty: GD
@@ -173,16 +197,19 @@ meta:
     - আরএম
     - বিএম
     - শাখা ব্যবস্থাপক
+    date: '2026-10-20'
   - id: Q-065
     action: edited
     reason: question asks the compulsory single-insurance threshold for a Progoti loan; ৩ লক্ষ is not
       the maximum cover (that is ২০ লক্ষ)
     before: ঋণ নিরাপত্তা বিমার আওতায় সর্বোচ্চ কভারেজের পরিমাণ কত টাকা?
+    date: '2026-10-20'
   - id: Q-070
     action: edited
     reason: 'question names the step: who posts the premium in the ERP'
     before: ফায়ার সেফটি ইন্স্যুরেন্সের অন্তর্ভুক্তিকরণ (এনরোলমেন্ট) পদ্ধতিতে কোন পদে থাকা কর্মী দায়িত্ব
       পালন করেন?
+    date: '2026-10-20'
   - id: Q-040
     action: edited
     reason: 'checked: the flattened table read row by row gives ৬ লক্ষ to the সহকারী এলাকা ব্যবস্থাপক,
@@ -191,29 +218,192 @@ meta:
     before: ৬,০০,০০০ টাকা পর্যন্ত ঋণ অনুমোদনের জন্য কোন পদবী দায়িত্বশীল?
     explanation_before: '৬,০০,০০০ টাকা পর্যন্ত: ৮,০০,০০০ টাকা পর্যন্ত — সহকারী এলাকা ব্যবস্থাপক (ডিভিশনাল
       ম্যানেজারের অনুমোদন সাপেক্ষে): এলাকা ব্যবস্থাপক (ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে) ।'
+    date: '2026-10-20'
   - id: Q-042
     action: edited
     reason: 'checked: the explanation is about keeping copies, not informing the BM. Question now asks
       who keeps the copies'
     before: ইনসিডেন্ট নোটিফিকেশন ও সেটআপে রিজেকশন ইনপুট দিয়ে শাখা ব্যবস্থাপককে অবহিত করার দায়িত্ব কার?
+    date: '2026-10-20'
   - id: Q-053
     action: edited
     reason: 'checked: the explanation is about updating passbooks, not giving the list. Question now asks
       who ensures the passbook update'
     before: ‘ডিরেক্ট ডেবিট ইন্সট্রাকশন এবং ডিসবার্সমেন্ট’ প্রক্রিয়ায় শাখা হিসাব কর্মকর্তাকে তালিকা প্রদান
       করার দায়িত্ব কোন ভূমিকা (role) এর?
+    date: '2026-10-20'
   - id: Q-068
     action: edited
     reason: 'checked: the source is the RM informing the central team, not attending. Question now asks
       who informs the central team'
     before: ইনসিডেন্ট নোটিফিকেশন ও সেটআপ প্রক্রিয়ায় এলাকা ব্যবস্থাপক এবং শাখা হিসাব কর্মকর্তার পাশাপাশি
       কোন উচ্চপদস্থ কর্মকর্তা উপস্থিত থাকতে হবে?
+    date: '2026-10-20'
   - id: Q-069
     action: edited
     reason: 'checked: the question named সঞ্চয় সুদ না দেওয়া, the explanation shows অতিরিক্ত ডকুমেন্টস
       চাওয়া. Question now names the complaint shown'
     before: কমপ্লেইন্ট ডাটার ব্যবহার বিভাগে “সঞ্চয় সুদ না দেওয়া/আংশিকভাবে দেওয়া” অভিযোগের জন্য দায়িত্বপ্রাপ্ত
       ভূমিকা (role) কী?
+    date: '2026-10-20'
+  - id: Q-059
+    action: dropped
+    reason: 'near-duplicate of Q-022: the same note (আলোচনা নিশ্চিত করবেন আরএম) from §3.9.1(খ) in another
+      chunk. Q-022 kept: its question asks exactly what the source says, while Q-059''s asked who ensures
+      the decision to sue'
+    date: '2026-10-20'
+  - id: Q-006
+    action: edited
+    reason: 'TWO RIGHT: ডিএম is বিভাগীয় ব্যবস্থাপক, the answer -- replaced [option ডিএম -> বিএম]'
+    date: '2026-10-20'
+    options_before:
+    - বিভাগীয় ব্যবস্থাপক
+    - এএম
+    - সিও
+    - ডিএম
+  - id: Q-022
+    action: edited
+    reason: 'TWO RIGHT: আঞ্চলিক ব্যবস্থাপক is আরএম, the answer -- replaced [option আঞ্চলিক ব্যবস্থাপক
+      -> বিভাগীয় ব্যবস্থাপক]'
+    date: '2026-10-20'
+    options_before:
+    - আঞ্চলিক ব্যবস্থাপক
+    - সিডিও
+    - পিএস
+    - আরএম
+  - id: Q-052
+    action: edited
+    reason: 'TWO RIGHT: সিডিও is পিও, the same post under each programme''s name (gold G-222) -- replaced
+      [option সিডিও -> পিএস]'
+    date: '2026-10-20'
+    options_before:
+    - এএম
+    - এডিসি
+    - পিও
+    - সিডিও
+  - id: Q-009
+    action: edited
+    reason: two wrong options for one post (শাখা ব্যবস্থাপক / বিএম) -- the second replaced [option বিএম
+      -> সিডিও]
+    date: '2026-10-20'
+    options_before:
+    - শাখা ব্যবস্থাপক
+    - আঞ্চলিক ব্যবস্থাপক
+    - বিএম
+    - হিসাব কর্মকর্তা
+  - id: Q-013
+    action: edited
+    reason: two wrong options for one post (এএম / এলাকা ব্যবস্থাপক) -- the second replaced [option এলাকা
+      ব্যবস্থাপক -> সিও]
+    date: '2026-10-20'
+    options_before:
+    - এএম
+    - আরএম
+    - এলাকা ব্যবস্থাপক
+    - বিভাগীয় ব্যবস্থাপক
+  - id: Q-064
+    action: edited
+    reason: two wrong options for one post (আঞ্চলিক ব্যবস্থাপক / আরএম) -- the second replaced [option
+      আরএম -> ডিএম]
+    date: '2026-10-20'
+    options_before:
+    - আঞ্চলিক ব্যবস্থাপক
+    - আরএম
+    - বিএম
+    - কর্মসূচি প্রধান
+  - id: Q-011
+    action: edited
+    reason: 'explanation repointed from the worked example (dabi_2025_0256) to the rule in dabi_2025_0254,
+      quoting the half of its sentence that states ১.৬০%: the other half holds the ১.৯০% band, which validate
+      counts as a rival figure'
+    date: '2026-10-20'
+    explanation_before: • প্রিমিয়াম ১.৬০% হরে (১,০০,০০০ x ১.৬০%) = ১,৬০০ টাকা (সেনা ইন্স্যুরেন্স পিএলসি
+      ক্ষেত্রে)
+    chunk_id_before: dabi_2025_0256
+  - id: Q-010
+    action: edited
+    reason: 'worked example: ২.৪০% is stated as the rule in dabi_2025_0252 (সেনা ইন্স্যুরেন্স পিএলসি ক্ষেত্রে:
+      গাভির বর্তমান বাজার মূল্যের ২.৪০%). Explanation repointed there and the question now asks the rate,
+      not the example''s'
+    date: '2026-10-20'
+    before: দুগ্ধজাত গাভীর বিমার প্রিমিয়াম গণনার উদাহরণে ব্যবহৃত শতাংশ কত?
+    explanation_before: • প্রিমিয়াম ২.৪০% হরে (১,০০,০০০ x ২.৪০%) = ২,৪০০ টাকা (সেনা ইন্স্যুরেন্স পিএলসি
+      ক্ষেত্রে)
+    chunk_id_before: dabi_2025_0253
+  manual_read:
+    date: '2026-10-20'
+    by: hand, against each question's source chunk
+    ids:
+    - Q-001
+    - Q-002
+    - Q-011
+    - Q-016
+    - Q-017
+    - Q-020
+    - Q-024
+    - Q-030
+    - Q-031
+    - Q-032
+    - Q-033
+    - Q-034
+    - Q-035
+    - Q-036
+    - Q-037
+    - Q-038
+    - Q-039
+    - Q-040
+    - Q-041
+    - Q-042
+    - Q-043
+    - Q-044
+    - Q-045
+    - Q-046
+    - Q-047
+    - Q-048
+    - Q-049
+    - Q-050
+    - Q-051
+    - Q-052
+    - Q-053
+    - Q-054
+    - Q-055
+    - Q-056
+    - Q-057
+    - Q-059
+    - Q-060
+    - Q-062
+    - Q-064
+    - Q-065
+    - Q-066
+    - Q-067
+    - Q-068
+    - Q-069
+    - Q-070
+    - Q-071
+    - Q-072
+    - Q-073
+    - Q-074
+    edited_since:
+    - Q-006
+    - Q-009
+    - Q-010
+    - Q-011
+    - Q-013
+    - Q-022
+    - Q-024
+    - Q-038
+    - Q-040
+    - Q-042
+    - Q-043
+    - Q-044
+    - Q-052
+    - Q-053
+    - Q-057
+    - Q-064
+    - Q-065
+    - Q-068
+    - Q-069
+    - Q-070
 questions:
 - id: Q-001
   kind: figure
@@ -301,7 +491,7 @@ questions:
   - বিভাগীয় ব্যবস্থাপক
   - এএম
   - সিও
-  - ডিএম
+  - বিএম
   explanation: সুনিদিষ্ট কারণ সাপেক্ষে বিভাগীয় ব্যবস্থাপক যে কোন কর্মীর ইনসেন্টিভ প্রদান বন্ধ করতে পারবেন।
 - id: Q-007
   kind: role
@@ -346,14 +536,15 @@ questions:
   options:
   - শাখা ব্যবস্থাপক
   - আঞ্চলিক ব্যবস্থাপক
-  - বিএম
+  - সিডিও
   - হিসাব কর্মকর্তা
   explanation: পোষ্টিং সংক্রান্ত কাজে সমস্যা হলে তৎক্ষনাৎ অবহিতকরণ এবং সমাধান করা। এ সংক্রান্ত অবহেলার
     জন্য শাখা হিসাব কর্মকর্তা দায়ী থাকবেন।
 - id: Q-010
   kind: figure
-  question_bn: দুগ্ধজাত গাভীর বিমার প্রিমিয়াম গণনার উদাহরণে ব্যবহৃত শতাংশ কত?
-  chunk_id: dabi_2025_0253
+  question_bn: সেনা ইন্স্যুরেন্স পিএলসি-র ক্ষেত্রে দুগ্ধজাত গাভীর বিমার প্রিমিয়াম হার গাভির বর্তমান বাজার
+    মূল্যের কত শতাংশ?
+  chunk_id: dabi_2025_0252
   manual_id: dabi_2025
   clause: 5.4.4
   clause_display: ৫.৪.৪
@@ -363,12 +554,12 @@ questions:
   - ২.৪০%
   - ৭.৮০%
   - ৭.৪০%
-  explanation: • প্রিমিয়াম ২.৪০% হরে (১,০০,০০০ x ২.৪০%) = ২,৪০০ টাকা (সেনা ইন্স্যুরেন্স পিএলসি ক্ষেত্রে)
+  explanation: '• সেনা ইন্স্যুরেন্স পিএলসি ক্ষেত্রে: গাভির বর্তমান বাজার মূল্যের ২.৪০%'
 - id: Q-011
   kind: figure
   question_bn: ৮০,০০০ টাকা বা তার বেশি মূল্যের গরুর ক্ষেত্রে সেনা ইন্স্যুরেন্স পিএলসি-র গরু মোটাতাজাকরণ
     বিমার প্রিমিয়াম হার কত শতাংশ?
-  chunk_id: dabi_2025_0256
+  chunk_id: dabi_2025_0254
   manual_id: dabi_2025
   clause: 5.4.5
   clause_display: ৫.৪.৫
@@ -378,7 +569,7 @@ questions:
   - ১.৬০%
   - ৭.২০%
   - ০.৬৬%
-  explanation: • প্রিমিয়াম ১.৬০% হরে (১,০০,০০০ x ১.৬০%) = ১,৬০০ টাকা (সেনা ইন্স্যুরেন্স পিএলসি ক্ষেত্রে)
+  explanation: গরুর বর্তমান বাজার মূল্য যদি ৮০,০০০ টাকা বা তার বেশি হয় তাহলে প্রিমিয়াম হবে ১.৬০%।
 - id: Q-012
   kind: role
   question_bn: গবাদিপ্রাণি সুরক্ষা বিমা প্রকল্পের সার্বিক ব্যবস্থাপনা ও তত্ত্বাবধানে কোন কর্মকর্তা দায়িত্ব
@@ -407,7 +598,7 @@ questions:
   options:
   - এএম
   - আরএম
-  - এলাকা ব্যবস্থাপক
+  - সিও
   - বিভাগীয় ব্যবস্থাপক
   explanation: 'ক্রম.: ১০ — অনুমোদনের বিষয়সমূহ: অফিস ক্যাম্পাসের গাছ কাটা ও বিক্রয়। — অনুমোদনকারী: বিভাগীয়
     ব্যবস্থাপক (দাবি)। ।'
@@ -513,7 +704,7 @@ questions:
   clause_display: ৩.৯.১
   correct: আরএম
   options:
-  - আঞ্চলিক ব্যবস্থাপক
+  - বিভাগীয় ব্যবস্থাপক
   - সিডিও
   - পিএস
   - আরএম
@@ -847,7 +1038,7 @@ questions:
   - এএম
   - এডিসি
   - পিও
-  - সিডিও
+  - পিএস
   explanation: সম্ভাব্য ভর্তিযোগ্য সদস্যের তালিকা পিও নিয়মিত আপডেট করছে কি না যাচাই করবেন।
 - id: Q-053
   kind: role
@@ -896,22 +1087,6 @@ questions:
   explanation: ৩. মামলার ফাইলিংয়ে দেওয়া সমস্ত কাগজ পত্রের একসেট রেজিষ্টারে এন্ট্রি এবং আলাদা কোর্ট ফাইলের
     মাধ্যমে অফিসে সংরক্ষণ করে রাখতে হবে। এই কাজটি করবেন বাদী এবং এলসি ল’ইয়ার, সহযোগিতা করবেন এএম(দাবি)
     ।
-- id: Q-059
-  kind: role
-  question_bn: তৃতীয় অধ্যায়ের ৩.৯.১(খ) ধারায় ঋণীদের ক্ষেত্রে মামলা করার সিদ্ধান্তে কে নিশ্চিত করবেন?
-  chunk_id: progoti_0139
-  manual_id: progoti
-  clause: 3.9.1
-  clause_display: ৩.৯.১
-  correct: আরএম
-  options:
-  - আরএম
-  - পিএস
-  - পিও
-  - এডিসি
-  explanation: 'বি:দ্র: উপরোক্ত বিষয়গুলো যদি ঋণীর মধ্যে থাকে তাহলে আমরা মামলা করবো কিনা তা বিবেচনায়
-    আনতে হবে। যদি একান্তভাবেই মামলা করতে হয় তাহলে প্রধান কার্যালয়ের সংশ্লিষ্ট তত্ত্বাবধায়কের সাথে আলোচনা
-    করে নিতে হবে। আলোচনা নিশ্চিত করবেন আরএম।'
 - id: Q-060
   kind: figure
   question_bn: বিভাগীয় অফিসের অতিথি আপ্যায়ন বিলের বাজেট কত টাকা?
@@ -951,7 +1126,7 @@ questions:
   correct: বিএম
   options:
   - আঞ্চলিক ব্যবস্থাপক
-  - আরএম
+  - ডিএম
   - বিএম
   - কর্মসূচি প্রধান
   explanation: ২. কর্মী যদি পালিয়ে যায় সেক্ষেত্রে, প্রথম থানাতে জিডি করা, দ্বিতীয়ত তিনটি অফিশিয়াল

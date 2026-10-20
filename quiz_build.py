@@ -409,21 +409,42 @@ def pools(cands):
     return fig, role
 
 
+# ONE POST, ONE OPTION. Distractors were once de-duplicated by spelling, and
+# a post has several: a full name, an abbreviation, and for the field officer
+# a different name in each programme. Q-006 offered বিভাগীয় ব্যবস্থাপক as the
+# answer and ডিএম beside it -- the same post, so two options were right.
+# Measured on the bank: 6 of 70 questions had two options for one post, 4 of
+# them with the answer among the pair.
+_POST_KEYS = None
+
+
+def option_key(option):
+    """What an option stands for: a role name's post key from roles.py's
+    vocabulary (full name, abbreviation and per-programme name alike), or
+    the canon'd text itself for anything that is not a role name."""
+    global _POST_KEYS
+    if _POST_KEYS is None:
+        _POST_KEYS = {canon(n): k for n, k in role_vocabulary()}
+    c = canon(option)
+    return _POST_KEYS.get(c, c)
+
+
 def pick_distractors(kind, correct, unit, chunk_text, fig_pool, role_pool,
                      rng, n=3):
-    """Three corpus spans that are NOT in this chunk and NOT the answer."""
+    """Three corpus spans that are NOT in this chunk and NOT the answer,
+    and no two of the four options the same post (option_key)."""
     pool = sorted(fig_pool.get(unit, set())) if kind == "figure" \
         else sorted(role_pool)
-    seen = {canon(correct)}
+    seen = {option_key(correct)}
     out = []
     for cand in rng.sample(pool, k=len(pool)):
         if len(out) == n:
             break
-        if canon(cand) in seen:
+        if option_key(cand) in seen:
             continue
         if cand in chunk_text:            # must be wrong FOR THIS CHUNK
             continue
-        seen.add(canon(cand))
+        seen.add(option_key(cand))
         out.append(cand)
     return out
 

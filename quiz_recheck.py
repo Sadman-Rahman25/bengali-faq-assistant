@@ -66,7 +66,10 @@ silent on a sound case, before it reads the bank.
 STEP 3 -- out/quiz_unread.csv. The v3 additions (quiz/_v3_new_ids.json;
 out/quiz_review_v3.md records the other 29 as read) that survive step 1,
 PLUS any read question whose options step 2 changed -- its options are new,
-so nobody has read the question as it now stands.
+so nobody has read the question as it now stands. A later manual read is
+recorded in the bank's meta.manual_read: the ids read, and the ids changed
+since, by hand or by a re-pick. The read ids leave the sheet; the changed
+ones come back onto it.
 
 Usage:
     python quiz_recheck.py           # report only; writes nothing
@@ -733,13 +736,12 @@ def citation(q, manuals):
     return f"{name} §{disp}" if disp else name
 
 
-def write_unread(rows, read_but_changed, manuals, out):
+def write_unread(rows, notes, manuals, out):
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="", encoding="utf-8-sig") as f:
         f.write("# Quiz questions no person has read as they now stand.\n")
-        f.write("# v3 additions never reviewed, plus read questions whose "
-                "options changed in the distractor re-pick: "
-                + (", ".join(read_but_changed) or "none") + "\n")
+        for line in notes:
+            f.write("# " + line + "\n")
         w = csv.writer(f)
         w.writerow(["id", "question_bn", "option_1", "option_2", "option_3",
                     "option_4", "correct", "explanation", "citation"])
@@ -901,11 +903,27 @@ def main(argv=None):
     prior = meta.get("registry_recheck") or {}
     repicked = set(changes) | set(prior.get("distractors_repicked") or [])
     kept_ids = {q["id"] for q in kept}
-    read_changed = sorted(i for i in repicked if i not in v3 and i in kept_ids)
-    unread = [q for q in kept if q["id"] in v3 or q["id"] in repicked]
-    print(f"\nSTEP 3 -- unread: {len(unread)} "
-          f"({sum(1 for q in unread if q['id'] in v3)} never reviewed, "
-          f"{len(read_changed)} read but re-optioned: {read_changed})")
+    # A MANUAL READ CLEARS WHAT IT READ, and only that. Anything changed
+    # after it -- a hand edit, or a re-pick in this run -- is unread again.
+    read = meta.get("manual_read") or {}
+    read_ids = set(read.get("ids") or [])
+    since = set(read.get("edited_since") or []) | (set(changes) if read
+                                                   else set())
+    pending = ((v3 | repicked) - read_ids) | since
+    unread = [q for q in kept if q["id"] in pending]
+    never = sorted(i for i in kept_ids & v3 if i not in read_ids)
+    repick_unread = sorted(i for i in kept_ids & repicked
+                           if i not in v3 and i not in read_ids)
+    edited = sorted(kept_ids & since)
+    notes = [f"never reviewed: {', '.join(never) or 'none'}",
+             f"re-picked and not read since: "
+             f"{', '.join(repick_unread) or 'none'}"]
+    if read:
+        notes.append(f"changed since the manual read of {read.get('date')} "
+                     f"({len(read_ids)} read): {', '.join(edited) or 'none'}")
+    print(f"\nSTEP 3 -- unread: {len(unread)} ({len(never)} never reviewed, "
+          f"{len(repick_unread)} re-picked and unread, {len(edited)} changed "
+          f"since the manual read of {read.get('date') or 'never'})")
 
     if not args.write:
         print("\nreport only -- nothing written. Re-run with --write.")
@@ -924,6 +942,8 @@ def main(argv=None):
             "distractors_repicked": sorted(repicked),
             "repick_seed": SEED,
         }
+        if read:
+            read["edited_since"] = sorted(since & kept_ids)
         out = qb.BANK_HEADER + yaml.safe_dump(doc, allow_unicode=True,
                                               sort_keys=False, width=100)
         # LF, explicitly: the repo stores LF (.gitattributes eol=lf) and the
@@ -933,7 +953,7 @@ def main(argv=None):
         print(f"\nwrote {BANK} ({len(kept)} questions)")
     else:
         print(f"\n{BANK} unchanged -- nothing dropped, nothing re-picked")
-    write_unread(unread, read_changed, manuals, UNREAD)
+    write_unread(unread, notes, manuals, UNREAD)
     print(f"wrote {UNREAD} ({len(unread)} rows)")
     return 0
 
