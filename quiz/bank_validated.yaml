@@ -580,7 +580,175 @@ meta:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
         fingerprint: 20ca72f6c56575b9
-    reviewed: {}
+    reviewed:
+      Q-001:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 53548b2240994ae4
+      Q-002:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 45e9ba2692ddfc2a
+      Q-003:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 8d2964cb4200c3a4
+      Q-006:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: a53fd27fc25739b9
+      Q-007:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 699e4a6dc04d85f1
+      Q-008:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 72ab798f7b6520d3
+      Q-010:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: ed0bcf6722dd9cc4
+      Q-011:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 20a1e88da6a0a02d
+      Q-013:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 3508b24f02dc1cec
+      Q-014:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: da53cdb29c6e14cb
+      Q-015:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 26771b8f739109fb
+      Q-017:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 1524c78e0bc37a29
+      Q-019:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: d22b193b8935cdb7
+      Q-020:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 778be860938c88ac
+      Q-022:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: e485334ef2d4d6b9
+      Q-024:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 7950b56733776ca8
+      Q-025:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: ba5a10190691a902
+      Q-028:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 7172e66c7e71e5e0
+      Q-029:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: a12b62d664739e17
+      Q-032:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 2e438bb4f18e678a
+      Q-033:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 63c28693ddb5eacb
+      Q-036:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: b746af555c994f98
+      Q-038:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 7abe054dbfe8e1e3
+      Q-040:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 7e964493ee14f4d3
+      Q-042:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 1a4b624518e42019
+      Q-043:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 5998edff10c9d0e6
+      Q-044:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 71f7de5289e52dc1
+      Q-046:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 04b3826d9d39342c
+      Q-048:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: d51c0217ef802737
+      Q-050:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: e6ff51431ffa3542
+      Q-052:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 9e2490ea989c5743
+      Q-053:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 71c16b0016774f3d
+      Q-057:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 9ff0337dd118aeb2
+      Q-060:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: a25aa965c110ff90
+      Q-062:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 46797d883a3a7a4a
+      Q-064:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 8d908308907c103e
+      Q-065:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 0fd8bd57e02f588c
+      Q-068:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 943046d8c53eb1ff
+      Q-069:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: d213f97d505302d4
+      Q-070:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: dfdd10158aa04629
+      Q-071:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 1a39b72790dd59a0
+      Q-072:
+        date: '2026-10-20'
+        by: Sadman Rahman
+        fingerprint: 515ab88f2c14f896
 questions:
 - id: Q-001
   kind: figure

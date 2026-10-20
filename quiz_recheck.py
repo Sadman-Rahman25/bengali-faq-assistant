@@ -1024,14 +1024,19 @@ def main(argv=None):
         dropped.update({i: "; ".join(drops[i]) for i in drops})
         doc["questions"] = kept
         meta["n_questions"] = len(kept)
-        meta["registry_recheck"] = {
-            "by": "quiz_recheck.py",
-            "n_before": prior.get("n_before", n_before),
-            "n_after": len(kept),
-            "dropped": [{"id": i, "reason": dropped[i]} for i in sorted(dropped)],
-            "distractors_repicked": sorted(repicked),
-            "repick_seed": SEED,
-        }
+        # The re-check's own record moves only when the re-check did
+        # something. Marking reviews rewrote it once, and its n_after went
+        # from 70 to the bank's size after hand drops it never made.
+        if drops or changes:
+            meta["registry_recheck"] = {
+                "by": "quiz_recheck.py",
+                "n_before": prior.get("n_before", n_before),
+                "n_after": len(kept),
+                "dropped": [{"id": i, "reason": dropped[i]}
+                            for i in sorted(dropped)],
+                "distractors_repicked": sorted(repicked),
+                "repick_seed": SEED,
+            }
         out = qb.BANK_HEADER + yaml.safe_dump(doc, allow_unicode=True,
                                               sort_keys=False, width=100)
         # LF, explicitly: the repo stores LF (.gitattributes eol=lf) and the
