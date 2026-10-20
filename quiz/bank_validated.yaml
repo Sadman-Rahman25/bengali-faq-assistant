@@ -3,7 +3,7 @@
 # written by a model. See quiz_build.py's docstring.
 meta:
   note: reconstructed from out/quiz_review.md
-  n_questions: 54
+  n_questions: 52
   n_dropped_on_revalidate: 31
   hand_deleted_semantic:
   - dabi_2025_0044
@@ -330,6 +330,55 @@ meta:
     explanation_before: • প্রিমিয়াম ২.৪০% হরে (১,০০,০০০ x ২.৪০%) = ২,৪০০ টাকা (সেনা ইন্স্যুরেন্স পিএলসি
       ক্ষেত্রে)
     chunk_id_before: dabi_2025_0253
+  - id: Q-005
+    action: dropped
+    reason: the plaintiff and the LC lawyer keep the register and court file; the AM only assists, so
+      the keyed answer was wrong. Also a near-duplicate of Q-057, which asks who assists and gets AM right
+    date: '2026-10-20'
+  - id: Q-012
+    action: dropped
+    reason: the source makes the branch accountant answerable only for posting problems, not for the overall
+      management and supervision of livestock insurance. Also a near-duplicate of Q-009
+    date: '2026-10-20'
+  - id: Q-004
+    action: edited
+    reason: 'too vague: now asks which post Dabi+ members can take a complaint to directly. Checked §2.5.2
+      (dabi_2025_0074, _0075): the other channels are the call centre, Facebook and e-mail -- no other
+      option (পিএ, এডিসি, এএম) is a channel'
+    date: '2026-10-20'
+    before: দ্বিতীয় অধ্যায়ের "সদস্যদের অভিযোগ প্রদানের মাধ্যমসমূহ" এ দাবি+ ক্ষেত্রে কোন পদটি প্রযোজ্য?
+  - id: Q-009
+    action: edited
+    reason: 'context added: posting problems in শস্য নিরাপত্তা বিমা'
+    date: '2026-10-20'
+    before: পোষ্টিং সংক্রান্ত সমস্যার অবহিতকরণ ও সমাধানের জন্য দায়িত্বশীল পদবী কী?
+  - id: Q-018
+    action: edited
+    reason: 'উপকারভোগী replaced with সদস্য in the question: BRAC''s writing standard never uses "beneficiaries".
+      The explanation quotes the manual and keeps its word'
+    date: '2026-10-20'
+    before: তৃতীয় অধ্যায়ের ৩.৩.৩ লেন-দেন সময়সীমা অনুযায়ী মাঠ পর্যায়ে সরাসরি উপকারভোগীর নিকট থেকে
+      অর্থ এনে হিসাবরক্ষক/ক্যাশিয়ারের নিকট জমা দেওয়ার দায়িত্ব কার উপর?
+  - id: Q-023
+    action: edited
+    reason: 'the BM does not decide to sue: it ensures the borrower is checked for over-borrowing from
+      several lenders before a case is filed. Reworded to that'
+    date: '2026-10-20'
+    before: তৃতীয় অধ্যায়ের ৩.৯.১(খ) ঋণীদের ক্ষেত্রে, ডিসিএমসি কমিটির অনুমোদন সাপেক্ষে মামলা করার সিদ্ধান্ত
+      নেওয়ার জন্য কোন পদটি দায়িত্বপ্রাপ্ত?
+  - id: Q-026
+    action: edited
+    reason: too vague -- several posts act in a crop insurance claim. Now asks who deposits the claim
+      money into the member's savings
+    date: '2026-10-20'
+    before: শস্য নিরাপত্তা বিমার বিমাদাবি’র নিয়মাবলী ও নিষ্পত্তিকরণ পদ্ধতি অনুসারে দায়িত্বপ্রাপ্ত ব্যক্তি
+      কে?
+  - id: Q-027
+    action: edited
+    reason: too vague. Now asks who hands the member the claim receipt at the next meeting
+    date: '2026-10-20'
+    before: ফায়ার সেফটি ইন্স্যুরেন্সের বিমাদাবি’র নিয়মাবলী ও নিষ্পত্তিকরণ পদ্ধতিতে দায়িত্বপ্রাপ্ত পদবী
+      কী?
   review_state:
     note: checked = an automated or Claude check; reviewed = a person read it and ticked it correct. Only
       reviewed counts for shipping. Each record holds the question's fingerprint at that time; any later
@@ -578,7 +627,8 @@ questions:
   explanation: 'নতুন ঋণ: ১৫০০০-৭০০০০ — বিএম — রিপিট ঋণ: ১৫০০০-১২০০০০ — বিএম ।'
 - id: Q-004
   kind: role
-  question_bn: দ্বিতীয় অধ্যায়ের "সদস্যদের অভিযোগ প্রদানের মাধ্যমসমূহ" এ দাবি+ ক্ষেত্রে কোন পদটি প্রযোজ্য?
+  question_bn: সদস্যদের অভিযোগ প্রদানের মাধ্যম অনুযায়ী, দাবি+ সদস্যরা সরাসরি কথা বলে কোন পদের কর্মকর্তার
+    কাছে অভিযোগ জানাতে পারেন?
   chunk_id: dabi_2025_0074
   manual_id: dabi_2025
   clause: 2.5.2
@@ -590,22 +640,6 @@ questions:
   - শাখা ব্যবস্থাপক
   - এএম
   explanation: শাখা ব্যবস্থাপক (দাবি+ এর ক্ষেত্রে প্রযোজ্য)
-- id: Q-005
-  kind: role
-  question_bn: তৃতীয় অধ্যায়ের ৩.৯.২ মামলা করার অনুমোদন নেয়া অংশে রেজিস্টারে এন্ট্রি এবং আলাদা কোর্ট
-    ফাইল সংরক্ষণ করার কাজটি কে করবেন?
-  chunk_id: dabi_2025_0129
-  manual_id: dabi_2025
-  clause: 3.9.2
-  clause_display: ৩.৯.২
-  correct: এএম
-  options:
-  - হিসাব কর্মকর্তা
-  - এএম
-  - পিও
-  - পিএ
-  explanation: ৩. মামলার ফাইলিংয়ে দেওয়া সমস্ত কাগজ পত্রের এক সেট রেজিষ্টারে এন্ট্রি এবং আলাদা কোর্ট
-    ফাইলের মাধ্যমে অফিসে সংরক্ষণ করে রাখতে হবে। এই কাজটি করবেন বাদী এবং এলসি ল’ইয়ার সহযোগিতা করবেন এএম।
 - id: Q-006
   kind: role
   question_bn: তৃতীয় অধ্যায়ের ইনসেন্টিভ বিধান অনুযায়ী সুনিদিষ্ট কারণ সাপেক্ষে ইনসেন্টিভ প্রদান বন্ধ
@@ -655,7 +689,8 @@ questions:
     তথ্যের ভিত্তিতে-
 - id: Q-009
   kind: role
-  question_bn: পোষ্টিং সংক্রান্ত সমস্যার অবহিতকরণ ও সমাধানের জন্য দায়িত্বশীল পদবী কী?
+  question_bn: শস্য নিরাপত্তা বিমায় পোষ্টিং সংক্রান্ত সমস্যার অবহিতকরণ ও সমাধানের জন্য দায়িত্বশীল পদবী
+    কী?
   chunk_id: dabi_2025_0244
   manual_id: dabi_2025
   clause: 5.3.4
@@ -698,22 +733,6 @@ questions:
   - ৭.২০%
   - ০.৬৬%
   explanation: গরুর বর্তমান বাজার মূল্য যদি ৮০,০০০ টাকা বা তার বেশি হয় তাহলে প্রিমিয়াম হবে ১.৬০%।
-- id: Q-012
-  kind: role
-  question_bn: গবাদিপ্রাণি সুরক্ষা বিমা প্রকল্পের সার্বিক ব্যবস্থাপনা ও তত্ত্বাবধানে কোন কর্মকর্তা দায়িত্ব
-    পালন করেন?
-  chunk_id: dabi_2025_0266
-  manual_id: dabi_2025
-  clause: 5.4.12
-  clause_display: ৫.৪.১২
-  correct: হিসাব কর্মকর্তা
-  options:
-  - পিও
-  - হিসাব কর্মকর্তা
-  - আঞ্চলিক ব্যবস্থাপক
-  - শাখা ব্যবস্থাপক
-  explanation: পোস্টিং সংক্রান্ত কাজে সমস্যা হলে তৎক্ষনাৎ সংশ্লিষ্ট কর্তৃপক্ষকে অবহিতকরন এবং সমাধান করা।
-    এ-সংক্রান্ত গাফেলতির জন্য সদস্য বিমার আওতায় না আসলে শাখা হিসাব কর্মকর্তা দায়ী থাকবেন।
 - id: Q-013
   kind: role
   question_bn: সপ্তম অধ্যায়ের টেবিল অব অথরিটিতে ক্রম ১০ নম্বর অনুমোদনের বিষয় ‘অফিস ক্যাম্পাসের গাছ কাটা
@@ -776,7 +795,7 @@ questions:
   explanation: 'আমানত : ১০ হাজার টাকা হতে ২০ দশ লক্ষ টাকা পর্যন্ত'
 - id: Q-018
   kind: role
-  question_bn: তৃতীয় অধ্যায়ের ৩.৩.৩ লেন-দেন সময়সীমা অনুযায়ী মাঠ পর্যায়ে সরাসরি উপকারভোগীর নিকট থেকে
+  question_bn: তৃতীয় অধ্যায়ের ৩.৩.৩ লেন-দেন সময়সীমা অনুযায়ী মাঠ পর্যায়ে সরাসরি সদস্যের নিকট থেকে
     অর্থ এনে হিসাবরক্ষক/ক্যাশিয়ারের নিকট জমা দেওয়ার দায়িত্ব কার উপর?
   chunk_id: progoti_0107
   manual_id: progoti
@@ -841,8 +860,8 @@ questions:
     করে নিশ্চিত হতে হবে। আলোচনা নিশ্চিত করবেন আরএম।'
 - id: Q-023
   kind: role
-  question_bn: তৃতীয় অধ্যায়ের ৩.৯.১(খ) ঋণীদের ক্ষেত্রে, ডিসিএমসি কমিটির অনুমোদন সাপেক্ষে মামলা করার
-    সিদ্ধান্ত নেওয়ার জন্য কোন পদটি দায়িত্বপ্রাপ্ত?
+  question_bn: ঋণীদের ক্ষেত্রে মামলা করার আগে ঋণী একাধিক সংস্থা থেকে ঋণ নিয়ে অধিক ঋণগ্রস্থ হয়ে পড়েছেন
+    কি-না, তা বিবেচনায় আনা কে নিশ্চিত করবেন?
   chunk_id: progoti_0136
   manual_id: progoti
   clause: 3.9.1
@@ -889,8 +908,7 @@ questions:
     টাকা এন্ট্রি দিবেন।'
 - id: Q-026
   kind: role
-  question_bn: শস্য নিরাপত্তা বিমার বিমাদাবি’র নিয়মাবলী ও নিষ্পত্তিকরণ পদ্ধতি অনুসারে দায়িত্বপ্রাপ্ত
-    ব্যক্তি কে?
+  question_bn: শস্য নিরাপত্তা বিমার বিমাদাবির অর্থ সদস্যের সঞ্চয়ে জমা করার দায়িত্ব কার?
   chunk_id: progoti_0269
   manual_id: progoti
   clause: 5.3.4
@@ -904,8 +922,8 @@ questions:
   explanation: শাখা হিসাব কর্মকর্তা উক্ত বিমাদাবির অর্থ, সদস্যর সঞ্চয় হিসাবে জমা করবেন।
 - id: Q-027
   kind: role
-  question_bn: ফায়ার সেফটি ইন্স্যুরেন্সের বিমাদাবি’র নিয়মাবলী ও নিষ্পত্তিকরণ পদ্ধতিতে দায়িত্বপ্রাপ্ত
-    পদবী কী?
+  question_bn: ফায়ার সেফটি ইন্স্যুরেন্সে পরবর্তী গ্রাহক মিটিংয়ে বিমাদাবি প্রাপ্ত সদস্যকে বিমাদাবি প্রাপ্তির
+    রশিদ কে বুঝিয়ে দেবেন?
   chunk_id: progoti_0291
   manual_id: progoti
   clause: 5.4.11
