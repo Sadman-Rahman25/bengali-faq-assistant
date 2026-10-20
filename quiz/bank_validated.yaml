@@ -3,7 +3,7 @@
 # written by a model. See quiz_build.py's docstring.
 meta:
   note: reconstructed from out/quiz_review.md
-  n_questions: 70
+  n_questions: 55
   n_dropped_on_revalidate: 31
   hand_deleted_semantic:
   - dabi_2025_0044
@@ -61,6 +61,159 @@ meta:
       a manual quote. The explanation, which quotes the manual, is unchanged.
     before: ইনসিডেন্ট নোটিফিকেশন ও সেটআপ প্রক্রিয়ায় শাখা/এলাকা ব্যবস্থাপক-প্রগতি/এডিসি এবং শাখা হিসাব
       কর্মকর্তার পাশাপাশি কোন উচ্চপদস্থ কর্মকর্তা উপস্থিত থাকতে হবে?
+  - id: Q-016
+    action: dropped
+    reason: ২৪% is the rate in a worked example, not the rate
+  - id: Q-073
+    action: dropped
+    reason: trivia from the same worked example
+  - id: Q-030
+    action: dropped
+    reason: the post named is the one whose work is checked (পিও ভিত্তিক রিপোর্ট), not the one doing the
+      checking
+  - id: Q-034
+    action: dropped
+    reason: the post named is the one whose work is checked (সিডিও ভিত্তিক রিপোর্ট), not the one doing
+      the checking
+  - id: Q-037
+    action: dropped
+    reason: the post named is the one whose work is checked (পিও-এর কাজের মান যাচাই করবেন), not the one
+      doing the checking
+  - id: Q-051
+    action: dropped
+    reason: the post named is the one whose work is checked (বিএম-এর করা ফলোআপ), not the one doing the
+      checking
+  - id: Q-031
+    action: dropped
+    reason: the AM checks for long illness, it does not approve; and এএম and এলাকা ব্যবস্থাপক are both
+      options -- the same post
+  - id: Q-039
+    action: dropped
+    reason: answer পিএ came from the পিএলসি in সেনা ইন্স্যুরেন্স পিএলসি -- the bug fixed in roles.py
+  - id: Q-045
+    action: dropped
+    reason: near-duplicate of Q-033
+  - id: Q-049
+    action: dropped
+    reason: the module applies to AM, RM and DM -- several options are right
+  - id: Q-054
+    action: dropped
+    reason: the plaintiff and the LC lawyer do it, not the RM
+  - id: Q-056
+    action: dropped
+    reason: asks the branch manager's role; the answer is BM (and বিএম in the source is inside এবিএম)
+  - id: Q-066
+    action: dropped
+    reason: ১৮ মাস is another product's name, not this loan's term
+  - id: Q-047
+    action: dropped
+    reason: 'checked against §9.1.3: the CRM module applies to the whole operations team as well as accounts
+      staff, and কর্মীবৃন্দ record the problems -- more than one option is right'
+  - id: Q-067
+    action: dropped
+    reason: 'checked against §7.1: the committee is the programme''s manager (BM or RM, by level), an
+      accounts officer and one person from another programme (any post) -- বিএম, আরএম and পিও can all
+      be members'
+  - id: Q-011
+    action: edited
+    reason: 'question names the value band: Sena''s ১.৬০% applies only to a cow worth ৮০,০০০ টাকা or more'
+    before: সেনা ইন্স্যুরেন্স পিএলসি ক্ষেত্রে গরু মোটাতাজাকরণ বিমার প্রিমিয়াম হার কত শতাংশ?
+  - id: Q-024
+    action: edited
+    reason: 'question reworded so the PO is not the doer: the area manager (প্রগতি) checks 10% of each
+      PO''s shortlist'
+    before: প্রতিটি পিওকে তার শর্ট লিস্ট থেকে কমপক্ষে কত শতাংশ জরিপকৃত উদ্যোক্তা ফলোআপ করতে হবে?
+  - id: Q-036
+    action: checked, unchanged
+    reason: 'checked: the CRM in §9.1.3 is Client Relationship Management (software/hardware problems
+      and requisitions), a different system from the complaint system -- kept CMS, unchanged'
+  - id: Q-038
+    action: edited
+    reason: 'বিএম replaced: বিএম and শাখা ব্যবস্থাপক are the same post'
+    options_before:
+    - শাখা ব্যবস্থাপক
+    - বিএম
+    - সিডিও
+    - সিও
+  - id: Q-043
+    action: edited
+    reason: 'question names the complaint: বন্ধকী দলিল/অন্যান্য নথি ফেরত না দেওয়া (প্রগতি)'
+    before: কমপ্লেইন্ট ডাটার ব্যবহার অংশে সমাধানকারী হিসেবে কোন ভূমিকা উল্লেখ আছে?
+  - id: Q-044
+    action: edited
+    reason: 'question says দাবি কর্মসূচিতে: in Progoti this duty sits with a post that does not exist'
+    before: ফাইল ও রেজিস্টার সংরক্ষণ পদ্ধতি অনুযায়ী কাগজপত্র সংরক্ষণ করার দায়িত্ব কার উপর নির্ধারিত?
+  - id: Q-052
+    action: edited
+    reason: question asks who keeps the prospective-member list updated
+    before: সদস্য ভর্তি প্রক্রিয়ায় কোন ভূমিকা (role) দায়িত্বশীল?
+  - id: Q-057
+    action: edited
+    reason: 'আঞ্চলিক ব্যবস্থাপক replaced: আরএম and আঞ্চলিক ব্যবস্থাপক are the same post'
+    options_before:
+    - আরএম
+    - এএম
+    - আঞ্চলিক ব্যবস্থাপক
+    - শাখা ব্যবস্থাপক
+  - id: Q-059
+    action: edited
+    reason: 'আঞ্চলিক ব্যবস্থাপক replaced: the answer is আরএম, the same post'
+    options_before:
+    - আরএম
+    - পিএস
+    - পিও
+    - আঞ্চলিক ব্যবস্থাপক
+  - id: Q-064
+    action: edited
+    reason: 'শাখা ব্যবস্থাপক replaced (the answer is বিএম, the same post); question names the duty: GD
+      and three notices when staff abscond'
+    before: তৃতীয় অধ্যায়ের ৩.৯.১(ক) ধারা অনুযায়ী কর্মীর ক্ষেত্রে উল্লেখিত ভূমিকা (role) কী?
+    options_before:
+    - আঞ্চলিক ব্যবস্থাপক
+    - আরএম
+    - বিএম
+    - শাখা ব্যবস্থাপক
+  - id: Q-065
+    action: edited
+    reason: question asks the compulsory single-insurance threshold for a Progoti loan; ৩ লক্ষ is not
+      the maximum cover (that is ২০ লক্ষ)
+    before: ঋণ নিরাপত্তা বিমার আওতায় সর্বোচ্চ কভারেজের পরিমাণ কত টাকা?
+  - id: Q-070
+    action: edited
+    reason: 'question names the step: who posts the premium in the ERP'
+    before: ফায়ার সেফটি ইন্স্যুরেন্সের অন্তর্ভুক্তিকরণ (এনরোলমেন্ট) পদ্ধতিতে কোন পদে থাকা কর্মী দায়িত্ব
+      পালন করেন?
+  - id: Q-040
+    action: edited
+    reason: 'checked: the flattened table read row by row gives ৬ লক্ষ to the সহকারী এলাকা ব্যবস্থাপক,
+      so the keyed answer was wrong. Question now asks ৮ লক্ষ, whose approver is the এলাকা ব্যবস্থাপক;
+      explanation is that table row, cell by cell'
+    before: ৬,০০,০০০ টাকা পর্যন্ত ঋণ অনুমোদনের জন্য কোন পদবী দায়িত্বশীল?
+    explanation_before: '৬,০০,০০০ টাকা পর্যন্ত: ৮,০০,০০০ টাকা পর্যন্ত — সহকারী এলাকা ব্যবস্থাপক (ডিভিশনাল
+      ম্যানেজারের অনুমোদন সাপেক্ষে): এলাকা ব্যবস্থাপক (ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে) ।'
+  - id: Q-042
+    action: edited
+    reason: 'checked: the explanation is about keeping copies, not informing the BM. Question now asks
+      who keeps the copies'
+    before: ইনসিডেন্ট নোটিফিকেশন ও সেটআপে রিজেকশন ইনপুট দিয়ে শাখা ব্যবস্থাপককে অবহিত করার দায়িত্ব কার?
+  - id: Q-053
+    action: edited
+    reason: 'checked: the explanation is about updating passbooks, not giving the list. Question now asks
+      who ensures the passbook update'
+    before: ‘ডিরেক্ট ডেবিট ইন্সট্রাকশন এবং ডিসবার্সমেন্ট’ প্রক্রিয়ায় শাখা হিসাব কর্মকর্তাকে তালিকা প্রদান
+      করার দায়িত্ব কোন ভূমিকা (role) এর?
+  - id: Q-068
+    action: edited
+    reason: 'checked: the source is the RM informing the central team, not attending. Question now asks
+      who informs the central team'
+    before: ইনসিডেন্ট নোটিফিকেশন ও সেটআপ প্রক্রিয়ায় এলাকা ব্যবস্থাপক এবং শাখা হিসাব কর্মকর্তার পাশাপাশি
+      কোন উচ্চপদস্থ কর্মকর্তা উপস্থিত থাকতে হবে?
+  - id: Q-069
+    action: edited
+    reason: 'checked: the question named সঞ্চয় সুদ না দেওয়া, the explanation shows অতিরিক্ত ডকুমেন্টস
+      চাওয়া. Question now names the complaint shown'
+    before: কমপ্লেইন্ট ডাটার ব্যবহার বিভাগে “সঞ্চয় সুদ না দেওয়া/আংশিকভাবে দেওয়া” অভিযোগের জন্য দায়িত্বপ্রাপ্ত
+      ভূমিকা (role) কী?
 questions:
 - id: Q-001
   kind: figure
@@ -213,7 +366,8 @@ questions:
   explanation: • প্রিমিয়াম ২.৪০% হরে (১,০০,০০০ x ২.৪০%) = ২,৪০০ টাকা (সেনা ইন্স্যুরেন্স পিএলসি ক্ষেত্রে)
 - id: Q-011
   kind: figure
-  question_bn: সেনা ইন্স্যুরেন্স পিএলসি ক্ষেত্রে গরু মোটাতাজাকরণ বিমার প্রিমিয়াম হার কত শতাংশ?
+  question_bn: ৮০,০০০ টাকা বা তার বেশি মূল্যের গরুর ক্ষেত্রে সেনা ইন্স্যুরেন্স পিএলসি-র গরু মোটাতাজাকরণ
+    বিমার প্রিমিয়াম হার কত শতাংশ?
   chunk_id: dabi_2025_0256
   manual_id: dabi_2025
   clause: 5.4.5
@@ -287,21 +441,6 @@ questions:
   - বিভাগীয় ব্যবস্থাপক
   explanation: BRAC Microfinance PO (BMFPO) মডিউলের মাধ্যমে মাঠ পর্যায়ে সিডিও ট্যাবে সঞ্চয় ও কিস্তি
     আদায় করেন।
-- id: Q-016
-  kind: figure
-  question_bn: ক্রমহ্রাসমান সুদ পদ্ধতিতে ব্যবহৃত সুদের হার কত শতাংশ?
-  chunk_id: dabi_2025_0359
-  manual_id: dabi_2025
-  clause: '11.1'
-  clause_display: ১১.১
-  correct: ২৪%
-  options:
-  - ১০০%
-  - ৯%
-  - ৭.৬০%
-  - ২৪%
-  explanation: এখানে ২৪% হার সুদে একজন সদস্য ১২ মাস মেয়াদী ২০,০০০/— লোন গ্রহণ করলে তার মাসিক কিস্তি হবে—
-    ২০×৯৫ = ১৯০০/—।
 - id: Q-017
   kind: figure
   question_bn: দেড়গুণ মুনাফাভিত্তিক সঞ্চয় প্রকল্পের ন্যূনতম আমানত কত টাকা?
@@ -399,7 +538,8 @@ questions:
     এই কাজটি বিএম নিশ্চিত করবেন।
 - id: Q-024
   kind: figure
-  question_bn: প্রতিটি পিওকে তার শর্ট লিস্ট থেকে কমপক্ষে কত শতাংশ জরিপকৃত উদ্যোক্তা ফলোআপ করতে হবে?
+  question_bn: এলাকা ব্যবস্থাপক (প্রগতি) প্রত্যেক পিও-এর করা শর্ট লিস্ট থেকে কমপক্ষে কত শতাংশ জরিপকৃত
+    উদ্যোক্তা ফলোআপ করে উদ্যোক্তা সিলেকশনের মান যাচাই করবেন?
   chunk_id: progoti_0195
   manual_id: progoti
   clause: 4.4.1
@@ -490,37 +630,6 @@ questions:
   - ২.৫ দিন
   explanation: 'ক্র: নং: ২ — ট্রেইনিংয়ের নাম: এডভান্স মাইক্রোফাইন্যান্স ম্যানেজমেন্ট কোর্স (AMMC_Dabi)
     — কার জন্য প্রযোজ্য: পিও (দাবি, প্রগতি) — সময়কাল: ২.৫ দিন ।'
-- id: Q-030
-  kind: role
-  question_bn: চতুর্থ অধ্যায়ের ৪.৩.৪ ধারায় কর্মসূচি বাস্তবায়ন ও রিপোর্ট পর্যালোচনা করার দায়িত্ব কোন
-    পদে রয়েছে?
-  chunk_id: progoti_0192
-  manual_id: progoti
-  clause: 4.3.4
-  clause_display: ৪.৩.৪
-  correct: পিও
-  options:
-  - পিএস
-  - পিও
-  - এডিসি
-  - ডিএম
-  explanation: পিও ভিত্তিক Target vs. Achievement Report পর্যালোচনা করবেন।
-- id: Q-031
-  kind: role
-  question_bn: তৃতীয় অধ্যায়ের ৩.৯.১(খ) ধারায় ঋণীদের ক্ষেত্রে মামলা করার সিদ্ধান্তের অনুমোদন নিশ্চিত
-    করার দায়িত্ব কোন পদে থাকে?
-  chunk_id: progoti_0138
-  manual_id: progoti
-  clause: 3.9.1
-  clause_display: ৩.৯.১
-  correct: এএম
-  options:
-  - পিএস
-  - এএম
-  - সিও
-  - এলাকা ব্যবস্থাপক
-  explanation: ১. দীর্ঘ মেয়াদী কোন রোগে আক্রান্ত কি-না তা বিবেচনায় আনতে হবে। (দীর্ঘ মেয়াদী রোগ বলতে-
-    হৃদরোগ, ক্যান্সার, শারিরীক ও মানসিক প্রতিবন্ধি ইত্যাদি)। এই কাজটি এএম নিশ্চিত করবেন।
 - id: Q-032
   kind: role
   question_bn: পাসবই রিকনসিলিয়েশন প্রক্রিয়ায় মাসে কমপক্ষে ১০ জন ঋণীর পাসবই যাচাই করার দায়িত্ব কোন
@@ -553,21 +662,6 @@ questions:
   - আঞ্চলিক ব্যবস্থাপক
   explanation: Branch Manager Supervision Module (BMSM) দাবি কর্মসূচির শাখা ব্যবস্থাপক কর্তৃক শাখা ব্যবস্থাপনার
     জন্য প্রযোজ্য স্মার্ট অ্যাপ।
-- id: Q-034
-  kind: role
-  question_bn: কর্মসূচি বাস্তবায়ন পর্যায়ে Target vs. Achievement Report পর্যালোচনা করার দায়িত্ব কোন
-    পদধারীর উপর?
-  chunk_id: dabi_2025_0176
-  manual_id: dabi_2025
-  clause: 4.3.4
-  clause_display: ৪.৩.৪
-  correct: সিডিও
-  options:
-  - পিএ
-  - আঞ্চলিক ব্যবস্থাপক
-  - ডিএম
-  - সিডিও
-  explanation: সিডিও ভিত্তিক Target vs. Achievement Report পর্যালোচনা করবেন।
 - id: Q-035
   kind: role
   question_bn: তৃতীয় অধ্যায়ের ৩.২.৫ ঋণ বিতরণ এবং সঞ্চয় ফেরত সংক্রান্ত প্রক্রিয়ার দায়িত্বে কে?
@@ -603,21 +697,6 @@ questions:
     পদ্ধতি, যা এই সিস্টেমের মাধ্যমে রেকর্ডভুক্ত ও ম্যানেজ হয়। গ্রাহকের যদি কর্মসূচির কোনো বিষয় নিয়ে
     অভিযোগ থাকে, তাহলে তিনি মাঠ পর্যায়ের প্রথম তত্ত্বাবধায়কের (দাবি কর্মসূচির শাখা ব্যবস্থাপক) কাছে
     অভিযোগ দাখিল ...
-- id: Q-037
-  kind: role
-  question_bn: চতুর্থ অধ্যায়ের ৪.৩.১ ভিও ম্যানেজমেন্টে কাজের নির্ভুলতা ও স্বচ্ছতা যাচাই করার দায়িত্বে
-    কে?
-  chunk_id: progoti_0189
-  manual_id: progoti
-  clause: 4.3.1
-  clause_display: ৪.৩.১
-  correct: পিও
-  options:
-  - এডিসি
-  - পিএস
-  - পিও
-  - বিভাগীয় ব্যবস্থাপক
-  explanation: সদস্য ভর্তি (সদ্য ভর্তিকৃত বা অপেক্ষমাণ) পর্যালোচনা করে পিও-এর কাজের মান যাচাই করবেন।
 - id: Q-038
   kind: role
   question_bn: ট্রেনডেস্ক পোর্টালের লোকেশন ম্যাপের অধীনে শাখা অফিসের দায়িত্বে কে থাকেন?
@@ -628,27 +707,14 @@ questions:
   correct: শাখা ব্যবস্থাপক
   options:
   - শাখা ব্যবস্থাপক
-  - বিএম
+  - পিএস
   - সিডিও
   - সিও
   explanation: 'ব্যবস্থাপক: শাখা ব্যবস্থাপক — সংশ্লিষ্ট অফিস: শাখা অফিস ।'
-- id: Q-039
-  kind: role
-  question_bn: দুগ্ধজাত গাভীর বিমার আওতাভুক্ত রোগজনিত স্থায়ী অঙ্গহানি/অক্ষমতা কোন ক্ষেত্রে প্রযোজ্য?
-  chunk_id: dabi_2025_0252
-  manual_id: dabi_2025
-  clause: 5.4.4
-  clause_display: ৫.৪.৪
-  correct: পিএ
-  options:
-  - পিএ
-  - এএম
-  - পিও
-  - আরএম
-  explanation: রোগজনিত স্থায়ী অঙ্গহানি/অক্ষমতা (শুধুমাত্র সেনা ইন্স্যুরেন্স পিএলসি ক্ষেত্রে প্রযোজ্য)
 - id: Q-040
   kind: role
-  question_bn: ৬,০০,০০০ টাকা পর্যন্ত ঋণ অনুমোদনের জন্য কোন পদবী দায়িত্বশীল?
+  question_bn: প্রগতি কর্মসূচিতে ৮,০০,০০০ টাকা পর্যন্ত ঋণ (ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে) কে অনুমোদন
+    করেন?
   chunk_id: progoti_0062
   manual_id: progoti
   clause: 2.1.2
@@ -659,8 +725,7 @@ questions:
   - হিসাব কর্মকর্তা
   - এডিসি
   - সিডিও
-  explanation: '৬,০০,০০০ টাকা পর্যন্ত: ৮,০০,০০০ টাকা পর্যন্ত — সহকারী এলাকা ব্যবস্থাপক (ডিভিশনাল ম্যানেজারের
-    অনুমোদন সাপেক্ষে): এলাকা ব্যবস্থাপক (ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে) ।'
+  explanation: ৮,০০,০০০ টাকা পর্যন্ত — এলাকা ব্যবস্থাপক (ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে)
 - id: Q-041
   kind: role
   question_bn: ডিভিশনাল অফিসের জন্য স্টেশনারীজ ক্রয়ের অনুমোদনকারী কে?
@@ -678,8 +743,8 @@ questions:
     বিভাগীয় ব্যবস্থাপক (দাবি) ।'
 - id: Q-042
   kind: role
-  question_bn: ইনসিডেন্ট নোটিফিকেশন ও সেটআপে রিজেকশন ইনপুট দিয়ে শাখা ব্যবস্থাপককে অবহিত করার দায়িত্ব
-    কার?
+  question_bn: বিমাদাবি Approve/Reject হওয়ার পর শাখায় প্রাপ্ত বিমাদাবির সকল ডকুমেন্টসসহ Approval/Rejection
+    সংক্রান্ত ই-মেইলের কপি কে সংরক্ষণ করবেন?
   chunk_id: progoti_0248
   manual_id: progoti
   clause: 5.1.9
@@ -694,7 +759,8 @@ questions:
     Approval/ Rejection সংক্রান্ত ই-মেইলের কপি সংরক্ষণ করবেন।
 - id: Q-043
   kind: role
-  question_bn: কমপ্লেইন্ট ডাটার ব্যবহার অংশে সমাধানকারী হিসেবে কোন ভূমিকা উল্লেখ আছে?
+  question_bn: কমপ্লেইন্ট ডাটার ব্যবহার অনুযায়ী, প্রগতি ঋণে "বন্ধকী দলিল/অন্যান্য নথি ফেরত না দেওয়া"
+    অভিযোগের সমাধানকারী কে?
   chunk_id: progoti_0090_p1
   manual_id: progoti
   clause: 2.5.4
@@ -709,7 +775,8 @@ questions:
     — প্রগতি: ৭ — এএম ।'
 - id: Q-044
   kind: role
-  question_bn: ফাইল ও রেজিস্টার সংরক্ষণ পদ্ধতি অনুযায়ী কাগজপত্র সংরক্ষণ করার দায়িত্ব কার উপর নির্ধারিত?
+  question_bn: দাবি কর্মসূচিতে অফিসের ফাইল ও রেজিস্টার লেখা সম্পন্ন হওয়ার পর ৩ বছর সংরক্ষণ করার দায়িত্ব
+    কার?
   chunk_id: dabi_2025_0146
   manual_id: dabi_2025
   clause: 3.11.2
@@ -722,23 +789,6 @@ questions:
   - এডিসি
   explanation: অফিসে ব্যবহৃত বিভিন্ন ধরনের ফাইল ও রেজিস্টার ইত্যাদি কাগজপত্র লেখা সম্পন্ন হওয়ার পর ৩
     বছর সংরক্ষণ করতে হবে। এক্ষেত্রে, দাবি কর্মসূচিতে শাখা ব্যবস্থাপক দাবি এসব কাগজপত্র সংরক্ষণ করবেন।
-- id: Q-045
-  kind: role
-  question_bn: ব্রাঞ্চ ম্যানেজার‑এর সুপারভিশন মডিউল রিপোর্টগুলো দেখতে কে এই অ্যাপের সহায়তায় সক্ষম?
-  chunk_id: progoti_0187
-  manual_id: progoti
-  clause: 4.2.7
-  clause_display: ৪.২.৭
-  correct: শাখা ব্যবস্থাপক
-  options:
-  - শাখা ব্যবস্থাপক
-  - পিএ
-  - ডিএম
-  - কর্মসূচি প্রধান
-  explanation: সিদ্ধান্ত গ্রহণ ও কর্মীদের নির্দেশনা প্রদান করার সুবিধার্থে Overdue Report, VO-wise Loan
-    Disbursement, Good Loan List, Loan Realization Target vs. Achievement, Current Loan Adjustment, Today’s
-    Collection Summary Report, Loan Collection Report ইত্যাদি রিপোর্টগুলো শাখা ব্যবস্থাপকগণ এই এ্যাপটির
-    সহায়তায় দেখতে পারবেন।
 - id: Q-046
   kind: role
   question_bn: ফায়ার সেফটি ইন্স্যুরেন্সের অন্তর্ভুক্তিকরণ (এনরোলমেন্ট) পদ্ধতিতে তথ্য সংগ্রহের দায়িত্ব
@@ -754,23 +804,6 @@ questions:
   - পিএ
   - সিও
   explanation: সিও দ্বারা এনরোলমেন্ট তথ্য সংগ্রহ
-- id: Q-047
-  kind: role
-  question_bn: ক্লায়েন্ট রিলেশনশিপ ম্যানেজমেন্ট (সিআরএম) সিস্টেমে সফটওয়্যার ও হার্ডওয়্যার সমস্যার রেকর্ডিংয়ের
-    দায়িত্ব কার?
-  chunk_id: dabi_2025_0300
-  manual_id: dabi_2025
-  clause: 9.1.3
-  clause_display: ৯.১.৩
-  correct: হিসাব কর্মকর্তা
-  options:
-  - হিসাব কর্মকর্তা
-  - আঞ্চলিক ব্যবস্থাপক
-  - পিও
-  - বিএম
-  explanation: এই মডিউলটি অর্থ এবং হিসাব বিভাগের শাখা হিসাব কর্মকর্তা, উপজেলা অ্যাকাউন্টস ম্যানেজার, রিজিওনাল
-    অ্যাকাউন্টস ম্যানেজার, ডিভিশনাল অ্যাকাউন্টস ম্যানেজার এবং মাইক্রোফাইন্যান্স কর্মসূচির অপারেশন টিমের
-    সকলের জন্য প্রযোজ্য।
 - id: Q-048
   kind: role
   question_bn: শস্য নিরাপত্তা বিমার বিমাদাবি রসিদ বুঝিয়ে দেওয়ার দায়িত্ব কার?
@@ -787,21 +820,6 @@ questions:
   explanation: 'ধাপ ৪ : সিডিও পরবর্তী গ্রাহক মিটিংয়ে বিমাদাবি প্রাপ্ত কৃষক সদস্যকে বিমাদাবি প্রাপ্ত রসিদ
     বুঝিয়ে দিবেন। পাশাপাশি সদস্যের পাসবইয়ের সঞ্চয়ের স্থলে বিমাদাবির অর্থ লিপিবদ্ধ করে স্বাক্ষকৃত রসিদ
     সকলের উপস্থিতিতে প্রদান করবেন।'
-- id: Q-049
-  kind: role
-  question_bn: ভিসা ভেরিফিকেশন মডিউলটি প্রয়োগের জন্য কোন পদধারীর দায়িত্ব?
-  chunk_id: progoti_0328
-  manual_id: progoti
-  clause: 9.1.6
-  clause_display: ৯.১.৬
-  correct: এলাকা ব্যবস্থাপক
-  options:
-  - আরএম
-  - বিভাগীয় ব্যবস্থাপক
-  - এলাকা ব্যবস্থাপক
-  - এডিসি
-  explanation: এই মডউিলটি র্অথ এবং হসিাব বভিাগরে শাখা হসিাব র্কমর্কতা এবং প্রগতি র্কমসূচরি এলাকা ব্যবস্থাপক,
-    আঞ্চলকি ব্যবস্থাপক এবং বভিাগীয় ব্যবস্থাপকদরে জন্য প্রযোজ্য।
 - id: Q-050
   kind: role
   question_bn: বিমাদাবি করার পদ্ধতিতে মৃত্যুর সংবাদ সংগ্রহের দায়িত্ব কার?
@@ -817,24 +835,9 @@ questions:
   - এলাকা ব্যবস্থাপক
   explanation: সিডিও বিমাগ্রহীতার মৃত্যুর সংবাদ পাওয়ার সাথে সাথে সংবাদ প্রদানকারী/নিমিনীর নিকট থেকে নিম্নোক্ত
     তথ্যাবলি জেনে নিবেন এবং আপনার তত্ত্বাবধায়ককে অবহিত করবেন।
-- id: Q-051
-  kind: role
-  question_bn: চতুর্থ অধ্যায়ের ৪.৩.৩ ফিল্ড ম্যানেজমেন্টে ৫টি ওডি ঋণী পরিদর্শন করে ফলোআপের মান যাচাই করার
-    দায়িত্ব কোন পদে?
-  chunk_id: dabi_2025_0175
-  manual_id: dabi_2025
-  clause: 4.3.3
-  clause_display: ৪.৩.৩
-  correct: বিএম
-  options:
-  - হিসাব কর্মকর্তা
-  - পিএস
-  - আরএম
-  - বিএম
-  explanation: ৫টি ওডি ঋণী পরিদর্শন করে বিএম-এর করা ফলোআপেরমান যাচাই করবেন।
 - id: Q-052
   kind: role
-  question_bn: সদস্য ভর্তি প্রক্রিয়ায় কোন ভূমিকা (role) দায়িত্বশীল?
+  question_bn: সম্ভাব্য ভর্তিযোগ্য সদস্যের তালিকা নিয়মিত আপডেট করার দায়িত্ব কার?
   chunk_id: progoti_0175
   manual_id: progoti
   clause: 4.1.1
@@ -848,8 +851,8 @@ questions:
   explanation: সম্ভাব্য ভর্তিযোগ্য সদস্যের তালিকা পিও নিয়মিত আপডেট করছে কি না যাচাই করবেন।
 - id: Q-053
   kind: role
-  question_bn: ‘ডিরেক্ট ডেবিট ইন্সট্রাকশন এবং ডিসবার্সমেন্ট’ প্রক্রিয়ায় শাখা হিসাব কর্মকর্তাকে তালিকা
-    প্রদান করার দায়িত্ব কোন ভূমিকা (role) এর?
+  question_bn: ‘ডিরেক্ট ডেবিট ইন্সট্রাকশন এবং ডিসবার্সমেন্ট’ প্রক্রিয়ায় কিস্তি প্রদানের তারিখের রিপোর্ট
+    পাওয়ার পর ১ মাসের মধ্যে সদস্যের পাশবই আপডেট কে নিশ্চিত করবেন?
   chunk_id: dabi_2025_0321
   manual_id: dabi_2025
   clause: 9.3.1
@@ -862,23 +865,6 @@ questions:
   - কর্মসূচি প্রধান
   explanation: ৪. কিস্তি প্রদানের তারিখের দিন রিপোর্ট পাওয়ার পর সিও সদস্যের পাশবই আপডেট পরবর্তী ১ মাসের
     মধ্যে নিশ্চিত করবেন।
-- id: Q-054
-  kind: role
-  question_bn: মামলা করার অনুমোদন নেওয়ার সময় ডিজঅনারকৃত চেকের ফটোকপি ও সংশ্লিষ্ট নথি সংযুক্ত করার কাজটি
-    কোন ভূমিকা (role) করবে?
-  chunk_id: progoti_0144
-  manual_id: progoti
-  clause: 3.9.2
-  clause_display: ৩.৯.২
-  correct: আরএম
-  options:
-  - আরএম
-  - সিডিও
-  - পিএস
-  - শাখা ব্যবস্থাপক
-  explanation: ২. ডিজঅনারকৃত চেকের ফটোকপি, ব্যাংকের গোল সীলসহ চেক ডিজঅনার সার্টিফিকেটের কপি এবং এ্যাডভোকেটের
-    মাধ্যমে Acknowledgement Registry করে দেওয়া নোটিশের কপি আর্জির সাথে সংযুক্ত করে দিতে হবে। এই কাজটি
-    করবেন বাদী এবং এলসি ল’ইয়ার সহযোগিতা করবেন আরএম।
 - id: Q-055
   kind: role
   question_bn: মাইক্রোফাইন্যান্স ম্যানেজমেন্ট কোর্স (MMC) ট্রেইনিংটি কোন ভূমিকার জন্য নির্ধারিত?
@@ -894,21 +880,6 @@ questions:
   - সিডিও
   explanation: 'ক্র: নং: ১ — ট্রেইনিংয়ের নাম: মাইক্রোফাইন্যান্স ম্যানেজমেন্ট কোর্স (MMC) — কার জন্য প্রযোজ্য:
     সিডিও (দাবি, বিসিইউপি, এসসিডিপি, এনসিডিপি) — সময়কাল: ৩ দিন ।'
-- id: Q-056
-  kind: role
-  question_bn: ঋণ এবং সঞ্চয় বিভাগের শাখা ব্যবস্থাপকের কোন ভূমিকা উল্লেখ করা হয়েছে?
-  chunk_id: progoti_0177
-  manual_id: progoti
-  clause: 4.1.3
-  clause_display: ৪.১.৩
-  correct: বিএম
-  options:
-  - সিও
-  - এডিসি
-  - আঞ্চলিক ব্যবস্থাপক
-  - বিএম
-  explanation: (এই % অনুযায়ী যে ঋণগুলো যাচাই করা হবে না তার তথ্য একটা রেজিস্টারে/ স্কিমের উপরে লেখা থাকবে।
-    ** তবে যে শাখায় এবিএম আছেন সেই শাখায় সকল ঋণের ১০০% সরজমিনে যাচাই করতে হবে)
 - id: Q-057
   kind: role
   question_bn: মামলা ফাইলিং প্রক্রিয়ায় কোন ভূমিকা সহযোগিতা করবে?
@@ -920,7 +891,7 @@ questions:
   options:
   - আরএম
   - এএম
-  - আঞ্চলিক ব্যবস্থাপক
+  - ডিএম
   - শাখা ব্যবস্থাপক
   explanation: ৩. মামলার ফাইলিংয়ে দেওয়া সমস্ত কাগজ পত্রের একসেট রেজিষ্টারে এন্ট্রি এবং আলাদা কোর্ট ফাইলের
     মাধ্যমে অফিসে সংরক্ষণ করে রাখতে হবে। এই কাজটি করবেন বাদী এবং এলসি ল’ইয়ার, সহযোগিতা করবেন এএম(দাবি)
@@ -937,7 +908,7 @@ questions:
   - আরএম
   - পিএস
   - পিও
-  - আঞ্চলিক ব্যবস্থাপক
+  - এডিসি
   explanation: 'বি:দ্র: উপরোক্ত বিষয়গুলো যদি ঋণীর মধ্যে থাকে তাহলে আমরা মামলা করবো কিনা তা বিবেচনায়
     আনতে হবে। যদি একান্তভাবেই মামলা করতে হয় তাহলে প্রধান কার্যালয়ের সংশ্লিষ্ট তত্ত্বাবধায়কের সাথে আলোচনা
     করে নিতে হবে। আলোচনা নিশ্চিত করবেন আরএম।'
@@ -971,7 +942,8 @@ questions:
   explanation: জমাকৃত টাকার উপর সদস্য বার্ষিক ৬% হারে মুনাফা পাবে।
 - id: Q-064
   kind: role
-  question_bn: তৃতীয় অধ্যায়ের ৩.৯.১(ক) ধারা অনুযায়ী কর্মীর ক্ষেত্রে উল্লেখিত ভূমিকা (role) কী?
+  question_bn: দাবি কর্মসূচিতে কোনো কর্মী পালিয়ে গেলে থানায় জিডি করা এবং তিনটি অফিশিয়াল নোটিশ দেওয়ার
+    কাজটি কে করবেন?
   chunk_id: dabi_2025_0121
   manual_id: dabi_2025
   clause: 3.9.1
@@ -981,12 +953,12 @@ questions:
   - আঞ্চলিক ব্যবস্থাপক
   - আরএম
   - বিএম
-  - শাখা ব্যবস্থাপক
+  - কর্মসূচি প্রধান
   explanation: ২. কর্মী যদি পালিয়ে যায় সেক্ষেত্রে, প্রথম থানাতে জিডি করা, দ্বিতীয়ত তিনটি অফিশিয়াল
     নোটিশ দেওয়া। এই কাজটি করবেন বিএম(দাবি)।
 - id: Q-065
   kind: figure
-  question_bn: ঋণ নিরাপত্তা বিমার আওতায় সর্বোচ্চ কভারেজের পরিমাণ কত টাকা?
+  question_bn: প্রগতি ঋণের ক্ষেত্রে কত টাকা ঋণ পর্যন্ত একক বিমা গ্রহণ বাধ্যতামূলক?
   chunk_id: dabi_2025_0185
   manual_id: dabi_2025
   clause: 5.1.2
@@ -999,41 +971,10 @@ questions:
   - ৮০,০০০ টাকা
   explanation: দাবি+প্রোজেক্টের ক্ষেত্রে সদস্যের জন্য এক বিমা গ্রহণ বাধ্যতামূলক। প্রগতি ঋণের ক্ষেত্রে
     ৩ লক্ষ টাকা ঋণ পর্যন্ত একক বিমা গ্রহণ বাধ্যতামূলক।
-- id: Q-066
-  kind: figure
-  question_bn: গ্রুপ ফাইন্যান্সিং দাবী ও কর্মসূচি লোনের মেয়াদ কত মাস?
-  chunk_id: dabi_2025_0012
-  manual_id: dabi_2025
-  clause: 1.1.1
-  clause_display: ১.১.১
-  correct: ১৮ মাস
-  options:
-  - ২ মাস
-  - ৪ মাস
-  - ৩ মাস
-  - ১৮ মাস
-  explanation: '১৮ মাস মেয়াদি লোন:'
-- id: Q-067
-  kind: role
-  question_bn: প্রাধিকারসূচি বাস্তবায়ন নির্দেশিকায় বাজেট তৈরি ও খরচের জন্য গঠিত তিন সদস্যবিশিষ্ট কমিটিতে
-    কোন পদটি অন্তর্ভুক্ত থাকে?
-  chunk_id: dabi_2025_0284
-  manual_id: dabi_2025
-  clause: '7.1'
-  clause_display: ৭.১
-  correct: হিসাব কর্মকর্তা
-  options:
-  - বিএম
-  - পিও
-  - হিসাব কর্মকর্তা
-  - আরএম
-  explanation: ১. প্রাধিকারসূচিতে উল্লিখিত যেকোনো বাজেট তৈরি ও খরচের জন্য তিন সদস্য বিশিষ্ট কমিটি গঠন
-    করতে হবে। সংশ্লিষ্ট কর্মসূচির ব্যবস্থাপক, একজন হিসাব কর্মকর্তা এবং অন্যান্য কর্মসূচি/প্রকল্প থেকে
-    একজন নিয়ে কমিটি গঠিত হবে।
 - id: Q-068
   kind: role
-  question_bn: ইনসিডেন্ট নোটিফিকেশন ও সেটআপ প্রক্রিয়ায় এলাকা ব্যবস্থাপক এবং শাখা হিসাব কর্মকর্তার পাশাপাশি
-    কোন উচ্চপদস্থ কর্মকর্তা উপস্থিত থাকতে হবে?
+  question_bn: বিমাদাবির ডকুমেন্ট ১৫ কার্যদিবসের মধ্যে পোর্টালে আপলোড করা সম্ভব না হলে, তার কারণ কে ব্র্যাক
+    সেন্ট্রাল টিমকে জানাবেন?
   chunk_id: progoti_0246
   manual_id: progoti
   clause: 5.1.9
@@ -1048,8 +989,8 @@ questions:
     তবে তার যথযথ কারন আঞ্চলিক ব্যবস্থাপক কর্তৃক ব্র্যাক সেন্ট্রাল টিম (mimfho@brac.net) কে জানাবেন।
 - id: Q-069
   kind: role
-  question_bn: কমপ্লেইন্ট ডাটার ব্যবহার বিভাগে “সঞ্চয় সুদ না দেওয়া/আংশিকভাবে দেওয়া” অভিযোগের জন্য দায়িত্বপ্রাপ্ত
-    ভূমিকা (role) কী?
+  question_bn: কমপ্লেইন্ট ডাটার ব্যবহার অনুযায়ী, প্রগতি ঋণে "অতিরিক্ত ডকুমেন্টস চাওয়া" অভিযোগের সমাধানকারী
+    কে?
   chunk_id: progoti_0090_p6
   manual_id: progoti
   clause: 2.5.4
@@ -1064,8 +1005,8 @@ questions:
     ।'
 - id: Q-070
   kind: role
-  question_bn: ফায়ার সেফটি ইন্স্যুরেন্সের অন্তর্ভুক্তিকরণ (এনরোলমেন্ট) পদ্ধতিতে কোন পদে থাকা কর্মী দায়িত্ব
-    পালন করেন?
+  question_bn: ফায়ার সেফটি ইন্স্যুরেন্সে বিমা অন্তর্ভুক্তিকরণ ফর্ম অনুযায়ী ইআরপিতে প্রিমিয়ামের টাকা
+    কে পোস্টিং দেবেন?
   chunk_id: progoti_0283
   manual_id: progoti
   clause: 5.4.7
@@ -1109,22 +1050,6 @@ questions:
   - কর্মসূচি প্রধান
   - এএম
   explanation: সিডিও নমিনী হতে নিম্নলিখিত ডকুমেন্টসমূহ সংগ্রহ করবেন-
-- id: Q-073
-  kind: figure
-  question_bn: ক্রমহ্রাসমান সুদ পদ্ধতিতে তৃতীয় কিস্তি পরিশোধের জন্য গ্রাহক কত দিন অপেক্ষা করেছেন?
-  chunk_id: dabi_2025_0362
-  manual_id: dabi_2025
-  clause: '11.1'
-  clause_display: ১১.১
-  correct: ৩৫ দিন
-  options:
-  - ৩৫ দিন
-  - ২১ দিন
-  - ১৫ দিন
-  - ৬ দিন
-  explanation: দেখুন— শেষ কিস্তিতে গ্রাহক ১৯০০/— নয় বরং ১৬৯৫.৬৭/— টাকার ৩০ দিনের সুদ সহ ১৭২৯/— পরিশোধ
-    করেছেন। শুরুর দিকে কিস্তি পরিশোধে গ্রাহক যত দিন সময় নিবেন তাতে তার সুদের পরিমান বৃদ্ধি পাবে। তৃতীয়
-    কিস্তি গ্রাহক ৩৫ দিন পর দেয়ার কারনে প্রথম ও দ্বিতীয় কিস্তির চেয়ে বেশি সুদ পরিশোধ করেছেন।
 - id: Q-074
   kind: figure
   question_bn: ঋণ অনুমোদন ও সুপারিশের জন্য এলাকা ব্যবস্থাপককে কত শতাংশ ঋণী ও জামিনদার দেখতে হবে?

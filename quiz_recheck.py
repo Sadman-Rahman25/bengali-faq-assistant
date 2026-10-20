@@ -55,6 +55,14 @@ read stays valid. Only failing distractors are re-picked, seeded, in place.
 Every re-pick passes step 1d's gate and quiz_build.validate before it lands.
 Role questions are untouched: a role name has no unit and no magnitude.
 
+STEP 4 -- three generator bugs, checked across the whole bank and REPORTED,
+never fixed: (a) two options that are one post, by the role vocabulary's
+names and abbreviations; (b) a role answer the source names as the thing
+checked ("X-এর কাজ", "X-এর করা", "X ভিত্তিক"); (c) a figure answer whose
+source is a worked example; (d) a role answer found only inside a longer
+word. Each check proves on stored chunks that it fires and that it stays
+silent on a sound case, before it reads the bank.
+
 STEP 3 -- out/quiz_unread.csv. The v3 additions (quiz/_v3_new_ids.json;
 out/quiz_review_v3.md records the other 29 as read) that survive step 1,
 PLUS any read question whose options step 2 changed -- its options are new,
@@ -499,6 +507,223 @@ def step2(qs, chunks_by_id, pool, reg, registry, qb, bn_shared, canon, rng,
     return changes, short
 
 
+# ---------------------------------------------------------------- step 4
+# THREE GENERATOR BUGS, found by reading 49 questions by hand. They explain
+# most of the 32 that failed, so each is checked across the whole bank.
+# REPORT ONLY: a hit is listed for a reader and never fixed here, because
+# each fix is a judgement about what the source says.
+#
+#   4a  two options are one post: a full name and its abbreviation (শাখা
+#       ব্যবস্থাপক / বিএম), or one role's per-manual names. pick_distractors
+#       de-duplicated by spelling, not by post.
+#   4b  the role answer is what the source CHECKS, not who checks: "X-এর
+#       কাজ", "X-এর করা", "X ভিত্তিক". Q-030's answer was the officer whose
+#       work the branch manager verifies.
+#   4c  a figure answer whose source is a worked example: a calculation, or
+#       a word that introduces one. Q-016's ২৪% was the rate in an example.
+#   4d  a role answer that only occurs inside a longer word. Q-039's পিএ was
+#       the first two letters of পিএলসি.
+_GENITIVE = ("এর", "ের", "র")
+_CHECKED = ("কাজ", "করা")
+_BASIS = ("ভিত্তিক",)
+_EXAMPLE_WORDS = ("উদাহরণ", "যেমন", "দেখুন")
+# The honorific plural, which neither list below carries: Q-045's source
+# writes শাখা ব্যবস্থাপকগণ, and without it 4d read the post as part of a
+# longer word.
+_PLURAL_ENDINGS = ("গণ", "গণের", "গণকে")
+
+
+def _alt(words, canon_pattern):
+    """One regex alternation of literals, longest first, nukta-tolerant."""
+    return "(?:%s)" % "|".join(canon_pattern(w).pattern for w in
+                               sorted(words, key=len, reverse=True))
+
+
+def same_post_options(q, keys, canon):
+    """4a. -> [(option, option, role key)] for options naming one post."""
+    seen, out = {}, []
+    for o in q["options"]:
+        k = keys.get(canon(o))
+        if k is None:
+            continue
+        if k in seen:
+            out.append((seen[k], o, k))
+        else:
+            seen[k] = o
+    return out
+
+
+def object_of_checking(q, canon, canon_pattern):
+    """4b. -> [snippet] where the role answer is written as the thing
+    checked. Role questions only; read from the explanation, the segment
+    shown beside the answer."""
+    import re
+    if q["kind"] != "role":
+        return []
+    name = canon_pattern(q["correct"]).pattern
+    rx = re.compile(
+        "%s(?:[-’]?\\s*%s\\s*%s|\\s+%s)" % (
+            name, _alt(_GENITIVE, canon_pattern),
+            _alt(_CHECKED, canon_pattern), _alt(_BASIS, canon_pattern)))
+    t = canon(q.get("explanation") or "")
+    return [t[max(0, m.start() - 20): m.end() + 10]
+            for m in rx.finditer(t)
+            if not (m.start() and _bn_letter(t[m.start() - 1]))]
+
+
+def worked_example(q, heading, canon, canon_pattern):
+    """4c. -> [marker] showing a figure answer comes from a worked example:
+    an × or = sign, a digit-x-digit product, or a word introducing one, in
+    the explanation or the heading above it."""
+    import re
+    if q["kind"] != "figure":
+        return []
+    t = canon((q.get("explanation") or "") + " " + (heading or ""))
+    found = [m.group(0) for m in
+             re.finditer(_alt(_EXAMPLE_WORDS, canon_pattern), t)]
+    found += [m.group(0) for m in re.finditer(r"\d\s*[xX×]\s*[\d(]", t)]
+    if "=" in t:
+        found.append("=")
+    if "×" in t and not any("×" in f for f in found):
+        found.append("×")
+    return found
+
+
+def only_inside_a_word(q, endings, canon, canon_pattern):
+    """4d. -> True when the role answer occurs in its explanation but never
+    as a word of its own. An inflection on the right (পিও-র, ব্যবস্থাপকের)
+    still counts as the word; anything else on either side does not."""
+    if q["kind"] != "role":
+        return False
+    t = canon(q.get("explanation") or "")
+    hits = list(canon_pattern(q["correct"]).finditer(t))
+    if not hits:
+        return False                  # absent: quiz_build.validate's job
+    for m in hits:
+        if m.start() and _bn_letter(t[m.start() - 1]):
+            continue
+        tail = t[m.end():]
+        if not tail or not _bn_letter(tail[0]):
+            return False
+        for e in endings:
+            if tail.startswith(e) and not _bn_letter(tail[len(e):][:1]):
+                return False
+    return True
+
+
+def audit_canary(by_id, qb, registry, canon, canon_pattern):
+    """Convention 3. Each check fires on the failure it exists for and stays
+    silent on a sound case. Fixtures are sliced from stored chunks and role
+    names come from the vocabulary; nothing is retyped. -> (ok, [lines])"""
+    vocab = qb.role_vocabulary()
+    keys = {canon(n): k for n, k in vocab}
+    names = {}
+    for n, k in vocab:
+        names.setdefault(k, []).append(n)
+    endings = _endings(qb, registry, canon)
+    lines, ok = [], True
+
+    def fixture(cid, correct, kind, pick=None):
+        c = by_id.get(cid) or {}
+        text = c.get("display_text") or ""
+        seg = pick(text) if pick else qb.explanation_sentence(text, correct)
+        return ({"kind": kind, "correct": correct, "explanation": seg,
+                 "options": []},
+                " > ".join(c.get("heading_path") or []))
+
+    def line(check, case, got, want):
+        nonlocal ok
+        good = bool(got) == want
+        ok &= good
+        lines.append(f"  {check}  {case:<44} hit={bool(got)}  "
+                     f"[{'PASS' if good else 'FAIL'}]")
+
+    bm = names["branch_manager"]
+    others = [names[k][0] for k in ("credit_officer", "programme_sohokari")]
+    line("4a", "full name beside its abbreviation",
+         same_post_options({"options": bm[:2] + others}, keys, canon), True)
+    line("4a", "four different posts",
+         same_post_options({"options": [names[k][0] for k in (
+             "branch_manager", "credit_officer", "programme_sohokari",
+             "adc")]}, keys, canon), False)
+
+    fo = next(n for n in names["field_officer"]
+              if canon_pattern(n).search(canon(
+                  by_id["progoti_0175"]["display_text"])))
+    work = canon_pattern(_CHECKED[0])
+
+    def checked_seg(text):
+        return next(s for s in qb.role_segments(text)
+                    if canon_pattern(fo).search(canon(s))
+                    and work.search(canon(s)))
+    neg, _h = fixture("progoti_0175", fo, "role", checked_seg)
+    line("4b", "progoti_0175: the officer whose work is checked",
+         object_of_checking(neg, canon, canon_pattern), True)
+    rm = names["regional_manager"][-1]
+    pos, _h = fixture("progoti_0139", rm, "role")
+    line("4b", "progoti_0139: the RM ensures the discussion",
+         object_of_checking(pos, canon, canon_pattern), False)
+
+    ex_text = by_id["dabi_2025_0256"]["display_text"]
+    fig = qb.figure_spans(ex_text)[0][0]
+    neg, h = fixture("dabi_2025_0256", fig, "figure")
+    line("4c", "dabi_2025_0256: premium in a calculation",
+         worked_example(neg, h, canon, canon_pattern), True)
+    pos, h = fixture("dabi_2025_0254", fig, "figure")
+    line("4c", "dabi_2025_0254: the same rate as the rule",
+         worked_example(pos, h, canon, canon_pattern), False)
+
+    pa = names["programme_assistant"][0]
+    neg, _h = fixture("dabi_2025_0256", pa, "role")
+    line("4d", "dabi_2025_0256: PA inside the insurer's PLC",
+         only_inside_a_word(neg, endings, canon, canon_pattern), True)
+    rm_q, _h = fixture("progoti_0139", rm, "role")
+    line("4d", "progoti_0139: the RM written as a word",
+         only_inside_a_word(rm_q, endings, canon, canon_pattern), False)
+    bm_q, _h = fixture("progoti_0187", bm[0], "role")
+    line("4d", "progoti_0187: the BM with a plural ending",
+         only_inside_a_word(bm_q, endings, canon, canon_pattern), False)
+    lines.append("  " + ("DETECTED" if ok else "FAILED"))
+    return ok, lines
+
+
+def _endings(qb, registry, canon):
+    """Case and plural endings a role name may carry and still be the word:
+    registry's topic endings, quiz_build's object suffixes and the
+    honorific plural, Bengali only."""
+    out = {canon(e) for e in registry._TOPIC_ENDINGS + qb._OBJECT_SUFFIX
+           + _PLURAL_ENDINGS}
+    return sorted((e for e in out if e and all(_bn_letter(c) for c in e)),
+                  key=len, reverse=True)
+
+
+def step4(qs, by_id, qb, registry, canon, canon_pattern):
+    """-> {check: [(id, detail)]} over every question given."""
+    keys = {canon(n): k for n, k in qb.role_vocabulary()}
+    endings = _endings(qb, registry, canon)
+    hits = {"4a": [], "4b": [], "4c": [], "4d": []}
+    for q in qs:
+        c = by_id.get(q["chunk_id"]) or {}
+        heading = " > ".join(c.get("heading_path") or [])
+        for a, b, k in same_post_options(q, keys, canon):
+            right = q["correct"] in (a, b)
+            hits["4a"].append((q["id"], f"{a} / {b} ({k})"
+                               + ("  -- one is the answer: TWO RIGHT"
+                                  if right else "  -- both distractors")))
+        snips = object_of_checking(q, canon, canon_pattern)
+        if snips:
+            hits["4b"].append((q["id"], f"{q['correct']}: "
+                               + " | ".join(s.strip() for s in snips)))
+        marks = worked_example(q, heading, canon, canon_pattern)
+        if marks:
+            hits["4c"].append((q["id"], f"{q['correct']}: markers "
+                               + ", ".join(sorted(set(marks)))))
+        if only_inside_a_word(q, endings, canon, canon_pattern):
+            hits["4d"].append((q["id"], f"{q['correct']} occurs only inside "
+                               f"a longer word"))
+    return hits
+
+
 # ---------------------------------------------------------------- step 3
 def citation(q, manuals):
     """দাবি অপারেশন ম্যানুয়াল ২০২৫ §১.১.১ -- quiz_app.citation's form, read
@@ -641,6 +866,26 @@ def main(argv=None):
         print(f"\n  {qid}  answer {q['correct']}   {q['question_bn']}")
         print(f"     before: {' / '.join(o for o in b if o != q['correct'])}")
         print(f"     after : {' / '.join(o for o in a if o != q['correct'])}")
+
+    # ---- step 4 (report only)
+    print("\nSTEP 4 -- generator-bug checks across the bank (report only)")
+    ok4, lines4 = audit_canary(by_id, qb, registry, canon, canon_pattern)
+    for ln in lines4:
+        print(ln)
+    if not ok4:
+        print("STOPPED -- a step 4 check cannot detect the bug it is for.")
+        return 2
+    audited = [dict(q, options=changes[q["id"]][1]) if q["id"] in changes
+               else q for q in kept]
+    hits4 = step4(audited, by_id, qb, registry, canon, canon_pattern)
+    for check, title in (("4a", "two options are the same post"),
+                         ("4b", "answer is the post being checked"),
+                         ("4c", "figure answer from a worked example"),
+                         ("4d", "role answer only inside a longer word")):
+        print(f"\n  {check} {title}: {len(hits4[check])} hit(s) "
+              f"in {len(audited)} questions")
+        for qid, detail in hits4[check]:
+            print(f"    {qid}  {detail}")
 
     # ---- step 3
     for q in kept:
