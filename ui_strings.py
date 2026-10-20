@@ -314,6 +314,19 @@ STRINGS = {
     "quiz_no_bank_body": {
         "en": "Nothing at {path}. Run {cmd} first.",
         "bn": "{path}-এ কিছু নেই। আগে {cmd} চালান।"},
+    # The bank is there but no question is currently reviewed by a person:
+    # waiting, not missing, so nothing here says to rebuild anything.
+    "quiz_awaiting_review": {"en": "Waiting for review",
+                             "bn": "পর্যালোচনার অপেক্ষায়"},
+    "quiz_awaiting_review_body": {
+        "en": ("The bank holds {total} questions, but none has been reviewed "
+               "by a person in its current form. A question appears here once "
+               "someone has read it and marked it correct. Nothing needs "
+               "rebuilding."),
+        "bn": ("ভান্ডারে {total}টি প্রশ্ন আছে, কিন্তু বর্তমান রূপে কোনোটিই "
+               "এখনো কেউ পর্যালোচনা করেননি। কেউ পড়ে সঠিক বলে চিহ্নিত করার "
+               "পর প্রশ্নটি এখানে দেখা যাবে। নতুন করে কিছু তৈরি করার দরকার "
+               "নেই।")},
     "quiz_intro": {
         "en": ("{n} questions, drawn at random from {total} in the bank, with "
                "no more than {cap} sharing a correct answer. Answers come from "

@@ -208,6 +208,26 @@ def bank():
     return shippable(qs, meta), meta
 
 
+def bank_size():
+    """Questions in the bank file, reviewed or not. -> int"""
+    if not BANK.exists():
+        return 0
+    qs, _meta = _load_bank(str(BANK), BANK.stat().st_mtime_ns)
+    return len(qs)
+
+
+def empty_state(qs):
+    """Which empty message the tab needs, given bank()'s reviewed questions.
+    -> None (there is a quiz), "quiz_awaiting_review" or "quiz_no_bank".
+
+    WAITING, NOT MISSING. When the file holds questions and none is
+    reviewed as it now stands, "run quiz_build.py" is the wrong advice:
+    nothing is missing, the questions are waiting for a person."""
+    if qs:
+        return None
+    return "quiz_awaiting_review" if bank_size() else "quiz_no_bank"
+
+
 def citation(q):
     """দাবি অপারেশন ম্যানুয়াল ২০২৫ §১.১.২ -- manual label from the manifest,
     clause in the form the manual prints. Neither is typed here."""
@@ -234,7 +254,17 @@ def render_quiz(lang=None):
     lang = lang or app.current_lang()
     st.markdown(f"<style>{quiz_css()}</style>", unsafe_allow_html=True)
     qs, meta = bank()
-    if not qs:
+    empty = empty_state(qs)
+    if empty == "quiz_awaiting_review":
+        st.markdown('<div class="qz-band"><div class="qz-card">'
+                    '<div class="qz-num">'
+                    f'{esc(t("quiz_awaiting_review", lang))}</div>'
+                    '<div class="qz-note">'
+                    + esc(t("quiz_awaiting_review_body", lang,
+                            total=bank_size()))
+                    + '</div></div></div>', unsafe_allow_html=True)
+        return
+    if empty == "quiz_no_bank":
         st.markdown('<div class="qz-band"><div class="qz-card">'
                     f'<div class="qz-num">{esc(t("quiz_no_bank", lang))}</div>'
                     '<div class="qz-note">'

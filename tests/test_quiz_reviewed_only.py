@@ -114,6 +114,36 @@ def test_edit_leaves_the_quiz_without_a_restart():
         assert target not in {x["id"] for x in after}, target
 
 
+def test_no_review_says_waiting_not_missing():
+    """Every review removed: the bank is there, so the tab must say the
+    questions are waiting for review -- not that the bank is missing and
+    must be rebuilt. A missing file still gets the old message."""
+    import ui_strings
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "bank_validated.yaml"
+        shutil.copy(ROOT / quiz_app.BANK, path)
+        doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+        total = len(doc["questions"])
+        doc["meta"]["review_state"]["reviewed"] = {}
+        path.write_text(quiz_build.BANK_HEADER + yaml.safe_dump(
+            doc, allow_unicode=True, sort_keys=False, width=100),
+            encoding="utf-8", newline=chr(10))
+        qs, _m = with_bank(path, quiz_app.bank)
+        assert qs == []
+        assert with_bank(path, lambda: quiz_app.empty_state(qs)) \
+            == "quiz_awaiting_review"
+        assert with_bank(path, quiz_app.bank_size) == total
+        gone = Path(tmp) / "absent.yaml"
+        assert with_bank(gone, lambda: quiz_app.empty_state([])) \
+            == "quiz_no_bank"
+    assert quiz_app.empty_state(quiz_app.bank()[0]) is None
+    for lang in ui_strings.LANGS:
+        for key in ("quiz_awaiting_review", "quiz_awaiting_review_body"):
+            text = ui_strings.t(key, lang, total=total)
+            assert text and "{" not in text, (key, lang)
+    assert not ui_strings.missing(), ui_strings.missing()
+
+
 def test_real_bank_ships_every_reviewed_question():
     qs, meta = quiz_app.bank()
     raw = yaml.safe_load((ROOT / quiz_app.BANK).read_text(
@@ -161,6 +191,7 @@ def main():
         return 1
     for fn in (test_cancelled_reviews_never_drawn,
                test_edit_leaves_the_quiz_without_a_restart,
+               test_no_review_says_waiting_not_missing,
                test_real_bank_ships_every_reviewed_question,
                test_the_real_bank_is_untouched):
         try:
