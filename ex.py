@@ -111,13 +111,10 @@ def rows_of(tb, d):
             flat += [""]*(sp-1)
         rs.append(flat)
     return rs
-def serial(rs, cap):
-    if not rs: return ""
-    h, out = list(rs[0]), ([nm(cap)] if cap else [])
-    for r in rs[1:]:
-        p = [f"{nm(a)}: {nm(b)}" if nm(a) else nm(b) for a,b in zip(h,r) if nm(b)]
-        if p: out.append(" — ".join(p) + " ।")
-    return "\n".join(out)
+# serial() moved to tablerender.py, which ex.py and resplit.py now share.
+# It was defined identically in both files, and a renderer that has to be
+# changed in two places is one that will eventually be changed in one.
+from tablerender import serial
 
 blocks, path, st = [], {}, Counter()
 def cp(): return [path[k] for k in sorted(path) if path.get(k)]
@@ -201,7 +198,7 @@ def main(src, tag):
     for b in blocks:
         if b["type"] == "head": flush(); continue
         if b["type"] == "table":
-            flush(); s = serial(b["rows"], b["cap"])
+            flush(); s = serial(b["rows"], b["cap"], b["hp"])
             if s.strip(): add(b["hp"], s, "table", False, b["rows"], b["nest"])
             continue
         if buf and b["hp"] != buf[0]["hp"]: flush()

@@ -1222,7 +1222,9 @@ def _slug(name):
 #
 # A refusal NAMES THE CHUNKS. "cache refused" with no list is how you end up
 # deleting the cache to make the message go away.
-CACHE_VERSION = 2   # 1 was the count-only guard and wrote no fingerprint
+CACHE_VERSION = 3   # 1 was the count-only guard and wrote no fingerprint;
+#                     2 had no PER-CHUNK encoder digest, so it could only
+#                     ever answer yes/no to the whole matrix
 
 # The real near-miss, for the canary. dabi_2025_0034 is one of the 80 chunks
 # R1 changed; this is its sha as the manifest recorded it BEFORE that run.
@@ -1247,6 +1249,14 @@ def cache_fingerprint(corpus, docs):
             "chunk_ids": [c["chunk_id"] for c in corpus],
             "sha256": [manifest_sha(c.get("display_text") or c.get("text") or "")
                        for c in corpus],
+            # PER-CHUNK digest of what the ENCODER actually saw. sha256 above
+            # is over display_text, which is the right key for "did the chunk
+            # change" but the wrong one for "may I reuse this vector": a
+            # change to index_text -- the normaliser, the digit twin, a
+            # prefix -- moves every vector while leaving display_text alone.
+            # docs_sha caught that for the whole matrix and could say nothing
+            # about one row, which is why reuse had to be all-or-nothing.
+            "doc_sha256": [manifest_sha(t) for t in docs],
             "docs_sha": h.hexdigest()}
 
 
@@ -1281,11 +1291,11 @@ def cache_diff(have, want):
     return True, "content identical", []
 
 
-def cache_load(cache, corpus, docs, verbose=True):
-    """The cached matrix, or None with a reason printed. Never a guess."""
+def _cache_read(cache):
+    """(matrix or None, fingerprint or None). No verdict, just what is there."""
     import numpy as np
     if not cache.exists():
-        return None
+        return None, None
     meta = _cache_meta(cache)
     have = None
     if meta.exists():
@@ -1293,27 +1303,94 @@ def cache_load(cache, corpus, docs, verbose=True):
             have = json.loads(meta.read_text(encoding="utf-8"))
         except ValueError:
             have = None
-    ok, why, moved = cache_diff(have, cache_fingerprint(corpus, docs))
-    if not ok:
+    try:
+        return np.load(cache), have
+    except (OSError, ValueError):
+        return None, have
+
+
+def cache_reuse(cache, corpus, docs, verbose=True):
+    """-> (D with the reusable rows already filled, [row indices to encode]).
+
+    PARTIAL REUSE, and the reason it is worth the extra code: a vector
+    depends on one chunk's encoder input and nothing else, so a corpus
+    where 49 of 867 chunks moved needs 49 calls, not 867. The old
+    cache_load could only answer yes or no about the whole matrix, so one
+    edited table cost a full re-encode -- about 20 minutes on this CPU, and
+    867 of a 1000-a-day quota on the API model, which is the number that
+    actually hurt.
+
+    A row is reused only when the chunk id is present in the old fingerprint
+    AND its doc_sha256 -- the digest of the ENCODER INPUT, not of
+    display_text -- is unchanged. A version-2 fingerprint carries no
+    doc_sha256 and is therefore never partially reused: it cannot prove the
+    normaliser did not move underneath it.
+
+    Returns (None, every index) when nothing is reusable, so the caller's
+    "encode these" path is the same in both cases.
+    """
+    import numpy as np
+    everything = list(range(len(docs)))
+    D, have = _cache_read(cache)
+    if D is None:
+        if verbose and cache.exists():
+            print(f"  cache UNREADABLE {cache.name}: encoding all {len(docs)}")
+        return None, everything
+    want = cache_fingerprint(corpus, docs)
+    ok, why, _moved = cache_diff(have, want)
+    if ok and D.shape[0] == len(docs):
         if verbose:
-            print(f"  cache REFUSED  {cache.name}: {why}")
-            for cid in moved[:12]:
-                print(f"    moved: {cid}")
-            if len(moved) > 12:
-                print(f"    ... and {len(moved) - 12} more")
+            print(f"  cache accepted {cache.name}: {len(docs)} chunks, "
+                  f"content identical")
+        return D, []
+    if not have or have.get("version") != want["version"]:
+        if verbose:
+            print(f"  cache REFUSED  {cache.name}: {why} -- no per-chunk "
+                  f"digest to reuse against, encoding all {len(docs)}")
+        return None, everything
+    hsha = dict(zip(have.get("chunk_ids") or [],
+                    have.get("doc_sha256") or []))
+    if len(hsha) != len(have.get("chunk_ids") or []):
+        # Duplicate chunk ids in the old fingerprint: the mapping is
+        # ambiguous and a wrong vector is worse than a slow build.
+        if verbose:
+            print(f"  cache REFUSED  {cache.name}: duplicate chunk ids in the "
+                  f"fingerprint, encoding all {len(docs)}")
+        return None, everything
+    hrow = {cid: i for i, cid in enumerate(have.get("chunk_ids") or [])}
+    out = np.zeros((len(docs), D.shape[1]), dtype=D.dtype)
+    todo, reused = [], 0
+    for i, c in enumerate(corpus):
+        cid = c["chunk_id"]
+        j = hrow.get(cid)
+        if (j is not None and j < D.shape[0]
+                and hsha.get(cid) == want["doc_sha256"][i]):
+            out[i] = D[j]
+            reused += 1
+        else:
+            todo.append(i)
+    if verbose:
+        print(f"  cache PARTIAL  {cache.name}: {why}")
+        print(f"    reusing {reused} vector(s), encoding {len(todo)}")
+        for i in todo[:12]:
+            print(f"    encode: {corpus[i]['chunk_id']}")
+        if len(todo) > 12:
+            print(f"    ... and {len(todo) - 12} more")
+    return out, todo
+
+
+def cache_load(cache, corpus, docs, verbose=True):
+    """The cached matrix, or None with a reason printed. Never a guess.
+
+    All-or-nothing, kept for callers that re-encode the whole corpus
+    anyway. New code wants cache_reuse.
+    """
+    import numpy as np
+    D, todo = cache_reuse(cache, corpus, docs, verbose=verbose)
+    if D is None or todo:
+        if verbose and D is not None:
             print(f"  re-encoding all {len(docs)} chunks")
         return None
-    D = np.load(cache)
-    if D.shape[0] != len(docs):
-        # The fingerprint agreed and the matrix did not. That is the two
-        # files being out of step with each other, which is worse than
-        # either one being stale, so it is never reused.
-        if verbose:
-            print(f"  cache REFUSED  {cache.name}: fingerprint matches but the "
-                  f"matrix holds {D.shape[0]} rows for {len(docs)} chunks")
-        return None
-    if verbose:
-        print(f"  cache accepted {cache.name}: {len(docs)} chunks, content identical")
     return D
 
 
@@ -1457,17 +1534,34 @@ def build(name, corpus, use_cache=True, out_dir=None):
     import faiss
     import numpy as np
 
+    import numpy as np
+
     docs = [index_text(c) for c in corpus]
+    BENCH_DIR.mkdir(parents=True, exist_ok=True)
     cache = BENCH_DIR / f"{_slug(name)}.docs.npy"
-    D = cache_load(cache, corpus, docs) if use_cache else None
-    if D is None:
+    if use_cache:
+        D, todo = cache_reuse(cache, corpus, docs)
+    else:
+        D, todo = None, list(range(len(docs)))
+    if todo:
         m = load_model(name)
         if hasattr(m, "max_attempts"):
             m.max_attempts = m.ATTEMPTS_BATCH   # a build can afford to wait
-            ok, msg = embed_preflight(name, len(docs))
+            # PREFLIGHT THE WORK ACTUALLY LEFT, not the corpus size. Asking
+            # for 867 when 49 remain is how a build that fits gets refused.
+            ok, msg = embed_preflight(name, len(todo))
             if not ok:
                 raise EmbeddingUnavailable(msg)
-        D = _encode(m, docs, "passage")
+        V = _encode(m, [docs[i] for i in todo], "passage")
+        if D is None:
+            D = np.zeros((len(docs), V.shape[1]), dtype=V.dtype)
+        D[todo] = V
+    # SAVE IT. build() has called cache_load since the cache existed and has
+    # never once written one, so out/benchmark held a cache only when the
+    # benchmark happened to have run -- and it had not. Every build paid full
+    # price for a cache that was never there.
+    if use_cache:
+        cache_save(cache, D, corpus, docs)
     out = Path(out_dir) if out_dir else OUT_DIR
     out.mkdir(parents=True, exist_ok=True)
     ix = faiss.IndexFlatIP(D.shape[1])

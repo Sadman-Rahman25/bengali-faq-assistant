@@ -1,6 +1,6 @@
 {
  "version": 2,
- "n_chunks": 867,
+ "n_chunks": 875,
  "manuals": {
   "progoti": "প্রগতি অপারেশন ম্যানুয়াল ২০২৫",
   "dabi_2025": "দাবি অপারেশন ম্যানুয়াল ২০২৫",
@@ -157,7 +157,7 @@
   },
   {
    "chunk_id": "dabi_2025_0013_p1",
-   "sha256": "8af148a41a95b20ca3f9a0d006a2e6ff92410d067438b914434952155731cd32",
+   "sha256": "048f99e29da2e93ccd99d020da209e92638a4de447abd3866ebef089043f96f1",
    "manual_id": "dabi_2025",
    "clause": "1.1.1",
    "clause_display": "১.১.১",
@@ -166,12 +166,12 @@
     "১.১. লোন প্রোডাক্ট",
     "১.১.১ দাবি + কর্মসূচি (গ্রুপ ফাইন্যান্সিং):"
    ],
-   "n_chars": 1022,
-   "dup_group": "78e562a225ab"
+   "n_chars": 1325,
+   "dup_group": "55ba9508f65b"
   },
   {
    "chunk_id": "dabi_2025_0013_p2",
-   "sha256": "01cf278ce250eb4168e83260b297b84ddde4580c0748cf258e67f9eb60f19c7d",
+   "sha256": "18758d32b89c4d9021712e8d98dcbc48765d0b33b1d70e33bf57e42eea8c936b",
    "manual_id": "dabi_2025",
    "clause": "1.1.1",
    "clause_display": "১.১.১",
@@ -180,8 +180,8 @@
     "১.১. লোন প্রোডাক্ট",
     "১.১.১ দাবি + কর্মসূচি (গ্রুপ ফাইন্যান্সিং):"
    ],
-   "n_chars": 1196,
-   "dup_group": "8cc8ffa8aeaa"
+   "n_chars": 985,
+   "dup_group": "f653fe95f3ea"
   },
   {
    "chunk_id": "dabi_2025_0014",
@@ -199,7 +199,7 @@
   },
   {
    "chunk_id": "dabi_2025_0015_p1",
-   "sha256": "83f1b1e9d81cdb265f7082f7fa5e547ecbb2e9f5278eed90beae173e6ba10b3b",
+   "sha256": "54dabc057c58c99ea44636f2b2f5cb082dfe8bc4b961f5c121945d8ac8aadecc",
    "manual_id": "dabi_2025",
    "clause": "1.1.2",
    "clause_display": "১.১.২",
@@ -208,12 +208,12 @@
     "১.১. লোন প্রোডাক্ট",
     "১.১.২ দাবি, প্রগতি, বিসিইউপি, সিডিপি’র সকল কর্মসূচির জন্য প্রযোজ্য (কমন প্রোডাক্ট)"
    ],
-   "n_chars": 1087,
-   "dup_group": "0e8afe82c382"
+   "n_chars": 1460,
+   "dup_group": "4f6c355c9a56"
   },
   {
    "chunk_id": "dabi_2025_0015_p2",
-   "sha256": "60aefe4f63e44df231d270c9cd968dfb023a00caf1e379014bfcb4f4d16365cd",
+   "sha256": "cf5ebc14f041fd70bc34555e205c4a9137d9f2a8726183da331d372ccd2d5420",
    "manual_id": "dabi_2025",
    "clause": "1.1.2",
    "clause_display": "১.১.২",
@@ -222,8 +222,8 @@
     "১.১. লোন প্রোডাক্ট",
     "১.১.২ দাবি, প্রগতি, বিসিইউপি, সিডিপি’র সকল কর্মসূচির জন্য প্রযোজ্য (কমন প্রোডাক্ট)"
    ],
-   "n_chars": 930,
-   "dup_group": "b1e8191a5647"
+   "n_chars": 625,
+   "dup_group": "d78891805702"
   },
   {
    "chunk_id": "dabi_2025_0016",
@@ -268,7 +268,7 @@
   },
   {
    "chunk_id": "dabi_2025_0019",
-   "sha256": "12075af2a78b37a3bd99c5e9afe95f05052f804aac983c00e126c93499ff3da3",
+   "sha256": "b70003743c1b94279b2a5e5e0c6b47a47b5c4a45e8b6b77f40692d3a0e413260",
    "manual_id": "dabi_2025",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -277,8 +277,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 1133,
-   "dup_group": "4d5200ad41b3"
+   "n_chars": 731,
+   "dup_group": "6a3c02d5c005"
   },
   {
    "chunk_id": "dabi_2025_0020",
@@ -936,7 +936,7 @@
   },
   {
    "chunk_id": "dabi_2025_0059_p1",
-   "sha256": "8517655ecfd538b6700512d195343d117639e8eaf69daba525fb2d0d16ea2408",
+   "sha256": "cb713de48ffaf7d7a6f9977bb245163f69e98d80c93c628de27228e12bea506f",
    "manual_id": "dabi_2025",
    "clause": "2.3.1",
    "clause_display": "২.৩.১",
@@ -945,12 +945,12 @@
     "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
     "২.৩.১ ইন্সট্রুমেণ্টস"
    ],
-   "n_chars": 1053,
-   "dup_group": "8f335e2410cb"
+   "n_chars": 1123,
+   "dup_group": "7d9821b16ffb"
   },
   {
    "chunk_id": "dabi_2025_0059_p2",
-   "sha256": "55281ea0356c2b95ee2af650fd41fa96800ac9e78e02bfb0573782611789a51d",
+   "sha256": "b4932144ba4525f4bb5185e8e9c90ead5bcca2f5d1dfa852ed2bd1f4c73a6f37",
    "manual_id": "dabi_2025",
    "clause": "2.3.1",
    "clause_display": "২.৩.১",
@@ -959,12 +959,12 @@
     "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
     "২.৩.১ ইন্সট্রুমেণ্টস"
    ],
-   "n_chars": 954,
-   "dup_group": "6e9d4a6168fb"
+   "n_chars": 1125,
+   "dup_group": "9a8e6c97e153"
   },
   {
    "chunk_id": "dabi_2025_0059_p3",
-   "sha256": "8edb0c5805d609a2f4408af57f9a0c1ce376e8cb82f230bf148214d4b78b8ba3",
+   "sha256": "b2c5fb1aac46e99921b5b098b1964d7d5867b267127683adcb8fc4202f776427",
    "manual_id": "dabi_2025",
    "clause": "2.3.1",
    "clause_display": "২.৩.১",
@@ -973,8 +973,92 @@
     "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
     "২.৩.১ ইন্সট্রুমেণ্টস"
    ],
-   "n_chars": 739,
-   "dup_group": "2bfc78970734"
+   "n_chars": 1123,
+   "dup_group": "48d6680059c8"
+  },
+  {
+   "chunk_id": "dabi_2025_0059_p4",
+   "sha256": "17feb4abb2679b978d22b7ab61ee6d4381f75368eaba632ad459de0606c3985b",
+   "manual_id": "dabi_2025",
+   "clause": "2.3.1",
+   "clause_display": "২.৩.১",
+   "heading_path": [
+    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
+    "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
+    "২.৩.১ ইন্সট্রুমেণ্টস"
+   ],
+   "n_chars": 1129,
+   "dup_group": "29f968aa010f"
+  },
+  {
+   "chunk_id": "dabi_2025_0059_p5",
+   "sha256": "e14fb4f928128ae52d0ed93730e34d1ce5e48721ee77eca8031910339360c40f",
+   "manual_id": "dabi_2025",
+   "clause": "2.3.1",
+   "clause_display": "২.৩.১",
+   "heading_path": [
+    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
+    "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
+    "২.৩.১ ইন্সট্রুমেণ্টস"
+   ],
+   "n_chars": 1173,
+   "dup_group": "2de88398f059"
+  },
+  {
+   "chunk_id": "dabi_2025_0059_p6",
+   "sha256": "81ca39af255e731d0409df9e1ba00e37488a01ced626907b88b38566b25fa849",
+   "manual_id": "dabi_2025",
+   "clause": "2.3.1",
+   "clause_display": "২.৩.১",
+   "heading_path": [
+    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
+    "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
+    "২.৩.১ ইন্সট্রুমেণ্টস"
+   ],
+   "n_chars": 1169,
+   "dup_group": "699b79e52b7b"
+  },
+  {
+   "chunk_id": "dabi_2025_0059_p7",
+   "sha256": "d457998a791f4512f29c00358861525d1e715cbb2815cf2293c080f247c89a26",
+   "manual_id": "dabi_2025",
+   "clause": "2.3.1",
+   "clause_display": "২.৩.১",
+   "heading_path": [
+    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
+    "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
+    "২.৩.১ ইন্সট্রুমেণ্টস"
+   ],
+   "n_chars": 1166,
+   "dup_group": "15fa2a18f849"
+  },
+  {
+   "chunk_id": "dabi_2025_0059_p8",
+   "sha256": "42518bb132013f3a7567fe9103bb9480b8b08ecfe24a3b005ecfdbeb3e15198a",
+   "manual_id": "dabi_2025",
+   "clause": "2.3.1",
+   "clause_display": "২.৩.১",
+   "heading_path": [
+    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
+    "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
+    "২.৩.১ ইন্সট্রুমেণ্টস"
+   ],
+   "n_chars": 1164,
+   "dup_group": "cf309c89ac81"
+  },
+  {
+   "chunk_id": "dabi_2025_0059_p9",
+   "sha256": "8b4360842dbcfb5e4d55034685425152e1e33b228f91eff9cf368d6e525eb8f4",
+   "manual_id": "dabi_2025",
+   "clause": "2.3.1",
+   "clause_display": "২.৩.১",
+   "heading_path": [
+    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
+    "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
+    "২.৩.১ ইন্সট্রুমেণ্টস"
+   ],
+   "n_chars": 1143,
+   "dup_group": "a508c63bf6d1"
   },
   {
    "chunk_id": "dabi_2025_0060",
@@ -2812,8 +2896,8 @@
    "dup_group": "22e41f7ad563"
   },
   {
-   "chunk_id": "dabi_2025_0188_p1",
-   "sha256": "d12e684ae57bb49bb2fd8fe0900fcc0ae81cc2c386def939a820ad3d1932b8a4",
+   "chunk_id": "dabi_2025_0188",
+   "sha256": "c1a337aca6d8da57213a71eaf1934b9a5b196596ba3cf6f7acf7e3ab708bf934",
    "manual_id": "dabi_2025",
    "clause": "5.1.3",
    "clause_display": "৫.১.৩",
@@ -2822,22 +2906,8 @@
     "৫.১ ঋণ নিরাপত্তা বিমা",
     "৫.১.৩ ঋণ নিরাপত্তা বিমার প্রিমিয়াম:"
    ],
-   "n_chars": 974,
-   "dup_group": "43ae8adda0ee"
-  },
-  {
-   "chunk_id": "dabi_2025_0188_p2",
-   "sha256": "c17642539ebafd228d64df12fb6f35d5542917ca9091ad8d16cbcecf788c0c75",
-   "manual_id": "dabi_2025",
-   "clause": "5.1.3",
-   "clause_display": "৫.১.৩",
-   "heading_path": [
-    "৫ম অধ্যায় : বিমাসেবা",
-    "৫.১ ঋণ নিরাপত্তা বিমা",
-    "৫.১.৩ ঋণ নিরাপত্তা বিমার প্রিমিয়াম:"
-   ],
-   "n_chars": 898,
-   "dup_group": "45fd3d2694c4"
+   "n_chars": 1040,
+   "dup_group": "4a0328a412a1"
   },
   {
    "chunk_id": "dabi_2025_0189",
@@ -3358,8 +3428,8 @@
    "dup_group": "1506b05dc54c"
   },
   {
-   "chunk_id": "dabi_2025_0226_p1",
-   "sha256": "dd1d2ffe457f9cb356c409f5ae84b2b7d3238d49cf22ca60429989cb74d9cac7",
+   "chunk_id": "dabi_2025_0226",
+   "sha256": "998612ea5b5fcdbba5912a466d2c6ae51e3b155e4c5933d903dd4987bc2b3a41",
    "manual_id": "dabi_2025",
    "clause": "5.2.4",
    "clause_display": "৫.২.৪",
@@ -3368,22 +3438,8 @@
     "৫.২ ছায়া-সঞ্চয় নিরাপত্তা বিমা",
     "৫.২.৪ ছায়া-সঞ্চয় নিরাপত্তা বিমার প্রিমিয়াম চার্ট:"
    ],
-   "n_chars": 961,
-   "dup_group": "6f691ff60a61"
-  },
-  {
-   "chunk_id": "dabi_2025_0226_p2",
-   "sha256": "65446922fe19d51cf8302cadd8fcbe81514b772d08eb3c684ee5701b20a077fd",
-   "manual_id": "dabi_2025",
-   "clause": "5.2.4",
-   "clause_display": "৫.২.৪",
-   "heading_path": [
-    "৫ম অধ্যায় : বিমাসেবা",
-    "৫.২ ছায়া-সঞ্চয় নিরাপত্তা বিমা",
-    "৫.২.৪ ছায়া-সঞ্চয় নিরাপত্তা বিমার প্রিমিয়াম চার্ট:"
-   ],
-   "n_chars": 608,
-   "dup_group": "e8791edcbd90"
+   "n_chars": 816,
+   "dup_group": "871e2892d5a6"
   },
   {
    "chunk_id": "dabi_2025_0227",
@@ -5265,7 +5321,7 @@
   },
   {
    "chunk_id": "dabi_2025_0358",
-   "sha256": "86a2407019110fd56d7518475c9bd0f8752818991b72cb9126a586847eacd0a4",
+   "sha256": "f6262af4db8d6ed5b151418ff7eeb594d8589549299b392bea98f55f2e014e09",
    "manual_id": "dabi_2025",
    "clause": "11.1",
    "clause_display": "১১.১",
@@ -5273,8 +5329,8 @@
     "১১. পরিশিষ্ট",
     "১১.১ ক্রমহ্রাসমান সুদ পদ্ধতি কিভাবে কাজ করে এবং কিভাবে তা নির্ণয় করা যায়?"
    ],
-   "n_chars": 785,
-   "dup_group": "06d5e1777b0c"
+   "n_chars": 549,
+   "dup_group": "5fce2eac0317"
   },
   {
    "chunk_id": "dabi_2025_0359",
@@ -6128,7 +6184,7 @@
   },
   {
    "chunk_id": "progoti_0013_p1",
-   "sha256": "8af148a41a95b20ca3f9a0d006a2e6ff92410d067438b914434952155731cd32",
+   "sha256": "048f99e29da2e93ccd99d020da209e92638a4de447abd3866ebef089043f96f1",
    "manual_id": "progoti",
    "clause": "1.1.1",
    "clause_display": "১.১.১",
@@ -6137,12 +6193,12 @@
     "১.১. লোন প্রোডাক্ট",
     "১.১.১ দাবি + কর্মসূচি (গ্রুপ ফাইন্যান্সিং):"
    ],
-   "n_chars": 1022,
-   "dup_group": "78e562a225ab"
+   "n_chars": 1325,
+   "dup_group": "55ba9508f65b"
   },
   {
    "chunk_id": "progoti_0013_p2",
-   "sha256": "01cf278ce250eb4168e83260b297b84ddde4580c0748cf258e67f9eb60f19c7d",
+   "sha256": "18758d32b89c4d9021712e8d98dcbc48765d0b33b1d70e33bf57e42eea8c936b",
    "manual_id": "progoti",
    "clause": "1.1.1",
    "clause_display": "১.১.১",
@@ -6151,8 +6207,8 @@
     "১.১. লোন প্রোডাক্ট",
     "১.১.১ দাবি + কর্মসূচি (গ্রুপ ফাইন্যান্সিং):"
    ],
-   "n_chars": 1196,
-   "dup_group": "8cc8ffa8aeaa"
+   "n_chars": 985,
+   "dup_group": "f653fe95f3ea"
   },
   {
    "chunk_id": "progoti_0014",
@@ -6184,7 +6240,7 @@
   },
   {
    "chunk_id": "progoti_0016_p1",
-   "sha256": "64b56a96c5ba581ba55d363f6089441b22e9a8ad1f0fab675213d8179b353624",
+   "sha256": "b15f523c88850aa678ac90bc5d48c92017a5a56171b540f3bad08c17a4a565f8",
    "manual_id": "progoti",
    "clause": "1.1.2",
    "clause_display": "১.১.২",
@@ -6193,12 +6249,12 @@
     "১.১. লোন প্রোডাক্ট",
     "১.১.২ প্রগতি কর্মসূচি (ইন্ডিভিজুয়াল ফাইন্যান্সিং)"
    ],
-   "n_chars": 977,
+   "n_chars": 1294,
    "dup_group": null
   },
   {
    "chunk_id": "progoti_0016_p2",
-   "sha256": "bbfb3afdfb459b0e554c6cb675633f225c9a38d33a5ab00b660175d0a21704ad",
+   "sha256": "c2fbe40292563e3fa667a224dbc4d57e2b16fde92a881efabdb7d8d77af63ef1",
    "manual_id": "progoti",
    "clause": "1.1.2",
    "clause_display": "১.১.২",
@@ -6207,12 +6263,12 @@
     "১.১. লোন প্রোডাক্ট",
     "১.১.২ প্রগতি কর্মসূচি (ইন্ডিভিজুয়াল ফাইন্যান্সিং)"
    ],
-   "n_chars": 1087,
+   "n_chars": 1520,
    "dup_group": null
   },
   {
    "chunk_id": "progoti_0016_p3",
-   "sha256": "afc959140638b54a85027ff79bf67482c2bf127e61816e08f7e6e82f53db302d",
+   "sha256": "6853fb31fce481355f387dda26362533e375f937a098aab1158ea49b7e612130",
    "manual_id": "progoti",
    "clause": "1.1.2",
    "clause_display": "১.১.২",
@@ -6221,7 +6277,7 @@
     "১.১. লোন প্রোডাক্ট",
     "১.১.২ প্রগতি কর্মসূচি (ইন্ডিভিজুয়াল ফাইন্যান্সিং)"
    ],
-   "n_chars": 1849,
+   "n_chars": 1456,
    "dup_group": null
   },
   {
@@ -6296,7 +6352,7 @@
   },
   {
    "chunk_id": "progoti_0022_p1",
-   "sha256": "a7a97a924153fd20b8c4b39ace86e0e00b4fc46a21d4da8517fdf71a73fca543",
+   "sha256": "657dab70664dfb3a36a8b2b709a8c9c55a82d0a71cc45e986ae9ab7a1571b2d7",
    "manual_id": "progoti",
    "clause": "1.1.3",
    "clause_display": "১.১.৩",
@@ -6305,12 +6361,12 @@
     "১.১. লোন প্রোডাক্ট",
     "১.১.৩ দাবি, প্রগতি, বিসিইউপি, সিডিপি’র সকল কর্মসূচির জন্য প্রযোজ্য (কমন প্রোডাক্ট)"
    ],
-   "n_chars": 1087,
-   "dup_group": "0e8afe82c382"
+   "n_chars": 1460,
+   "dup_group": "4f6c355c9a56"
   },
   {
    "chunk_id": "progoti_0022_p2",
-   "sha256": "eeef9716804fb15c263a5befa2133a49485fb1ba59cc506a55e555f91a6761bc",
+   "sha256": "860b9cd992b98af38c12855fe1d48761a254b34c2fb27a1d60a463ac4caddbf4",
    "manual_id": "progoti",
    "clause": "1.1.3",
    "clause_display": "১.১.৩",
@@ -6319,8 +6375,8 @@
     "১.১. লোন প্রোডাক্ট",
     "১.১.৩ দাবি, প্রগতি, বিসিইউপি, সিডিপি’র সকল কর্মসূচির জন্য প্রযোজ্য (কমন প্রোডাক্ট)"
    ],
-   "n_chars": 930,
-   "dup_group": "b1e8191a5647"
+   "n_chars": 625,
+   "dup_group": "d78891805702"
   },
   {
    "chunk_id": "progoti_0023",
@@ -6365,7 +6421,7 @@
   },
   {
    "chunk_id": "progoti_0026",
-   "sha256": "12075af2a78b37a3bd99c5e9afe95f05052f804aac983c00e126c93499ff3da3",
+   "sha256": "b70003743c1b94279b2a5e5e0c6b47a47b5c4a45e8b6b77f40692d3a0e413260",
    "manual_id": "progoti",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -6374,8 +6430,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 1133,
-   "dup_group": "4d5200ad41b3"
+   "n_chars": 731,
+   "dup_group": "6a3c02d5c005"
   },
   {
    "chunk_id": "progoti_0027",
@@ -7081,7 +7137,7 @@
   },
   {
    "chunk_id": "progoti_0069_p1",
-   "sha256": "8517655ecfd538b6700512d195343d117639e8eaf69daba525fb2d0d16ea2408",
+   "sha256": "cb713de48ffaf7d7a6f9977bb245163f69e98d80c93c628de27228e12bea506f",
    "manual_id": "progoti",
    "clause": "2.3.1",
    "clause_display": "২.৩.১",
@@ -7090,12 +7146,12 @@
     "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
     "২.৩.১ ইন্সট্রুমেণ্টস"
    ],
-   "n_chars": 1053,
-   "dup_group": "8f335e2410cb"
+   "n_chars": 1123,
+   "dup_group": "7d9821b16ffb"
   },
   {
    "chunk_id": "progoti_0069_p2",
-   "sha256": "55281ea0356c2b95ee2af650fd41fa96800ac9e78e02bfb0573782611789a51d",
+   "sha256": "b4932144ba4525f4bb5185e8e9c90ead5bcca2f5d1dfa852ed2bd1f4c73a6f37",
    "manual_id": "progoti",
    "clause": "2.3.1",
    "clause_display": "২.৩.১",
@@ -7104,12 +7160,12 @@
     "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
     "২.৩.১ ইন্সট্রুমেণ্টস"
    ],
-   "n_chars": 954,
-   "dup_group": "6e9d4a6168fb"
+   "n_chars": 1125,
+   "dup_group": "9a8e6c97e153"
   },
   {
    "chunk_id": "progoti_0069_p3",
-   "sha256": "8edb0c5805d609a2f4408af57f9a0c1ce376e8cb82f230bf148214d4b78b8ba3",
+   "sha256": "b2c5fb1aac46e99921b5b098b1964d7d5867b267127683adcb8fc4202f776427",
    "manual_id": "progoti",
    "clause": "2.3.1",
    "clause_display": "২.৩.১",
@@ -7118,8 +7174,92 @@
     "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
     "২.৩.১ ইন্সট্রুমেণ্টস"
    ],
-   "n_chars": 739,
-   "dup_group": "2bfc78970734"
+   "n_chars": 1123,
+   "dup_group": "48d6680059c8"
+  },
+  {
+   "chunk_id": "progoti_0069_p4",
+   "sha256": "17feb4abb2679b978d22b7ab61ee6d4381f75368eaba632ad459de0606c3985b",
+   "manual_id": "progoti",
+   "clause": "2.3.1",
+   "clause_display": "২.৩.১",
+   "heading_path": [
+    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
+    "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
+    "২.৩.১ ইন্সট্রুমেণ্টস"
+   ],
+   "n_chars": 1129,
+   "dup_group": "29f968aa010f"
+  },
+  {
+   "chunk_id": "progoti_0069_p5",
+   "sha256": "e14fb4f928128ae52d0ed93730e34d1ce5e48721ee77eca8031910339360c40f",
+   "manual_id": "progoti",
+   "clause": "2.3.1",
+   "clause_display": "২.৩.১",
+   "heading_path": [
+    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
+    "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
+    "২.৩.১ ইন্সট্রুমেণ্টস"
+   ],
+   "n_chars": 1173,
+   "dup_group": "2de88398f059"
+  },
+  {
+   "chunk_id": "progoti_0069_p6",
+   "sha256": "81ca39af255e731d0409df9e1ba00e37488a01ced626907b88b38566b25fa849",
+   "manual_id": "progoti",
+   "clause": "2.3.1",
+   "clause_display": "২.৩.১",
+   "heading_path": [
+    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
+    "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
+    "২.৩.১ ইন্সট্রুমেণ্টস"
+   ],
+   "n_chars": 1169,
+   "dup_group": "699b79e52b7b"
+  },
+  {
+   "chunk_id": "progoti_0069_p7",
+   "sha256": "d457998a791f4512f29c00358861525d1e715cbb2815cf2293c080f247c89a26",
+   "manual_id": "progoti",
+   "clause": "2.3.1",
+   "clause_display": "২.৩.১",
+   "heading_path": [
+    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
+    "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
+    "২.৩.১ ইন্সট্রুমেণ্টস"
+   ],
+   "n_chars": 1166,
+   "dup_group": "15fa2a18f849"
+  },
+  {
+   "chunk_id": "progoti_0069_p8",
+   "sha256": "42518bb132013f3a7567fe9103bb9480b8b08ecfe24a3b005ecfdbeb3e15198a",
+   "manual_id": "progoti",
+   "clause": "2.3.1",
+   "clause_display": "২.৩.১",
+   "heading_path": [
+    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
+    "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
+    "২.৩.১ ইন্সট্রুমেণ্টস"
+   ],
+   "n_chars": 1164,
+   "dup_group": "cf309c89ac81"
+  },
+  {
+   "chunk_id": "progoti_0069_p9",
+   "sha256": "8b4360842dbcfb5e4d55034685425152e1e33b228f91eff9cf368d6e525eb8f4",
+   "manual_id": "progoti",
+   "clause": "2.3.1",
+   "clause_display": "২.৩.১",
+   "heading_path": [
+    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
+    "২.৩ ইন্সট্রুমেণ্টস এবং ডাটা প্রাইভেসি পলিসি",
+    "২.৩.১ ইন্সট্রুমেণ্টস"
+   ],
+   "n_chars": 1143,
+   "dup_group": "a508c63bf6d1"
   },
   {
    "chunk_id": "progoti_0070",
@@ -9224,8 +9364,8 @@
    "dup_group": "22e41f7ad563"
   },
   {
-   "chunk_id": "progoti_0215_p1",
-   "sha256": "d12e684ae57bb49bb2fd8fe0900fcc0ae81cc2c386def939a820ad3d1932b8a4",
+   "chunk_id": "progoti_0215",
+   "sha256": "c1a337aca6d8da57213a71eaf1934b9a5b196596ba3cf6f7acf7e3ab708bf934",
    "manual_id": "progoti",
    "clause": "5.1.3",
    "clause_display": "৫.১.৩",
@@ -9234,22 +9374,8 @@
     "৫.১ ঋণ নিরাপত্তা বিমা",
     "৫.১.৩ ঋণ নিরাপত্তা বিমার প্রিমিয়াম:"
    ],
-   "n_chars": 974,
-   "dup_group": "43ae8adda0ee"
-  },
-  {
-   "chunk_id": "progoti_0215_p2",
-   "sha256": "c17642539ebafd228d64df12fb6f35d5542917ca9091ad8d16cbcecf788c0c75",
-   "manual_id": "progoti",
-   "clause": "5.1.3",
-   "clause_display": "৫.১.৩",
-   "heading_path": [
-    "৫ম অধ্যায় : বিমাসেবা",
-    "৫.১ ঋণ নিরাপত্তা বিমা",
-    "৫.১.৩ ঋণ নিরাপত্তা বিমার প্রিমিয়াম:"
-   ],
-   "n_chars": 898,
-   "dup_group": "45fd3d2694c4"
+   "n_chars": 1040,
+   "dup_group": "4a0328a412a1"
   },
   {
    "chunk_id": "progoti_0216",
@@ -9784,8 +9910,8 @@
    "dup_group": "1506b05dc54c"
   },
   {
-   "chunk_id": "progoti_0254_p1",
-   "sha256": "dd1d2ffe457f9cb356c409f5ae84b2b7d3238d49cf22ca60429989cb74d9cac7",
+   "chunk_id": "progoti_0254",
+   "sha256": "998612ea5b5fcdbba5912a466d2c6ae51e3b155e4c5933d903dd4987bc2b3a41",
    "manual_id": "progoti",
    "clause": "5.2.4",
    "clause_display": "৫.২.৪",
@@ -9794,22 +9920,8 @@
     "৫.২ ছায়া-সঞ্চয় নিরাপত্তা বিমা",
     "৫.২.৪ ছায়া-সঞ্চয় নিরাপত্তা বিমার প্রিমিয়াম চার্ট:"
    ],
-   "n_chars": 961,
-   "dup_group": "6f691ff60a61"
-  },
-  {
-   "chunk_id": "progoti_0254_p2",
-   "sha256": "65446922fe19d51cf8302cadd8fcbe81514b772d08eb3c684ee5701b20a077fd",
-   "manual_id": "progoti",
-   "clause": "5.2.4",
-   "clause_display": "৫.২.৪",
-   "heading_path": [
-    "৫ম অধ্যায় : বিমাসেবা",
-    "৫.২ ছায়া-সঞ্চয় নিরাপত্তা বিমা",
-    "৫.২.৪ ছায়া-সঞ্চয় নিরাপত্তা বিমার প্রিমিয়াম চার্ট:"
-   ],
-   "n_chars": 608,
-   "dup_group": "e8791edcbd90"
+   "n_chars": 816,
+   "dup_group": "871e2892d5a6"
   },
   {
    "chunk_id": "progoti_0255",
@@ -11685,7 +11797,7 @@
   },
   {
    "chunk_id": "progoti_0383",
-   "sha256": "86a2407019110fd56d7518475c9bd0f8752818991b72cb9126a586847eacd0a4",
+   "sha256": "f6262af4db8d6ed5b151418ff7eeb594d8589549299b392bea98f55f2e014e09",
    "manual_id": "progoti",
    "clause": "11.1",
    "clause_display": "১১.১",
@@ -11693,8 +11805,8 @@
     "১১. পরিশিষ্ট",
     "১১.১ ক্রমহ্রাসমান সুদ পদ্ধতি কিভাবে কাজ করে এবং কিভাবে তা নির্ণয় করা যায়?"
    ],
-   "n_chars": 785,
-   "dup_group": "06d5e1777b0c"
+   "n_chars": 549,
+   "dup_group": "5fce2eac0317"
   },
   {
    "chunk_id": "progoti_0384",

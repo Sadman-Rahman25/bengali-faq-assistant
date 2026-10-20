@@ -3006,6 +3006,176 @@ model call.
 
 ---
 
+## 4n. A table flattened into prose, and six confidently wrong figures
+
+**The symptom.** Six FAQ answers carried a figure that belonged to a
+neighbouring product. প্রত্যাশা লোন's service charge was given as ২৪% when the
+manual says **১৮%** — ২৪% is রি-ফাইন্যান্স's, the next column. রি-সিডিউল's term
+was given as প্রত্যাশা's. Four loan ceilings were swapped around §1.1.2. Every
+one of them is a plausible number, correctly formatted, with a correct
+citation. Nothing in the pipeline could tell them from right answers.
+
+**The cause is one line.** `serial()` — defined identically in `ex.py` and
+`resplit.py` — serialised a Word table by zipping **`rows[0]`** as the header
+and prefixing every cell with it:
+
+```python
+h, out = list(rs[0]), ([nm(cap)] if cap else [])
+for r in rs[1:]:
+    p = [f"{nm(a)}: {nm(b)}" if nm(a) else nm(b) for a, b in zip(h, r) if nm(b)]
+```
+
+That is correct for a table whose first row labels each column. It is wrong
+for one whose first row is a **merged banner**, which is how every feature
+table in both manuals is laid out: row 0 spans the width with a title, row 1
+carries the product names. The result labelled every cell with the banner:
+
+```
+লোনের পরিমাণ — প্রগতি লোন প্রোডাক্টসমূহের বৈশিষ্ট্য: নতুন লোনের ক্ষেত্রে-
+১ লক্ষ থেকে ২০ লক্ষ টাকা — নতুন ভিসা- ১ লক্ষ - ৪ লক্ষ টাকা — ...
+```
+
+Five products' ceilings in a row, separated by dashes, with the product names
+four lines above. Answering "what is এগ্রিবিজনেস's ceiling" means counting
+dashes and aligning them to a header elsewhere in the text. The model got the
+alignment wrong in both directions.
+
+**It was never only a FAQ problem.** Running the retrieval step alone — no
+model — on the six questions, in the live wording a user would actually type,
+put the flattened chunk in the top 5 of **6 of 6** searches, at rank 1 or 2 in
+four of them, every one above the abstention floor. The Ask-anything tab was
+reading the same text.
+
+### What the survey found, and what reading it changed
+
+A first pass flagged 58 chunks by asking which tables name two or more
+products, programmes or insurers across one row. Reading them cut it to 29.
+§7.1 প্রাধিকারসূচি and §2.5.4 কমপ্লেইন্ট were **false positives**: their row 0
+is a genuine header, so `serial()` already labelled every cell correctly, and
+the flag came from a body row that happened to mention programme names. The
+rest fell into three classes:
+
+| | what is lost | chunks |
+|---|---|---|
+| **A** entity columns — §1.1.1, §1.1.2, §1.1.3, §2.3.1 | which product a figure belongs to | 17 |
+| **B** two-level headers — §1.2.2, §5.1.3, §5.2.4, §11.1 | which sub-column: একক vs দ্বৈত premium | 32 |
+| **C** change-log tables | sub-labels of a change record | 12 |
+
+§2.5.4 has **exactly** B's shape — I compared the raw rows — so no structural
+test can separate them. It is left out deliberately, not because it differs,
+but because this change is being validated by comparing two indexes question
+by question, and moving chunks nobody is asking about makes that comparison
+harder to read. See 4k: the cheap property was the clause, and the clause is
+not the shape.
+
+### The fix, and the second defect it introduced on the way
+
+`tablerender.py` now owns one renderer for both callers. It finds the header
+row instead of assuming row 0, joins two-level row labels (`সার্ভিস চার্জ` plus
+its slab `< ৫,০০,০০০`), and renders **column-major**:
+
+```
+প্রত্যাশা লোন — লোনের পরিমাণ: ...; লোনের মেয়াদ: ৪, ৬, ১২, ১৮, ২৪ ও ৩৬ মাস;
+সার্ভিস চার্জ (ক্রমহ্রাসমান): ১৮% ।
+```
+
+Two things had to be got right that were not obvious.
+
+**Scope by clause alone promoted a loan amount to a column name.** §1.1.2 also
+holds গতি's and উন্মেষ's single-product tables: one banner across three
+columns, then `ঋণের পরিমাণ | | ১ লক্ষ - ৫ লক্ষ টাকা`. Treating row 1 as a header
+made the ceiling into a column heading — a worse error than the one being
+fixed, in a table that never had the problem, because one product's figures
+were never ambiguous. The header test now also requires row 1 to name **two or
+more** columns: a table needs two columns before columns can be confused.
+
+**The splitter would have undone the renderer.** `resplit.py` cuts an oversize
+table into parts by rows. On a column-major rendering that cuts each product's
+figures apart again — the same defect, reintroduced one stage later. Parts are
+now slices of **columns**, and each part carries the whole grid so a column
+keeps its group label wherever the cut falls.
+
+**And one of mine, caught by the gate.** `tablerender.nm` was written as an
+approximation of `ex.py`'s normaliser and left out its space-collapse. One
+trailing space went into `progoti_0062` — §2.1.2, nowhere near this change —
+because `recover_caption()` peels a caption off a body by exact suffix match.
+The scope check caught it as an out-of-scope edit. Convention 12 again: the
+normaliser is now copied character for character, not approximated.
+
+### What it was accepted against
+
+Four conditions, all before any rebuild:
+
+| | result |
+|---|---|
+| no chunk outside A and B changes | 0 out of scope; 21 changed, 16 new, 8 gone, all in the eight listed clauses |
+| every figure under its own column, checked against the **.docx cell** | 237 figures across 37 chunks, 0 wrong |
+| gold `kind: literal` facts survive verbatim | 30 facts, 0 lost; G-204's second literal moved to `progoti_0016_p3` and its ref was updated |
+| dabi/progoti twins still collapse | 0 twins render differently; **the dup_group count moved**, 546→554 chunks in 272→276 groups |
+
+The count condition failed **as written** and holds as intended. It cannot stay
+fixed while the chunk count does not, and the chunk count had to move because
+the table is now rendered whole before it is split. What the count stood in for
+— that no pair stops collapsing, so the same text cannot fill two of the top
+five slots — is checked directly: 0 chunks stopped collapsing, and every group
+is still a clean pair. Reported both ways rather than quietly redefined.
+
+**Measured afterwards, on 12 searches across both indexes:** the figure is
+attributed to its own product in **0 of 12** on the old index and **12 of 12**
+on the new one. Merely present somewhere in the top 5: 10 of 12 → 12 of 12.
+`quiz/bank_validated.yaml`, the human-reviewed bank, needs **0 of 52**
+re-reviewed; the two draft banks need 9 each, and every one of those answers is
+still in the same table, in a different part.
+
+## 4o. A cache that was asked but never written
+
+The rebuild was expected to cost 867 embedding items against a quota of 1000 a
+day. It cost **53**, and the gap is two separate bugs in the same cache.
+
+**`build()` called `cache_load` and never `cache_save`.** Only `benchmark_one`
+saved. So `out/benchmark/` held a document matrix exactly when the benchmark
+happened to have run — and it had not, so every index build since had
+re-encoded all 867 chunks against a cache that was never there. The symptom was
+a slow build, which is the kind of symptom nobody reports.
+
+**And reuse was all-or-nothing.** `cache_diff` already computed *which* chunks
+had moved — correctly, per chunk — and then `cache_load` threw the whole matrix
+away and printed `re-encoding all 867 chunks`. The information needed to do
+better was computed and discarded.
+
+The fingerprint now carries a per-chunk `doc_sha256` of the **encoder input**,
+not of `display_text`. That distinction is the safety of the whole thing:
+`display_text` answers "did the chunk change", and a change to `index_text` —
+the normaliser, the digit twin, a prefix — moves every vector while leaving
+`display_text` untouched. A version-2 fingerprint has no such digest and is
+therefore never partially reused: it cannot prove the normaliser did not move
+underneath it.
+
+Five conditions, against the real 867-chunk corpus with a counting stub in
+place of the model, so testing a quota fix cost no quota:
+
+| | encoded |
+|---|---|
+| cold, no cache | 867 |
+| warm, nothing changed | 0 — and the matrix comes back byte-identical |
+| **one chunk's text edited** | **1**, and the other 866 vectors unchanged |
+| `index_text` changed, `display_text` not | 867 |
+| version-2 fingerprint beside a good matrix | 867 |
+
+The third is the one that was asked for; the fourth is the one that would have
+made partial reuse unsafe if it had quietly reused.
+
+**The vectors were not lost, either.** `out/index_gemini` is an `IndexFlatIP`,
+which stores its vectors verbatim, and its `meta.jsonl` records every row's
+`chunk_id` and `index_text` in index order. The cache was reconstructed from it
+rather than re-bought — 867 unit vectors, all 867 encoder inputs identical to
+today's, so nothing had drifted. The fingerprint was written from the **stored**
+`index_text`, not today's: if an input had drifted, `cache_reuse` should notice
+and re-encode, and writing today's digest would have asserted the one thing
+that file was not entitled to assert.
+
+---
+
 ## 5. The four conventions, and why they are checks rather than prose
 
 All four exist because they were broken repeatedly — **fifteen times between

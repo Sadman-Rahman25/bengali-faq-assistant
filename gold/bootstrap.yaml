@@ -602,11 +602,17 @@ questions:
       verified_against: corpus
     - text: "১২, ১৮, ২৪ মাস"
       kind: literal
-      ref: progoti_0016_p1
+      # নির্ভরতা is the only one of the five with a 24-month term, and
+      # §1.1.2's table is now split by COLUMN rather than by row, so its
+      # column sits in part 3. Same table, same cell, different part.
+      ref: progoti_0016_p3
       verified_against: corpus
   must_cite: ["progoti §1.1.2"]
   source_refs:
     - chunk_id: progoti_0016_p1
+      manual_id: progoti
+      clause: "১.১.২"
+    - chunk_id: progoti_0016_p3
       manual_id: progoti
       clause: "১.১.২"
   verification_status: unverified

@@ -9,13 +9,10 @@ NUM = re.compile(r"[\d০-৯][\d০-৯,\.]*")
 UNUM = re.compile(r"([\d০-৯][\d০-৯,\.]*)\s*(%|শতাংশ|টাকা|মাস|বছর|দিন|হাজার|লক্ষ|কোটি|কিস্তি)")
 nm = lambda s: re.sub(r"[ \t]+", " ", unicodedata.normalize("NFC", s or "")).strip()
 
-def serial(rows, cap=""):
-    if not rows: return ""
-    h, out = list(rows[0]), ([nm(cap)] if cap else [])
-    for r in rows[1:]:
-        p = [f"{nm(a)}: {nm(b)}" if nm(a) else nm(b) for a, b in zip(h, r) if nm(b)]
-        if p: out.append(" — ".join(p) + " \u0964")
-    return "\n".join(out)
+# serial() lives in tablerender.py now -- it was defined here AND in ex.py,
+# character for character, and the two had to agree for recover_caption()
+# below to be able to peel a caption off a body at all.
+from tablerender import serial, column_major_table, split_columns
 
 UNRECOVERED = []
 
@@ -30,7 +27,7 @@ def recover_caption(c):
     head = nm(" > ".join(c["heading_path"]))
     if head and body.startswith(head):
         body = body[len(head):].lstrip("\n")
-    rt = serial(c["table_rows"], "")
+    rt = serial(c["table_rows"], "", c.get("heading_path"))
     if rt and body.endswith(rt):
         return body[:-len(rt)].strip()
     UNRECOVERED.append(c["chunk_id"])  # caption cannot be isolated -> say so
@@ -57,24 +54,50 @@ def main(SRC, TARGET):
             out.append(c); continue
 
         cap = recover_caption(c)
-        header = rows[0]
-        groups, cur, acc = [], [], 0
-        for r in rows[1:]:
-            cur.append(r)
-            # Budget against the SERIALISED line, not the raw cells: serial() repeats
-            # every header label on every row, so a wide table's real size is a
-            # multiple of its raw cell sum. Measuring raw cells let wide tables
-            # (e.g. progoti_0386) never reach TARGET and pass through unsplit.
-            acc += len(serial([header, r], ""))
-            if acc >= TARGET:
-                groups.append(cur); cur, acc = [], 0
-        if cur: groups.append(cur)
+        hp = c.get("heading_path")
+        column_major = column_major_table(rows, hp)
+
+        if column_major:
+            # SPLIT BY COLUMN, not by row. These tables are rendered one
+            # line per column, so a row-slice would cut each product's
+            # figures apart again -- the defect reintroduced by the
+            # splitter instead of the renderer. Each part gets whole
+            # columns and the WHOLE grid, so a column keeps its group
+            # label wherever the cut falls; table_columns records which
+            # slice of the grid the part actually renders.
+            _lab, data_cols = split_columns(rows)
+            groups, cur, acc = [], [], 0
+            for j in data_cols:
+                cur.append(j)
+                acc += len(serial(rows, "", hp, columns=[j]))
+                if acc >= TARGET:
+                    groups.append(cur); cur, acc = [], 0
+            if cur: groups.append(cur)
+        else:
+            header = rows[0]
+            groups, cur, acc = [], [], 0
+            for r in rows[1:]:
+                cur.append(r)
+                # Budget against the SERIALISED line, not the raw cells: serial()
+                # repeats every header label on every row, so a wide table's real
+                # size is a multiple of its raw cell sum. Measuring raw cells let
+                # wide tables (e.g. progoti_0386) never reach TARGET and pass
+                # through unsplit.
+                acc += len(serial([header, r], ""))
+                if acc >= TARGET:
+                    groups.append(cur); cur, acc = [], 0
+            if cur: groups.append(cur)
         if len(groups) <= 1:
             out.append(c); continue
 
         split_count += 1
         for i, g in enumerate(groups, 1):
-            body = serial([header] + g, cap)
+            if column_major:
+                body = serial(rows, cap, hp, columns=g)
+                part_rows, part_cols = rows, list(g)
+            else:
+                body = serial([header] + g, cap)
+                part_rows, part_cols = [header] + g, None
             head = nm(" > ".join(c["heading_path"]))
             full = (head + "\n" + body) if head else body
             nb = nm(body)
@@ -83,13 +106,15 @@ def main(SRC, TARGET):
                 chunk_id=f"{c['chunk_id']}_p{i}",
                 parent_chunk_id=c["chunk_id"],
                 part=f"{i}/{len(groups)}",
-                table_rows=[header] + g,
+                table_rows=part_rows,
                 text=fold(nm(full)), display_text=nm(full), n_chars=len(nm(full)),
                 numbers=[fold(m.group(0)).rstrip(".").replace(",", "")
                          for m in NUM.finditer(nb)],
                 unit_numbers=[f'{fold(m.group(1)).replace(",", "")} {m.group(2)}'
                               for m in UNUM.finditer(nb)],
             )
+            if part_cols is not None:
+                d["table_columns"] = part_cols
             out.append(d)
 
     sizes_after = sorted(c["n_chars"] for c in out)
