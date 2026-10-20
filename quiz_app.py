@@ -35,7 +35,8 @@ def _app():
     return app
 
 # The REVIEWED bank. quiz/bank.yaml is the raw build output; this is what
-# survived validation and a human read.
+# survived validation. Only its questions a person has reviewed as they now
+# stand are ever shown -- see shippable().
 BANK = Path("quiz/bank_validated.yaml")
 N_PER_SESSION = 10
 
@@ -172,14 +173,39 @@ def draw(qs, n=N_PER_SESSION, cap=MAX_SAME_ANSWER, rng=random):
     return out
 
 
+def shippable(qs, meta):
+    """Only the questions a PERSON has reviewed as they now stand.
+
+    A Claude or automated check does not count, and neither does a review
+    of an earlier wording: the bank's review_state holds each review with
+    the question's fingerprint, and an edit since voids it. A voided
+    question leaves the quiz until someone reviews it again -- it does not
+    stay visible on the strength of a review of different text. The rule is
+    quiz_recheck.review_status, imported rather than restated, so the quiz
+    and the unread sheet cannot disagree about what is reviewed."""
+    from quiz_recheck import review_status
+    state = meta.get("review_state") or {}
+    return [q for q in qs if review_status(q, state) == "reviewed"]
+
+
 @st.cache_data(show_spinner=False)
-def bank():
-    """-> (questions, meta). A YAML file; no model, no index."""
+def _load_bank(path, mtime_ns):
+    """The parsed file, cached per path and modification time."""
     import yaml
+    doc = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
+    return (doc.get("questions") or []), (doc.get("meta") or {})
+
+
+def bank():
+    """-> (reviewed questions, meta). A YAML file; no model, no index.
+
+    KEYED ON THE FILE'S MTIME. The cache once had no key, so an edit to the
+    bank -- which voids that question's review -- was not seen until the
+    app restarted, and the question stayed in the quiz meanwhile."""
     if not BANK.exists():
         return [], {}
-    doc = yaml.safe_load(BANK.read_text(encoding="utf-8")) or {}
-    return (doc.get("questions") or []), (doc.get("meta") or {})
+    qs, meta = _load_bank(str(BANK), BANK.stat().st_mtime_ns)
+    return shippable(qs, meta), meta
 
 
 def citation(q):
