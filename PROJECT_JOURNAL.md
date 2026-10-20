@@ -3372,6 +3372,37 @@ Highlights:
 
 **Not done**
 
+- **§2.5.4 কমপ্লেইন্ট ডাটা still loses its sub-labels — the same defect as
+  Class B, deliberately left.** Its header is two rows, exactly as §5.1.3's
+  is: row 0 carries the programme groups (দাবি/বিসিইউপি, প্রগতি,
+  এনসিডিপি/এসসিডিপি) with gridSpan padding, row 1 carries সমাধানের সময় and
+  সমাধানকারী under each. I compared the raw `table_rows` of both before
+  deciding, and no structural test separates them: anything that selects
+  §5.1.3 selects §2.5.4 too. It is excluded by the clause list in
+  `tablerender.COLUMN_MAJOR_CLAUSES`, not by the shape test.
+
+  **What is lost, and what is not.** The programme attribution SURVIVES —
+  `অভিযোগের ধরণ: ১.১ ... — দাবি/বিসিইউপি: ১৫ — বিএম, এএম, আরএম — প্রগতি: ২১ —
+  ...` puts ১৫ under দাবি/বিসিইউপি correctly. That is why §2.5.4 was cleared
+  in the survey and why this is not urgent. What is lost is the second level:
+  ১৫ is not labelled সমাধানের সময় and বিএম, এএম, আরএম is not labelled
+  সমাধানকারী. A reader recovers both from position and from the units; a
+  model asked "who resolves it, and in how long" has to do the same, and that
+  inference is what produced §1.1.2's six wrong figures.
+
+  **Why it was left, and what it would cost.** The renderer change is being
+  validated by comparing `out/index_gemini` against `out/index_gemini_v2`
+  question by question, and a change that also moves chunks nobody is asking
+  about makes that comparison harder to read rather than safer. The code
+  change is one line — add `"2.5.4"` to `COLUMN_MAJOR_CLAUSES` — and the same
+  four acceptance conditions apply unaltered. The cost is 12 chunks
+  (`dabi_2025_0079_p1..p5`, `progoti_0090_p1..p7`, as they now stand; the
+  column split will renumber them) **and two human reviews**: Q-043 and Q-069
+  in `quiz/bank_validated.yaml` both quote a §2.5.4 line verbatim, and both
+  ask exactly the question the missing sub-label makes ambiguous — `প্রগতি: ৭
+  — এএম`, where ৭ is the resolution time in days and এএম the resolver, and
+  neither is labelled. So the fix would improve the two questions whose
+  reviews it costs. **This is the obvious next candidate.** See §4n.
 - **The abstention floor 0.4044 was derived on LaBSE's score distribution**
   and BGE-M3's fused scores run materially higher (G-217 0.7113 vs 0.5531),
   so the floor is effectively looser under it. It must be re-derived before
