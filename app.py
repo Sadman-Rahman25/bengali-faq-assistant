@@ -227,11 +227,28 @@ GLOSSARY = False                      # measured, not adopted; see generate.py
 # and guards only the degenerate case; `not chunks` in generate.answer_one
 # still catches an empty retrieval, which is that case.
 #
-# TO FINISH IT, when the embedding quota resets:
-#   python <scratchpad>/derive_floor.py out/index_gemini
-# and put the "lowest score with a hit" here. It could not be re-derived on
-# 2026-10-18 because the day's embedding quota was spent building the index.
-INDEX_FLOOR = {"out/index_gemini": 0.0}
+# DERIVED 2026-10-20 on the 1.0/1.0 weights, 23 scoreable questions, k=5:
+#   gold retrieved      n=19  min=0.6253  median=0.7516  max=0.8103
+#   gold NOT retrieved  n=4   min=0.7412  median=0.7636  max=0.7761
+#   -> lowest score with a hit = 0.6253
+#
+# THE INVERSION SURVIVED THE EMBEDDER. On LaBSE the misses scored higher
+# than the hits, which is why that floor could only ever guard the
+# degenerate case. On Gemini they still do -- median miss 0.7636 against
+# median hit 0.7516, and the highest-scoring MISS (0.7761) is above every
+# hit but one. So this floor cannot separate a found answer from a lost
+# one here either; no threshold on this distribution can. It is set to the
+# measured value because that is what the method says to do, and the thing
+# it actually buys is unchanged: it catches a retrieval that came back
+# near-empty, and nothing else.
+#
+# What it costs: two of the eleven live tests score below it (T-08 0.6018,
+# T-09 0.6246) and now abstain before the model instead of answering. Both
+# are out-of-scope questions whose correct answer is a refusal, so the
+# outcome is right by a different route -- but a legitimate question
+# landing at 0.61 would be refused too, and that is the risk this number
+# carries.
+INDEX_FLOOR = {"out/index_gemini": 0.6253}
 FLOOR = INDEX_FLOOR.get(str(INDEX_DIR).replace("\\", "/"),
                         generate.SCORE_FLOOR)
 
