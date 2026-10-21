@@ -32,13 +32,12 @@ That is a hard requirement, not a preference: gold facts of kind `literal`
 assert that a string occurs verbatim in a named chunk, and four of them
 live in these tables.
 
-SCOPE IS BY CLAUSE, DELIBERATELY. §2.5.4 (কমপ্লেইন্ট ডাটা) has exactly the
-same two-level header shape as §5.1.3 and would be improved by the same
-treatment, so no structural predicate can separate them -- I checked the
-raw rows of both. It is left out because this change is being validated by
-comparing two indexes question by question, and a change that also moves
-chunks nobody is asking about makes that comparison harder to read, not
-easier. It is the obvious next candidate once this one is proven.
+SCOPE IS BY CLAUSE, DELIBERATELY. The listed clauses were each read before
+being listed; a structural predicate alone cannot stand in for that,
+because §2.5.4 and §5.1.3 have identical header shapes while §7.1, which
+looks similar from a distance, needs no treatment at all -- its row 0 is a
+real single-level header and the old renderer already labelled it
+correctly.
 """
 import re
 import unicodedata
@@ -56,6 +55,15 @@ ZW = re.compile("[​‌‍﻿]")
 COLUMN_MAJOR_CLAUSES = frozenset({
     "1.1.1", "1.1.2", "1.1.3", "2.3.1",     # A
     "1.2.2", "5.1.3", "5.2.4", "11.1",      # B
+    # §2.5.4 কমপ্লেইন্ট ডাটা, added after the rest were proven. It is
+    # the one table where the OLD renderer got the top level right -- the
+    # programme banner is in row 0, so ১৫ did sit under দাবি/বিসিইউপি
+    # -- and the second level that was lost: সমাধানের সময় and
+    # সমাধানকারী in row 1 labelled nothing, so a row read
+    # "প্রগতি: ৭ — এএম" and left the reader to know that ৭ is days and
+    # এএম is a post. That is the same inference that produced §1.1.2's
+    # six wrong figures, asked of a reader instead of a model.
+    "2.5.4",
 })
 
 

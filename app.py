@@ -205,7 +205,7 @@ K = 5
 # The default is the literal below rather than the env var alone, so an
 # evaluation that exports BFA_INDEX_DIR cannot move the demo without the
 # person running it having typed the path.
-INDEX_DIR = Path(os.environ.get("BFA_INDEX_DIR", "out/index_gemini"))
+INDEX_DIR = Path(os.environ.get("BFA_INDEX_DIR", "out/index_gemini_v2"))
 POST_FILTER = True
 GLOSSARY = False                      # measured, not adopted; see generate.py
 # THE FLOOR BELONGS TO THE INDEX AND TO ITS FUSION WEIGHTS.
@@ -259,7 +259,13 @@ GLOSSARY = False                      # measured, not adopted; see generate.py
 # Re-derive it when the corpus, the chunking or the weighting changes --
 # and re-derive it on MORE questions than 23. With n=19 hits the minimum
 # is one question's score, not a property of the index.
-INDEX_FLOOR = {"out/index_gemini": 0.55}
+INDEX_FLOOR = {"out/index_gemini": 0.55,
+               # The v2 corpus: same embedder, same weights, same
+               # question set, re-derived after the table re-render
+               # changed the chunking. Kept at 0.55 because the
+               # measurement says it is still below every hit, not
+               # because it was the number already here.
+               "out/index_gemini_v2": 0.55}
 FLOOR = INDEX_FLOOR.get(str(INDEX_DIR).replace("\\", "/"),
                         generate.SCORE_FLOOR)
 

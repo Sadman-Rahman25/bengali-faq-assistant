@@ -1,6 +1,6 @@
 {
  "version": 2,
- "n_chunks": 875,
+ "n_chunks": 873,
  "manuals": {
   "progoti": "প্রগতি অপারেশন ম্যানুয়াল ২০২৫",
   "dabi_2025": "দাবি অপারেশন ম্যানুয়াল ২০২৫",
@@ -1325,7 +1325,7 @@
   },
   {
    "chunk_id": "dabi_2025_0079_p1",
-   "sha256": "eab646eac63c2c922931846af97e326d92081d98f46cdc6d3f4385c626854c29",
+   "sha256": "81ab28257f95c4f87aa4dcdb927ab2bdf6aa62cfa958046da47020bf868acaff",
    "manual_id": "dabi_2025",
    "clause": "2.5.4",
    "clause_display": "২.৫.৪",
@@ -1334,12 +1334,12 @@
     "২.৫ কমপ্লেইণ্ট ম্যানেজমেণ্ট সিস্টেম",
     "২.৫.৪ কমপ্লেইন্ট ডাটার ব্যবহার:"
    ],
-   "n_chars": 985,
+   "n_chars": 1817,
    "dup_group": null
   },
   {
    "chunk_id": "dabi_2025_0079_p2",
-   "sha256": "fc1da1b5f1cfe088e795ce081082f6fd1afbd556fae859a20f8f30a8d63a4b07",
+   "sha256": "6bba8aa2b04b07aef2b18f7c2fe90a90c82cb4d6cbdb0d8fabc2488a55780731",
    "manual_id": "dabi_2025",
    "clause": "2.5.4",
    "clause_display": "২.৫.৪",
@@ -1348,12 +1348,12 @@
     "২.৫ কমপ্লেইণ্ট ম্যানেজমেণ্ট সিস্টেম",
     "২.৫.৪ কমপ্লেইন্ট ডাটার ব্যবহার:"
    ],
-   "n_chars": 1067,
+   "n_chars": 2046,
    "dup_group": null
   },
   {
    "chunk_id": "dabi_2025_0079_p3",
-   "sha256": "d6eee508721c40d4b1defa155fc2941cf06b9d9eb22741878f196dc2db20ef99",
+   "sha256": "7205439681ea502b986dd32373b817458a706006d2fbf006d306fbff14fb89c4",
    "manual_id": "dabi_2025",
    "clause": "2.5.4",
    "clause_display": "২.৫.৪",
@@ -1362,12 +1362,12 @@
     "২.৫ কমপ্লেইণ্ট ম্যানেজমেণ্ট সিস্টেম",
     "২.৫.৪ কমপ্লেইন্ট ডাটার ব্যবহার:"
    ],
-   "n_chars": 974,
+   "n_chars": 1820,
    "dup_group": null
   },
   {
    "chunk_id": "dabi_2025_0079_p4",
-   "sha256": "f2784a26aff6ac5539ed4e221f28200a752415570b5e511f54d4daaebdaf3ddb",
+   "sha256": "ad135f59da104f6e91f7b245a55b23ab86d8b28dd4f6629f4b4ef16477eca219",
    "manual_id": "dabi_2025",
    "clause": "2.5.4",
    "clause_display": "২.৫.৪",
@@ -1376,21 +1376,7 @@
     "২.৫ কমপ্লেইণ্ট ম্যানেজমেণ্ট সিস্টেম",
     "২.৫.৪ কমপ্লেইন্ট ডাটার ব্যবহার:"
    ],
-   "n_chars": 917,
-   "dup_group": null
-  },
-  {
-   "chunk_id": "dabi_2025_0079_p5",
-   "sha256": "4105a1a4701f6d25a18d0a1225141e5c89ef27569eb7415694d472140b7c711b",
-   "manual_id": "dabi_2025",
-   "clause": "2.5.4",
-   "clause_display": "২.৫.৪",
-   "heading_path": [
-    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
-    "২.৫ কমপ্লেইণ্ট ম্যানেজমেণ্ট সিস্টেম",
-    "২.৫.৪ কমপ্লেইন্ট ডাটার ব্যবহার:"
-   ],
-   "n_chars": 737,
+   "n_chars": 2016,
    "dup_group": null
   },
   {
@@ -7540,7 +7526,7 @@
   },
   {
    "chunk_id": "progoti_0090_p1",
-   "sha256": "d2e26959eaaa5e90679feb8588c91a4b57300ddfbd3bf201e92cc89e5a6ef2bf",
+   "sha256": "844c67c299a85bdc19f872090a6050c1b1256530af9e55d1421c894fd6226516",
    "manual_id": "progoti",
    "clause": "2.5.4",
    "clause_display": "২.৫.৪",
@@ -7549,12 +7535,12 @@
     "২.৫ কমপ্লেইণ্ট ম্যানেজমেণ্ট সিস্টেম",
     "২.৫.৪ কমপ্লেইন্ট ডাটার ব্যবহার:"
    ],
-   "n_chars": 927,
+   "n_chars": 2241,
    "dup_group": null
   },
   {
    "chunk_id": "progoti_0090_p2",
-   "sha256": "d75da14e82f8d7dc3784649c7008f3275388145dce5e18c4d8c8b9d35c2ca4eb",
+   "sha256": "4638f278797ebe16b3fc1e75cc4c698d7d458dbeccea3b8683670cfb5d2bc966",
    "manual_id": "progoti",
    "clause": "2.5.4",
    "clause_display": "২.৫.৪",
@@ -7563,12 +7549,12 @@
     "২.৫ কমপ্লেইণ্ট ম্যানেজমেণ্ট সিস্টেম",
     "২.৫.৪ কমপ্লেইন্ট ডাটার ব্যবহার:"
    ],
-   "n_chars": 984,
+   "n_chars": 2483,
    "dup_group": null
   },
   {
    "chunk_id": "progoti_0090_p3",
-   "sha256": "afa0f9804ce33b700eaf865b7fbe83faa4390bad165e95e0109f16b122862554",
+   "sha256": "0caf12dd73960f328aaf3fa6c1b425dfcd154da36f2bb253241ce257dc9e9140",
    "manual_id": "progoti",
    "clause": "2.5.4",
    "clause_display": "২.৫.৪",
@@ -7577,12 +7563,12 @@
     "২.৫ কমপ্লেইণ্ট ম্যানেজমেণ্ট সিস্টেম",
     "২.৫.৪ কমপ্লেইন্ট ডাটার ব্যবহার:"
    ],
-   "n_chars": 1020,
+   "n_chars": 2243,
    "dup_group": null
   },
   {
    "chunk_id": "progoti_0090_p4",
-   "sha256": "a62a19509d9dd48f96c03a4d49ee1dc903cb0af417e009cc1f304595074b8cd9",
+   "sha256": "3f665dbd23f7fb1cf8b3051d06f3c63752c494cbd7dec3692af5c43909541f7f",
    "manual_id": "progoti",
    "clause": "2.5.4",
    "clause_display": "২.৫.৪",
@@ -7591,12 +7577,12 @@
     "২.৫ কমপ্লেইণ্ট ম্যানেজমেণ্ট সিস্টেম",
     "২.৫.৪ কমপ্লেইন্ট ডাটার ব্যবহার:"
    ],
-   "n_chars": 952,
+   "n_chars": 2404,
    "dup_group": null
   },
   {
    "chunk_id": "progoti_0090_p5",
-   "sha256": "686facd09eaf4eb4b9c7830b5e13f6cadd3d885668ba7d34cdf71ce34957e2a6",
+   "sha256": "e7b4c5c89657ebc8a546e706544e4ffe27d972b5a5e2311e4008347a89f3ff67",
    "manual_id": "progoti",
    "clause": "2.5.4",
    "clause_display": "২.৫.৪",
@@ -7605,12 +7591,12 @@
     "২.৫ কমপ্লেইণ্ট ম্যানেজমেণ্ট সিস্টেম",
     "২.৫.৪ কমপ্লেইন্ট ডাটার ব্যবহার:"
    ],
-   "n_chars": 1047,
+   "n_chars": 2244,
    "dup_group": null
   },
   {
    "chunk_id": "progoti_0090_p6",
-   "sha256": "3dee4331d40d54851723172bf6e7131474fabc65f889212e76668b99522c83e8",
+   "sha256": "d50a29bfd55018ef603a74279b1e530adb31845ca9fe4296f1f4f0cf60fa54b1",
    "manual_id": "progoti",
    "clause": "2.5.4",
    "clause_display": "২.৫.৪",
@@ -7619,21 +7605,7 @@
     "২.৫ কমপ্লেইণ্ট ম্যানেজমেণ্ট সিস্টেম",
     "২.৫.৪ কমপ্লেইন্ট ডাটার ব্যবহার:"
    ],
-   "n_chars": 942,
-   "dup_group": null
-  },
-  {
-   "chunk_id": "progoti_0090_p7",
-   "sha256": "82146a9c446af69a0adeb17fc2120a5356687afac353c79f29d87bba4624adaa",
-   "manual_id": "progoti",
-   "clause": "2.5.4",
-   "clause_display": "২.৫.৪",
-   "heading_path": [
-    "দ্বিতীয় অধ্যায় : গ্রাহক সেবা",
-    "২.৫ কমপ্লেইণ্ট ম্যানেজমেণ্ট সিস্টেম",
-    "২.৫.৪ কমপ্লেইন্ট ডাটার ব্যবহার:"
-   ],
-   "n_chars": 230,
+   "n_chars": 2448,
    "dup_group": null
   },
   {
