@@ -185,6 +185,17 @@ BRAND = {
     # chrome at the English 13px reads as a size smaller.
     "chrome_px": {"en": "13px", "bn": "15px"},
     "small_px": {"en": "12px", "bn": "14px"},
+    # LINE HEIGHT, per interface language. BRAND.md 4: "Line height is 1.4
+    # for body text and 1.0-1.25 for headings." English interface text now
+    # takes that 1.4.
+    #
+    # Bengali does not, and the reason is the same one that puts Bengali at
+    # 21px against 13px English chrome: the script carries ascenders,
+    # descenders and the matra bar above the x-height, so glyphs collide
+    # vertically at a leading Latin handles comfortably. 1.6 is the floor of
+    # the exception and the value most of this stylesheet already used; the
+    # Bengali ANSWER body stays at 1.8, its ceiling, because it is 21px.
+    "leading": {"en": "1.4", "bn": "1.6"},
 }
 
 # ------------------------------------------------------- the configuration
@@ -600,7 +611,8 @@ details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
 .bfa-header img { height: 64px; display: block; margin-left: -15px; }
 .bfa-title { font-size: 28px; font-weight: 700; line-height: 1.2;
              color: var(--heading); margin: 6px 0 2px; }
-.bfa-sub { font-size: var(--chrome); color: var(--muted); line-height: 1.5;
+.bfa-sub { font-size: var(--chrome); color: var(--muted);
+           line-height: var(--leading);
            margin-bottom: 18px; }
 
 /* Stat cards. Four across, collapsing to two then one on a narrow
@@ -640,7 +652,8 @@ details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
 .st-key-quiz .bfa-photo { width: 100%; margin-left: 0; margin-right: 0; }
 .bfa-soon { background: var(--card); border: 1px solid var(--card-line);
             border-radius: 10px; padding: 22px; margin: 4px 22px 22px;
-            font-size: 14px; line-height: 1.7; color: var(--ink); }
+            font-size: 14px; line-height: var(--leading);
+            color: var(--ink); }
 .bfa-soon .k { font-weight: 700; color: var(--accent);
                text-transform: uppercase; letter-spacing: .12em;
                font-size: var(--small); display: block; margin-bottom: 8px; }
@@ -651,14 +664,25 @@ details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
 .bfa-label { font-size: var(--small); font-weight: 700; letter-spacing: .14em;
              text-transform: uppercase; color: var(--accent);
              margin: 0 0 12px; }
-.bfa-answer { font-size: $bengali_px; line-height: 1.8; color: var(--ink); }
-.bfa-answer-en { font-size: 14px; line-height: 1.6; color: var(--muted); }
+/* THE ONE LITERAL LEADING LEFT. The answer body is Bengali whatever
+   the interface language is, so it does not follow --leading: 1.8 is
+   the top of the exception and this is 21px text. */
+.bfa-answer { font-size: $bengali_px; line-height: 1.8;
+              color: var(--ink); }
+.bfa-answer-en { font-size: 14px; line-height: var(--leading);
+                 color: var(--muted); }
 .bfa-chips { margin-top: 14px; }
 /* Citation chips: the magenta highlight tint, not white on magenta, which
    is 4.25:1 and under the 4.5:1 a 12px label needs. */
 .bfa-chip { display: inline-block; background: var(--chip-bg);
             border: 1px solid var(--chip-line); color: var(--chip-ink);
-            font-size: var(--small); line-height: 1.6; border-radius: 999px;
+            /* 1.6 LITERAL, not --leading: a chip is one line inside a
+               pill, so this sets the pill's height, not the leading of a
+               paragraph. Tying it to the language would change the
+               chip's geometry between en and bn for no reason.
+               .bfa-badge below is left alone for the same reason. */
+            font-size: var(--small); line-height: 1.6;
+            border-radius: 999px;
             padding: 2px 11px; margin: 0 6px 6px 0; }
 
 /* Disclosure rows, in TWO weights, and the split is the point (4e).
@@ -668,7 +692,7 @@ details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
                       grey, and they stay ON the page. */
 .bfa-flag { border-left: 3px solid var(--magenta); background: var(--raised);
             padding: 10px 14px; margin-top: 14px; font-size: var(--chrome);
-            line-height: 1.6; color: var(--ink); }
+            line-height: var(--leading); color: var(--ink); }
 .bfa-flag.note { border-left: 2px solid var(--card-line);
                  font-size: var(--small); color: var(--muted);
                  padding: 7px 12px; margin-top: 10px; }
@@ -699,7 +723,8 @@ details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
 .bfa-budget { padding: 0 22px 18px; }
 .bfa-budget .inner { border-left: 3px solid var(--muted);
                      background: var(--card); padding: 10px 14px;
-                     font-size: var(--chrome); line-height: 1.6;
+                     font-size: var(--chrome);
+                     line-height: var(--leading);
                      color: var(--ink); }
 .bfa-budget .k { font-weight: 600; }
 .bfa-meta { margin-top: 12px; font-size: var(--small); color: var(--muted); }
@@ -718,12 +743,12 @@ details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
                     border-radius: 3px; padding: 1px 5px; margin-left: 2px; }
 .bfa-orphan { border-left: 3px solid var(--magenta); background: var(--card);
               padding: 10px 14px; margin: 4px 0 12px; font-size: var(--chrome);
-              line-height: 1.6; color: var(--ink); }
+              line-height: var(--leading); color: var(--ink); }
 .bfa-orphan .k { font-weight: 600; }
 
 /* THE NOTE IS OFF THE BAR. Small text on the page ground, in grey, where
    it reads at 8.21:1 (light) / 10.60:1 (dark) -- on magenta it was 4.25:1. */
-.bfa-foot-note { font-size: var(--small); line-height: 1.65;
+.bfa-foot-note { font-size: var(--small); line-height: var(--leading);
                  color: var(--muted); max-width: 820px;
                  padding: 32px 22px 16px; }
 /* THE BAR: the programme name and nothing else, left-aligned, 21px white,
@@ -746,6 +771,7 @@ def theme_vars(theme, lang):
     roles["on-magenta"] = PALETTE["white"]
     roles["chrome"] = BRAND["chrome_px"][lang]
     roles["small"] = BRAND["small_px"][lang]
+    roles["leading"] = BRAND["leading"][lang]
     body = " ".join(f"--{k}: {v};" for k, v in roles.items())
     # color-scheme tells the browser which way to draw what CSS cannot
     # reach -- scrollbars, autofill, the caret.
