@@ -29,6 +29,7 @@ not move when an evaluation changes GROQ_PREFERENCE or BFA_INDEX_DIR.
 
 Run:
   streamlit run app.py
+  BFA_DEV=1 streamlit run app.py     # with the developer diagnostics
 """
 
 import base64
@@ -207,6 +208,14 @@ K = 5
 # person running it having typed the path.
 INDEX_DIR = Path(os.environ.get("BFA_INDEX_DIR", "out/index_gemini_v2"))
 POST_FILTER = True
+# THE DEVELOPER SWITCH. Off unless BFA_DEV=1. A field officer reads answers,
+# not diagnostics: "k=5", "top fused", "meta row", "post-filter", chunk ids,
+# token counts, file paths and raw provider errors are operator information
+# (BRAND.md 1 and 10.1: jargon-free). With the switch on, every one of them
+# is back exactly as before; with it off, the page says the same things in
+# plain words, or -- for pure diagnostics -- not at all. Nothing about how
+# an answer is produced changes either way.
+DEV = os.environ.get("BFA_DEV", "").strip() == "1"
 GLOSSARY = False                      # measured, not adopted; see generate.py
 # THE FLOOR BELONGS TO THE INDEX AND TO ITS FUSION WEIGHTS.
 #
@@ -332,7 +341,8 @@ def assets():
     THE MOTIF IS NOT HERE. assets/brac-divider.svg was a hand-drawn running
     stitch, and BRAND.md section 5 says the motif is never redrawn. No
     official export from Brand motif.indd is in assets/, so the band it
-    occupied is white space. The file is left on disk, unreferenced.
+    occupied is white space. The file itself was deleted in the brand-audit
+    pass: a redrawn motif should not sit in the repo for someone to reuse.
     """
     return {
         "logo": _data_uri(ASSETS / "brac-logo.png", "image/png"),
@@ -631,14 +641,14 @@ details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
 .bfa-soon { background: var(--card); border: 1px solid var(--card-line);
             border-radius: 10px; padding: 22px; margin: 4px 22px 22px;
             font-size: 14px; line-height: 1.7; color: var(--ink); }
-.bfa-soon .k { font-weight: 600; color: var(--accent);
+.bfa-soon .k { font-weight: 700; color: var(--accent);
                text-transform: uppercase; letter-spacing: .12em;
                font-size: var(--small); display: block; margin-bottom: 8px; }
 
 .bfa-section { padding: 4px 22px 18px; }
 .bfa-card { background: var(--card); border: 1px solid var(--card-line);
             border-radius: 10px; padding: 20px 22px; }
-.bfa-label { font-size: var(--small); font-weight: 600; letter-spacing: .14em;
+.bfa-label { font-size: var(--small); font-weight: 700; letter-spacing: .14em;
              text-transform: uppercase; color: var(--accent);
              margin: 0 0 12px; }
 .bfa-answer { font-size: $bengali_px; line-height: 1.8; color: var(--ink); }
@@ -716,12 +726,14 @@ details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
 .bfa-foot-note { font-size: var(--small); line-height: 1.65;
                  color: var(--muted); max-width: 820px;
                  padding: 32px 22px 16px; }
-/* THE BAR: the programme name and nothing else, left-aligned, 21px white.
-   BOLD 700, not the specified semibold. White on #EC008C is 4.25:1, a pass
-   only as WCAG LARGE text, and at 21px that needs bold; 600 was borderline
-   (journal 4m). */
-.bfa-footer { background: var(--magenta); padding: 18px 22px 20px; }
-.bfa-footer .name { font-size: 21px; font-weight: 700; line-height: 1.4;
+/* THE BAR: the programme name and nothing else, left-aligned, 21px white,
+   in a 52px bar (BRAND.md 11). BOLD 700, not BRAND.md's semibold -- a
+   RECORDED EXCEPTION (journal 4p): white on #EC008C is 4.25:1, a pass only
+   as WCAG large text, and at 21px that needs bold. */
+.bfa-footer { background: var(--magenta); height: 52px;
+               box-sizing: border-box; padding: 0 22px;
+               display: flex; align-items: center; }
+.bfa-footer .name { font-size: 21px; font-weight: 700; line-height: 1;
                     color: var(--on-magenta); text-align: left; }
 """).safe_substitute(latin=BRAND["latin"], bengali=BRAND["bengali"],
                      bengali_px=BRAND["bengali_px"])
@@ -1347,7 +1359,8 @@ def main():
         f'<div class="bfa-sub">{esc(t("subtitle", lang))}</div>'
         '</div>', unsafe_allow_html=True)
 
-    cards = stat_cards()
+    # Corpus and evaluation figures: developer information only.
+    cards = stat_cards() if DEV else []
     if cards:
         def note(x):
             return t(x[0], lang, **x[1]) if isinstance(x, tuple) else x
@@ -1423,8 +1436,9 @@ def render_ask(a, lang):
             pick = st.selectbox(
                 t("gold_select", lang, n=len(gold)),
                 list(texts), index=None, key="gold_pick",
+                # The question id is an evaluation handle: developer only.
                 format_func=lambda qid: (
-                    f"{qid}  {texts[qid]}"
+                    (f"{qid}  " if DEV else "") + texts[qid]
                     + (f"  {t(marks[qid], lang)}" if marks[qid] else "")),
                 placeholder=t("gold_placeholder", lang))
             # Set the INPUT, do not bypass it: the chosen question then
@@ -1456,7 +1470,9 @@ def render_ask(a, lang):
     used = generate.ledger_used(PROVIDER, MODEL)
     limit = generate.TPD_LIMIT.get(PROVIDER)
     budget_warn = ""
-    if limit and used / limit >= generate.TPD_WARN_AT:
+    # Token accounting is the operator's problem, not the officer's: when
+    # the budget actually runs out, the officer sees the plain error card.
+    if DEV and limit and used / limit >= generate.TPD_WARN_AT:
         budget_warn = (
             '<div class="bfa-budget"><div class="inner">'
             f'<span class="k">{esc(t("budget_head", lang))}</span><br>'
@@ -1483,13 +1499,15 @@ def render_ask(a, lang):
         # same note as the memory card: this was not a refusal.
         body.append(
             f'<div class="bfa-answer-en"><b>{esc(t("embedder_down", lang))}'
-            '</b></div>'
-            f'<div class="bfa-flag note"><span class="k">'
-            f'{esc(t("infra_note_head", lang))}</span><br>'
-            + t("infra_note_body", lang,
-                id=f'<code>{esc(result["id"])}</code>',
-                flag='<code>answered: false</code>')
-            + '</div>')
+            '</b></div>')
+        if DEV:
+            body.append(
+                f'<div class="bfa-flag note"><span class="k">'
+                f'{esc(t("infra_note_head", lang))}</span><br>'
+                + t("infra_note_body", lang,
+                    id=f'<code>{esc(result["id"])}</code>',
+                    flag='<code>answered: false</code>')
+                + '</div>')
     elif result.get("infra"):
         # THE FOURTH CARD STATE. Not an abstention and not an answer: the
         # question was never put to anything. Said in the same voice as the
@@ -1497,20 +1515,31 @@ def render_ask(a, lang):
         # replaces pointed at the index and the index is not at fault.
         body.append(
             f'<div class="bfa-answer-en"><b>{esc(t("infra_head", lang))}'
-            '</b></div>'
-            f'<div class="bfa-flag"><span class="k">'
-            f'{esc(t("infra_flag_head", lang))}</span><br>'
-            # infra_flag_body carries its own <br> and <b>; it is a string
-            # from the table, not data, so it is not escaped.
-            + t("infra_flag_body", lang, one=1, two=2, resident=2.5,
-                ceiling=15.6)
-            + '</div>'
-            f'<div class="bfa-flag note"><span class="k">'
-            f'{esc(t("infra_note_head", lang))}</span><br>'
-            + t("infra_note_body", lang,
-                id=f'<code>{esc(result["id"])}</code>',
-                flag='<code>answered: false</code>')
-            + '</div>')
+            '</b></div>')
+        if not DEV:
+            # The officer's version: what to do, and who to tell.
+            body.append(f'<div class="bfa-flag">'
+                        f'{esc(t("infra_simple", lang))}</div>')
+        else:
+            body.append(
+                f'<div class="bfa-flag"><span class="k">'
+                f'{esc(t("infra_flag_head", lang))}</span><br>'
+                # infra_flag_body carries its own <br> and <b>; it is a
+                # string from the table, not data, so it is not escaped.
+                + t("infra_flag_body", lang, one=1, two=2, resident=2.5,
+                    ceiling=15.6)
+                + '</div>'
+                f'<div class="bfa-flag note"><span class="k">'
+                f'{esc(t("infra_note_head", lang))}</span><br>'
+                + t("infra_note_body", lang,
+                    id=f'<code>{esc(result["id"])}</code>',
+                    flag='<code>answered: false</code>')
+                + '</div>')
+    elif result.get("error") and not DEV:
+        # The raw reason ("groq: 429 ...") is a diagnostic; the officer gets
+        # what it means for them.
+        body.append(f'<div class="bfa-answer-en"><b>'
+                    f'{esc(t("error_simple", lang))}</b></div>')
     elif result.get("error"):
         hint = t("error_untranslated", lang)
         body.append(
@@ -1565,7 +1594,7 @@ def render_ask(a, lang):
                 f'{esc(t("abstain_head", lang))}</span><br>'
                 f'{esc(t("abstain_body", lang))}</div>')
 
-        if meta.get("filter_skipped"):
+        if DEV and meta.get("filter_skipped"):
             # The meta row keeps generate's English reason; the page shows
             # the same reason in the interface language.
             reason = (t("filter_skip_off", lang) if not POST_FILTER
@@ -1589,16 +1618,17 @@ def render_ask(a, lang):
                 '</div>')
 
         model_used = meta.get("model") or t("meta_no_model", lang)
-        body.append(
-            '<div class="bfa-meta">'
-            + t("meta_line", lang,
-                model=f'<b>{esc(model_used)}</b>', provider=esc(PROVIDER),
-                k=K, top=n(f'{meta.get("top_fused") or 0:.4f}', lang),
-                prompt=n(f'{meta.get("prompt_tokens") or 0:,}', lang),
-                output=n(f'{meta.get("output_tokens") or 0:,}', lang),
-                id=f'<code>{esc(result["id"])}</code>',
-                path=esc(DEMO_META.as_posix()))
-            + '</div>')
+        if DEV:
+            body.append(
+                '<div class="bfa-meta">'
+                + t("meta_line", lang,
+                    model=f'<b>{esc(model_used)}</b>', provider=esc(PROVIDER),
+                    k=K, top=n(f'{meta.get("top_fused") or 0:.4f}', lang),
+                    prompt=n(f'{meta.get("prompt_tokens") or 0:,}', lang),
+                    output=n(f'{meta.get("output_tokens") or 0:,}', lang),
+                    id=f'<code>{esc(result["id"])}</code>',
+                    path=esc(DEMO_META.as_posix()))
+                + '</div>')
 
     # THE WELCOME PHOTO, AND ONLY ON WELCOME. Shown while nothing has been
     # asked; gone the moment any card state replaces the empty one -- an
@@ -1645,16 +1675,21 @@ def render_ask(a, lang):
             for c in chunks:
                 st.markdown(
                     '<div class="bfa-chunk">'
-                    f'<span class="id">{esc(c["chunk_id"])}</span>'
-                    f'<span class="cl">{esc(_mf_manual(c))} '
+                    # The chunk id and the fused score are developer
+                    # information; the manual and clause are what an
+                    # officer can look up.
+                    + (f'<span class="id">{esc(c["chunk_id"])}</span>'
+                       if DEV else '')
+                    + f'<span class="cl">{esc(_mf_manual(c))} '
                     + (f'&sect;{esc(_mf_clause(c))}' if _mf_clause(c)
                        else f'<i>{esc(t("no_clause", lang))}</i>') + '</span>'
                     + (f'<span class="cited">{esc(t("cited", lang))}</span>'
                        if c["chunk_id"] in cited else '')
-                    + '<span class="sc">'
-                    + esc(t("fused", lang,
-                            score=n(f'{c["fused_score"]:.2f}', lang)))
-                    + '</span></div>', unsafe_allow_html=True)
+                    + (('<span class="sc">'
+                        + esc(t("fused", lang,
+                                score=n(f'{c["fused_score"]:.2f}', lang)))
+                        + '</span>') if DEV else '')
+                    + '</div>', unsafe_allow_html=True)
 
 
 
@@ -1675,7 +1710,8 @@ def render_faq(lang):
     st.markdown(
         f'<div class="bfa-soon"><span class="k">{esc(t("faq_state", lang))}'
         f'</span><b>{esc(t("faq_head", lang))}</b><br>'
-        f'{esc(t("faq_body", lang, n=24))}</div>', unsafe_allow_html=True)
+        f'{esc(t("faq_body_dev" if DEV else "faq_body", lang, n=24))}'
+        '</div>', unsafe_allow_html=True)
 
 # Convention 1: importing this module must never write a file or call a
 # provider. Everything above is a definition; main() does the work.

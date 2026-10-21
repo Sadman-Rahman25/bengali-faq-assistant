@@ -2901,10 +2901,11 @@ pressing submit again shows it.
    gives the magenta highlight to an *updated rule*, which lives in a
    different table). No product is in pilot today, so nothing on the page
    uses the "updated rule" colour yet.
-8. **Bengali copy not checked against 10.2.** The new Bengali strings aim at
-   Prothom Alo style (e.g. সঙ্গে). The two inherited sentences were left
-   word for word, and one of them uses সাথে. "লাইট" / "ডার্ক" for the theme
-   switch need a Bengali reviewer.
+8. **Bengali copy not checked against 10.2.** ~~The new Bengali strings aim
+   at Prothom Alo style (e.g. সঙ্গে).~~ **CORRECTED (4p): that was wrong.**
+   BRAND.md 10.2's confirmed word list says use সাথে, not সঙ্গে; every
+   সঙ্গে, including একসঙ্গে, is now সাথে / একসাথে. "লাইট" / "ডার্ক" for the
+   theme switch still need a Bengali reviewer.
 9. **Upstream error text stays English.** Provider and budget refusals
    arrive from `generate.py` as English sentences. The lead-in is
    translated, and in bn a note says the message below is shown as
@@ -3173,6 +3174,59 @@ today's, so nothing had drifted. The fingerprint was written from the **stored**
 `index_text`, not today's: if an input had drifted, `cache_reuse` should notice
 and re-encode, and writing today's digest would have asserted the one thing
 that file was not entitled to assert.
+
+---
+
+## 4p. The BRAND.md audit, applied; and the exceptions, recorded
+
+`docs/BRAND.md` arrived, and `CLAUDE.md` makes it the authority: where it
+conflicts with anything else, it wins. Auditing the app against it found 16
+differences. This pass applies the ones that were decided, and records the
+ones kept as **exceptions**. An exception is a deliberate departure, with a
+reason, that can be reviewed; an unrecorded difference is a mistake nobody
+has noticed yet.
+
+### Applied
+
+- **Jargon behind a developer switch.** `BFA_DEV=1` turns it on; it is off
+  by default. Officers no longer see `k=5`, "top fused", "meta row",
+  "post-filter", chunk ids, scores, token counts, file paths, question ids,
+  the corpus/evaluation stat cards, the token-budget banner or a raw
+  provider error. Where an officer still needs the fact, it is said in
+  plain words: the memory card says what to do and who to tell, the error
+  card says to try again, and the clause list stays (the refusal text tells
+  the reader to open it) but shows only manual and clause. With the switch
+  on, every diagnostic is back as before. Nothing about how an answer is
+  produced changes either way.
+- **"Gold" is now "Sample questions" / "নমুনা প্রশ্ন"** in both languages.
+- **সঙ্গে → সাথে** throughout `ui_strings.py`, including একসঙ্গে → একসাথে in
+  the photo alt text (BRAND.md 10.2's confirmed word list). This reverses
+  4m item 8, which wrongly gave সঙ্গে as the Prothom Alo choice.
+- **`assets/brac-divider.svg` deleted.** It was a redrawn motif (BRAND.md 5).
+- **Footer bar 52px** (BRAND.md 11).
+- **Section labels bold 700** (ANSWER, NOT STARTED, the quiz's QUESTION n and
+  YOUR SCORE), still `#B8006B` in light mode.
+- **The empty photo slot on Test yourself is removed.** Ten questions on one
+  page is copy-heavy, and BRAND.md 6 says to leave images out of such pages.
+
+### Recorded exceptions
+
+| # | BRAND.md says | The app does | Why |
+|---|---|---|---|
+| 1 | Footer: Semibold (4.1) | **Bold 700** | Contrast. White on `#EC008C` is 4.25:1, a pass only as WCAG large text, and at 21px that needs bold. On a phone screen outdoors, semibold is the weight that fails. |
+| 2 | The main call-to-action is magenta (3.2) | **`#B8006B`** button fill (light) | Contrast. A white 14px label on `#EC008C` is 4.25:1, under the 4.5:1 that small text needs; on `#B8006B` it is 6.46:1. `#B8006B` is BRAND.md's own approved text tint (3.3). |
+| 3 | Body line height 1.4 (4.1) | **1.6–1.8 for Bengali** | Bengali vowel signs and conjuncts sit above and below the line and need room on screen; at 1.4 they crowd the next line. This covers Bengali text only. The English chrome's 1.5–1.7 is *not* covered by this exception and remains an open difference. |
+| 4 | One accent colour per section (3.2) | **Teal and brick red in one status card** | 3.2 also gives the meanings: teal marks the positive, brick red the risk. A product that is active and one that is suspended, side by side, need both. |
+| 5 | Photos show real emotion (7) | **The river photo shows a woman from behind** | Consent. With no face visible, nobody in it is identifiable, so it can be published while signed consent is still outstanding for the photos that do show faces. Like the other photo, it is also below the 4000 × 3000 px source size, because no larger original was supplied. |
+| 6 | Kohinoor Bangla for all Bengali (4) | **Noto Sans Bengali**, with Kohinoor named first | No Kohinoor web licence yet, so there is nothing to self-host. Where Kohinoor is installed (macOS, iOS) it is used; everywhere else, Noto. Revisit when the licence arrives. |
+| 7 | Only official hex codes (3.1, 14) | **A dark theme** built from official codes plus three stated blends (`#34352A`, `#414237`, `#521F35`), with the tints `#F6B3D6` / `#00594C` / `#B8006B` used as text and fills | BRAND.md has no dark palette. **Awaiting brand approval**; until then it is a reading aid, not a brand-approved theme. |
+
+### Still open (not decided in this pass)
+
+From the audit, not changed here: the logo is not the official 1181 × 392 px
+file and its clear space looks breached by the title; signed consent for the
+textile workers is not on file; Helvetica Neue 45 Light / 65 Medium weights
+are not used; the English chrome's line height (see exception 3).
 
 ---
 

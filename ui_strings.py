@@ -77,12 +77,12 @@ STRINGS = {
         "en": "How would you like to ask?",
         "bn": "কীভাবে প্রশ্ন করবেন?"},
     "mode_browse": {
-        "en": "Browse gold questions",
-        "bn": "যাচাই-সেটের প্রশ্ন দেখুন"},
+        "en": "Sample questions",
+        "bn": "নমুনা প্রশ্ন"},
     "mode_own": {"en": "Ask your own", "bn": "নিজের প্রশ্ন লিখুন"},
     "gold_select": {
-        "en": "{n} gold questions – the evaluation set",
-        "bn": "যাচাই-সেটের {n}টি প্রশ্ন – মূল্যায়নের জন্য"},
+        "en": "{n} sample questions",
+        "bn": "{n}টি নমুনা প্রশ্ন"},
     "gold_placeholder": {
         "en": "Choose a question to put it in the box",
         "bn": "একটি প্রশ্ন বাছুন, সেটি নিচের ঘরে বসবে"},
@@ -128,6 +128,15 @@ STRINGS = {
                "question could be searched."),
         "bn": ("উত্তর নেই। প্রশ্নটি খোঁজার আগেই কম্পিউটারের মেমরি "
                "ফুরিয়ে গেছে।")},
+    # The officer's version of the memory card (DEV off): what to do, and who
+    # to tell. The diagnosis below it is for whoever runs the machine.
+    "infra_simple": {
+        "en": ("Searching could not start on this computer just now. Close "
+               "other programs, then reload the page. If it keeps happening, "
+               "tell the person who looks after this system."),
+        "bn": ("এই কম্পিউটারে এখন খোঁজা শুরু করা যায়নি। অন্য প্রোগ্রাম বন্ধ "
+               "করে পাতাটি আবার খুলুন। বারবার এমন হলে যিনি এই ব্যবস্থাটি "
+               "দেখাশোনা করেন, তাঁকে জানান।")},
     "infra_flag_head": {
         "en": "Nothing is wrong with the manuals or the index.",
         "bn": "ম্যানুয়াল বা সূচিতে কোনো সমস্যা নেই।"},
@@ -165,6 +174,13 @@ STRINGS = {
                "দিতে অস্বীকার বলে পড়া যাবে না। অস্বীকার হলো সিস্টেমের নেওয়া "
                "সিদ্ধান্ত; এটি তা নয়।")},
 
+    # The officer's version of the error card (DEV off). The raw reason from
+    # generate.py is a diagnostic and is shown only with the switch on.
+    "error_simple": {
+        "en": ("No answer. The answer service cannot be used just now. "
+               "Please try again in a little while."),
+        "bn": ("উত্তর নেই। এই মুহূর্তে উত্তর দেওয়ার সেবাটি ব্যবহার করা যাচ্ছে "
+               "না। কিছুক্ষণ পর আবার চেষ্টা করুন।")},
     "error_head": {
         "en": "No answer. The provider was not called.",
         "bn": "উত্তর নেই। মডেল সেবায় প্রশ্ন পাঠানো হয়নি।"},
@@ -195,12 +211,12 @@ STRINGS = {
         "bn": ("এই মুহূর্তে সেবাটি ব্যবহার করা যাচ্ছে না। "
                "কিছুক্ষণ পর আবার চেষ্টা করুন।")},
     "abstain_head": {
-        "en": "The model read the clauses and found no answer in them.",
-        "bn": "মডেল ধারাগুলো পড়েছে, কিন্তু সেখানে উত্তর পায়নি।"},
+        "en": "The clauses were read, and they do not give an answer.",
+        "bn": "ধারাগুলো পড়া হয়েছে, কিন্তু সেখানে উত্তর নেই।"},
     "abstain_body": {
-        "en": ("This is a refusal, not a blank. The clauses below were "
-               "retrieved and read; they do not carry the figure asked for. "
-               "Open them and judge for yourself."),
+        "en": ("This is a refusal, not a blank. The clauses below were found "
+               "and read; they do not give the figure asked for. Open them "
+               "and judge for yourself."),
         "bn": ("এটি ইচ্ছাকৃতভাবে উত্তর না দেওয়া, ফাঁকা উত্তর নয়। নিচের "
                "ধারাগুলো খুঁজে এনে পড়া হয়েছে; যে সংখ্যা চাওয়া হয়েছে, তা "
                "সেগুলোতে নেই। খুলে দেখে নিজে বিচার করুন।")},
@@ -250,25 +266,27 @@ STRINGS = {
         "bn": "কোনো মডেল নয় – ন্যূনতম স্কোরে পৌঁছায়নি"},
 
     # ------------------------------------------------------ retrieved list
-    "chunks_title": {"en": "Retrieved chunks", "bn": "খুঁজে পাওয়া অংশ"},
+    "chunks_title": {"en": "Clauses found in the manuals",
+                     "bn": "ম্যানুয়ালে খুঁজে পাওয়া ধারা"},
     "orphan_head": {
-        "en": "Cited but not retrieved.",
+        "en": "Cited but not found.",
         "bn": "উল্লেখ আছে, কিন্তু খুঁজে পাওয়া যায়নি।"},
     "orphan_body": {
-        "en": ("named in the answer, but no retrieved chunk carries that "
-               "clause. Either the model invented it, or it belongs to a "
-               "manual this search did not reach. Treat the answer as "
-               "unsupported on that point."),
-        "bn": ("উত্তরে নাম আছে, কিন্তু খুঁজে পাওয়া কোনো অংশে এই ধারা নেই। "
-               "হয় মডেল এটি বানিয়েছে, নয়তো এটি এমন ম্যানুয়ালের, যেখানে এই "
-               "খোঁজ পৌঁছায়নি। এই বিষয়ে উত্তরটিকে সমর্থনহীন ধরুন।")},
-    "chunks_none": {"en": "Nothing retrieved yet.", "bn": "এখনো কিছু খোঁজা হয়নি।"},
+        "en": ("named in the answer, but none of the clauses found carries "
+               "it. It may be a mistake, or it may be in a manual this search "
+               "did not reach. Treat the answer as unsupported on that "
+               "point."),
+        "bn": ("উত্তরে নাম আছে, কিন্তু খুঁজে পাওয়া কোনো ধারায় এটি নেই। এটি "
+               "ভুল হতে পারে, অথবা এমন ম্যানুয়ালে থাকতে পারে, যেখানে এই খোঁজ "
+               "পৌঁছায়নি। এই বিষয়ে উত্তরটিকে সমর্থনহীন ধরুন।")},
+    "chunks_none": {"en": "No clauses found yet.",
+                    "bn": "এখনো কোনো ধারা খোঁজা হয়নি।"},
     "chunks_infra": {
-        "en": "Retrieval never ran – the search model could not be loaded.",
-        "bn": "খোঁজা হয়নি – খোঁজার মডেলটি চালু করা যায়নি।"},
+        "en": "Nothing was searched – the search could not start on this computer.",
+        "bn": "কিছু খোঁজা হয়নি – এই কম্পিউটারে খোঁজা শুরু করা যায়নি।"},
     "chunks_embedder": {
-        "en": "Retrieval never ran – the search service could not be reached.",
-        "bn": "খোঁজা হয়নি – খোঁজার সেবায় পৌঁছানো যায়নি।"},
+        "en": "Nothing was searched – the search service could not be reached.",
+        "bn": "কিছু খোঁজা হয়নি – খোঁজার সেবায় পৌঁছানো যায়নি।"},
     "no_clause": {"en": "no clause number", "bn": "ধারা নম্বর নেই"},
     "cited": {"en": "CITED", "bn": "উল্লেখিত"},
     "fused": {"en": "fused {score}", "bn": "স্কোর {score}"},
@@ -282,7 +300,7 @@ STRINGS = {
                "smoothing a length of yellow fabric together. One of them is "
                "smiling."),
         "bn": ("একটি কাপড়ের কারখানায় লম্বা টেবিলের ওপর ঝুঁকে দুজন মানুষ "
-               "একসঙ্গে একটি হলুদ কাপড় সমান করছেন। তাঁদের একজন হাসছেন।")},
+               "একসাথে একটি হলুদ কাপড় সমান করছেন। তাঁদের একজন হাসছেন।")},
     "river_photo_alt": {
         "en": ("A woman, seen from behind, rows a wooden boat along a narrow "
                "river between muddy banks."),
@@ -293,12 +311,18 @@ STRINGS = {
     # shown, because the slot draws nothing without the file.
     "members_photo_alt": {
         "en": "Members sitting together at a group meeting.",
-        "bn": "একটি দলীয় সভায় সদস্যরা একসঙ্গে বসে আছেন।"},
+        "bn": "একটি দলীয় সভায় সদস্যরা একসাথে বসে আছেন।"},
     "faq_state": {"en": "Not started", "bn": "শুরু হয়নি"},
     "faq_head": {
         "en": "Fifty questions field officers actually ask, with reviewed answers.",
         "bn": "মাঠকর্মীরা আসলে যে পঞ্চাশটি প্রশ্ন করেন, যাচাই করা উত্তরসহ।"},
     "faq_body": {
+        "en": ("Each answer will be checked against the printed manual. "
+               "This section opens once the questions have been collected "
+               "from the field and their answers checked."),
+        "bn": ("প্রতিটি উত্তর ছাপা ম্যানুয়ালের সাথে মিলিয়ে দেখা হবে। মাঠ থেকে "
+               "প্রশ্ন সংগ্রহ করে উত্তর যাচাইয়ের পর এই অংশ চালু হবে।")},
+    "faq_body_dev": {
         "en": ("The {n} questions in the evaluation set were written by "
                "reading chunks, so they test retrieval mechanics rather than "
                "what an officer walks in with. This surface waits on the field "
@@ -311,6 +335,8 @@ STRINGS = {
 
     # ------------------------------------------------------------ the quiz
     "quiz_no_bank": {"en": "No bank", "bn": "প্রশ্নভান্ডার নেই"},
+    "quiz_not_ready": {"en": "The quiz is not ready yet.",
+                       "bn": "কুইজ এখনো তৈরি হয়নি।"},
     "quiz_no_bank_body": {
         "en": "Nothing at {path}. Run {cmd} first.",
         "bn": "{path}-এ কিছু নেই। আগে {cmd} চালান।"},
@@ -319,6 +345,11 @@ STRINGS = {
     "quiz_awaiting_review": {"en": "Waiting for review",
                              "bn": "পর্যালোচনার অপেক্ষায়"},
     "quiz_awaiting_review_body": {
+        "en": ("The questions are still being checked by a person. They "
+               "will appear here once they have been reviewed."),
+        "bn": ("প্রশ্নগুলো এখনো একজন মানুষ যাচাই করছেন। যাচাই শেষ হলে এখানে "
+               "দেখা যাবে।")},
+    "quiz_awaiting_review_body_dev": {
         "en": ("The bank holds {total} questions, but none has been reviewed "
                "by a person in its current form. A question appears here once "
                "someone has read it and marked it correct. Nothing needs "
@@ -328,6 +359,9 @@ STRINGS = {
                "পর প্রশ্নটি এখানে দেখা যাবে। নতুন করে কিছু তৈরি করার দরকার "
                "নেই।")},
     "quiz_intro": {
+        "en": "{n} questions, chosen at random. Every answer comes from the manuals.",
+        "bn": "এলোমেলোভাবে বাছাই করা {n}টি প্রশ্ন। প্রতিটি উত্তর ম্যানুয়াল থেকে নেওয়া।"},
+    "quiz_intro_dev": {
         "en": ("{n} questions, drawn at random from {total} in the bank, with "
                "no more than {cap} sharing a correct answer. Answers come from "
                "the manuals; nothing is generated while you take this."),
@@ -370,7 +404,7 @@ STRINGS = {
                "Product status comes from the field team's registry, not "
                "from the manuals."),
         "bn": ("উত্তরগুলো অপারেশন ম্যানুয়াল থেকে নেওয়া এবং অসম্পূর্ণ হতে "
-               "পারে। কাজ করার আগে ছাপা ম্যানুয়ালের সঙ্গে মিলিয়ে নিন। পণ্যের "
+               "পারে। কাজ করার আগে ছাপা ম্যানুয়ালের সাথে মিলিয়ে নিন। পণ্যের "
                "অবস্থা ম্যানুয়াল থেকে নয়, মাঠ দলের পণ্য নিবন্ধন থেকে নেওয়া।")},
     # THE BAR CARRIES THE PROGRAMME NAME, IN BENGALI, IN BOTH MODES. It is
     # the brand descriptor the footer specifies, not a sentence to translate.

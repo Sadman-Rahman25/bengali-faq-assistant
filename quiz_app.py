@@ -64,7 +64,7 @@ def quiz_css():
 .qz-card {{ background: var(--card); border: 1px solid var(--card-line);
            border-radius: 10px; padding: 18px 22px; margin-bottom: 14px; }}
 .qz-num {{ font-family: {BRAND['latin']}; font-size: var(--small);
-          font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+          font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
           color: var(--accent); margin: 0 0 10px; }}
 .qz-q {{ font-family: {BRAND['bengali']}; font-size: {BRAND['bengali_px']};
         line-height: 1.8; color: var(--ink); }}
@@ -260,7 +260,8 @@ def render_quiz(lang=None):
                     '<div class="qz-num">'
                     f'{esc(t("quiz_awaiting_review", lang))}</div>'
                     '<div class="qz-note">'
-                    + esc(t("quiz_awaiting_review_body", lang,
+                    + esc(t("quiz_awaiting_review_body_dev" if app.DEV
+                            else "quiz_awaiting_review_body", lang,
                             total=bank_size()))
                     + '</div></div></div>', unsafe_allow_html=True)
         return
@@ -268,9 +269,10 @@ def render_quiz(lang=None):
         st.markdown('<div class="qz-band"><div class="qz-card">'
                     f'<div class="qz-num">{esc(t("quiz_no_bank", lang))}</div>'
                     '<div class="qz-note">'
-                    + t("quiz_no_bank_body", lang,
-                        path=f"<code>{esc(str(BANK))}</code>",
-                        cmd="<code>python quiz_build.py</code>")
+                    + (t("quiz_no_bank_body", lang,
+                         path=f"<code>{esc(str(BANK))}</code>",
+                         cmd="<code>python quiz_build.py</code>")
+                       if app.DEV else esc(t("quiz_not_ready", lang)))
                     + '</div></div></div>', unsafe_allow_html=True)
         return
 
@@ -283,21 +285,17 @@ def render_quiz(lang=None):
               for q in qs if q["id"] == qid]
 
     with st.container(key="quiz"):
-        # THE INTRO PHOTO SLOT, for brac-members.webp. That file has not been
-        # supplied yet; until it is, photo_html returns '' and NOTHING is
-        # drawn -- no frame, no broken-image icon. Dropping the file into
-        # assets/ is enough: app.photo() keys its cache on the file's mtime.
-        intro_photo = app.photo_html("members", lang)
-        if intro_photo:
-            st.markdown(intro_photo, unsafe_allow_html=True)
+        # NO PHOTO HERE. Ten questions on one page is copy-heavy, and
+        # BRAND.md 6 says to leave images out of copy-heavy pages; the empty
+        # slot for brac-members.webp was removed in the brand-audit pass.
         # A SHORT DRAW IS REPORTED, NOT ABSORBED. draw() returns fewer than
         # ten only when the cap and the bank together cannot do better, and a
         # quiz that quietly serves eight looks like a quiz with two questions
         # missing. Name the number and the reason instead.
         st.markdown(
             '<div class="qz-note">'
-            + esc(t("quiz_intro", lang, n=len(chosen), total=len(qs),
-                    cap=MAX_SAME_ANSWER))
+            + esc(t("quiz_intro_dev" if app.DEV else "quiz_intro", lang,
+                    n=len(chosen), total=len(qs), cap=MAX_SAME_ANSWER))
             + '</div>', unsafe_allow_html=True)
         if len(chosen) < N_PER_SESSION:
             st.markdown(
@@ -305,8 +303,9 @@ def render_quiz(lang=None):
                 + esc(t("quiz_short_head", lang, n=len(chosen),
                         want=N_PER_SESSION))
                 + '</b> '
-                + esc(t("quiz_short_body", lang, cap=MAX_SAME_ANSWER,
-                        total=len(qs), capacity=answer_capacity(qs)))
+                + (esc(t("quiz_short_body", lang, cap=MAX_SAME_ANSWER,
+                         total=len(qs), capacity=answer_capacity(qs)))
+                   if app.DEV else '')
                 + '</div>', unsafe_allow_html=True)
 
         # ALL TEN ON ONE PAGE, ONE SUBMIT. There is no model call and so no
