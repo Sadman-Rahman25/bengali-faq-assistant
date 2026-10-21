@@ -442,11 +442,28 @@ def pick_distractors(kind, correct, unit, chunk_text, fig_pool, role_pool,
             break
         if option_key(cand) in seen:
             continue
-        if cand in chunk_text:            # must be wrong FOR THIS CHUNK
+        if occurs_as_word(cand, chunk_text):   # must be wrong FOR THIS CHUNK
             continue
         seen.add(option_key(cand))
         out.append(cand)
     return out
+
+
+# A DISTRACTOR "IN THE CHUNK" MEANS AS A WORD, NOT AS LETTERS. The check was
+# a substring test, and Q-043's পিএস was flagged in progoti_0090_p4 for the
+# letters inside ডিপিএসসহ (DPS) -- a post that chunk never names. Bengali
+# word boundaries are the registry topic gate's: its Bengali-block
+# lookarounds and its closed list of endings, imported, not restated. The
+# literal goes through bn_shared.canon_pattern rather than the registry's
+# own, because that one keeps digit separators and a figure distractor like
+# ১,০০,০০০ টাকা would then never match canon'd text.
+def occurs_as_word(span, text):
+    """Does `span` occur in `text` as a word of its own, with or without a
+    case ending -- not inside a longer word? -> bool"""
+    from registry import _BN, _ENDINGS
+    rx = _re.compile("(?<![%s])%s%s(?![%s])" % (
+        _BN, bn_shared.canon_pattern(span).pattern, _ENDINGS, _BN))
+    return bool(rx.search(canon(text or "")))
 
 
 # ------------------------------------------------------------- validation
@@ -602,7 +619,7 @@ def validate(q, chunk_text):
     for d in q["options"]:
         if d == q["correct"]:
             continue
-        if d in chunk_text:
+        if occurs_as_word(d, chunk_text):
             bad.append(f"distractor occurs in the chunk: {d!r}")
     if len({canon(o) for o in q["options"]}) != 4:
         bad.append("options not distinct after canon()")

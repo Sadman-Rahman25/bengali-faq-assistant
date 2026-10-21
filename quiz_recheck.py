@@ -690,14 +690,23 @@ def audit_canary(by_id, qb, registry, canon, canon_pattern):
     line("4d", "progoti_0187: the BM with a plural ending",
          only_inside_a_word(bm_q, endings, canon, canon_pattern), False)
 
-    # 4e: a sentence cut from the chunk is in it; two pieces of the chunk
-    # joined -- the shape of a re-cut table row -- are not.
+    # 4e: a sentence cut from the chunk is in it. Two pieces of the chunk
+    # run together are not; joined with EXPLANATION_JOIN they are, unless a
+    # piece comes from another chunk.
     pos, _h = fixture("dabi_2025_0256", fig, "figure")
     line("4e", "dabi_2025_0256: a sentence from the chunk",
          not explanation_in_chunk(pos, ex_text, canon), False)
-    joined = dict(pos, explanation=ex_text[:40] + " " + ex_text[-40:])
-    line("4e", "dabi_2025_0256: two pieces of it joined",
-         not explanation_in_chunk(joined, ex_text, canon), True)
+    head, tail = ex_text[:40].strip(), ex_text[-40:].strip()
+    run = dict(pos, explanation=head + " " + tail)
+    line("4e", "dabi_2025_0256: two pieces run together",
+         not explanation_in_chunk(run, ex_text, canon), True)
+    joined = dict(pos, explanation=head + EXPLANATION_JOIN + tail)
+    line("4e", "dabi_2025_0256: two pieces joined",
+         not explanation_in_chunk(joined, ex_text, canon), False)
+    other = by_id["progoti_0139"]["display_text"][:40].strip()
+    foreign = dict(pos, explanation=head + EXPLANATION_JOIN + other)
+    line("4e", "dabi_2025_0256 joined to progoti_0139",
+         not explanation_in_chunk(foreign, ex_text, canon), True)
     lines.append("  " + ("DETECTED" if ok else "FAILED"))
     return ok, lines
 
@@ -712,22 +721,41 @@ def _endings(qb, registry, canon):
                   key=len, reverse=True)
 
 
+# A JOINED EXPLANATION IS ALLOWED, AND CHECKED PIECE BY PIECE. A table row
+# flattens into one long line, and the cell that answers a question can sit
+# far from the column header that says which programme it is for. Q-043 and
+# Q-069 join "প্রগতি — সমাধানকারী" to their row: that label is the guard
+# against the p6 mix-up, where the same role sat under another programme.
+# So an explanation may join pieces of its OWN cited chunk with this
+# separator, and every piece must be verbatim in that chunk.
+EXPLANATION_JOIN = " — "
+
+
 def explanation_in_chunk(q, chunk_text, canon):
-    """4e. Does the explanation shown beside the answer still occur, as one
-    continuous span, in the chunk it cites? Compared after canon() and with
-    whitespace runs collapsed; a trailing "..." -- explanation_sentence's
-    mark for a cut sentence -- is not part of the quote.
+    """4e. Is every piece of the explanation shown beside the answer
+    verbatim in the chunk it cites? Pieces are split on EXPLANATION_JOIN; a
+    whole-line quote is one piece. Compared after canon() and with
+    whitespace runs collapsed. Not part of any quote: a trailing "..." --
+    explanation_sentence's mark for a cut sentence -- and a trailing danda,
+    the full stop a re-cut row ends on.
 
     The table re-renders rewrote chunk text under unchanged chunk IDs, so a
     quote that was verbatim when written can stop being so without anyone
     touching the question."""
     def norm(s):
         return " ".join(canon(s or "").split())
-    e = (q.get("explanation") or "").rstrip()
-    for mark in ("...", "…"):
-        if e.endswith(mark):
-            e = e[:-len(mark)].rstrip()
-    return bool(e) and norm(e) in norm(chunk_text)
+    text = norm(chunk_text)
+    pieces = (q.get("explanation") or "").split(EXPLANATION_JOIN)
+    if not any(p.strip() for p in pieces):
+        return False
+    for p in pieces:
+        p = p.strip()
+        for mark in ("...", "…", "।"):
+            if p.endswith(mark):
+                p = p[:-len(mark)].rstrip()
+        if not p or norm(p) not in text:
+            return False
+    return True
 
 
 def step4(qs, by_id, qb, registry, canon, canon_pattern):
