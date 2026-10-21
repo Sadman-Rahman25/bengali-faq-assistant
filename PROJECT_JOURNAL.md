@@ -3372,6 +3372,33 @@ Highlights:
 
 **Not done**
 
+- **§2.5.4 puts the resolution time and the resolver in separate chunks, so
+  a question asking both gets half an answer.** The column-major rendering
+  fixed the labelling — every value now names its programme and its
+  sub-column — but §2.5.4 is wide enough that each (programme × sub-label)
+  column becomes its own `resplit` part. `প্রগতি — সমাধানের সময়` is
+  `progoti_0090_p3` and `প্রগতি — সমাধানকারী` is `progoti_0090_p4`, where one
+  chunk used to carry both.
+
+  **Measured, not assumed.** Each quiz question as actually asked retrieves
+  what it needs (2 of 2 complete, both at k=5). A question asking *both* —
+  "প্রগতি ঋণে এই অভিযোগ কে কত দিনে সমাধান করেন?" — returned only one of the
+  two needed chunks, in both forms tried. The answer is attributable now and
+  it was not before; it is also, for that shape of question, half there.
+
+  **The trade this records.** The old single chunk held both values and
+  labelled neither, so a complete answer was available and an attributable
+  one was not. Neither state is right, and the fix is not to go back: it is
+  to pack each programme's two sub-columns into ONE part, so `সমাধানের সময়`
+  and `সমাধানকারী` travel together under the same programme. That is a
+  change to the packing loop in `resplit.py`, not to the renderer.
+
+  **Deferred on purpose.** It would renumber the §2.5.4 parts again and
+  re-point Q-043 and Q-069 for a third time — both are human-reviewed
+  questions in `quiz/bank_validated.yaml`, and each re-point costs a review.
+  Worth doing in the same pass as the next §2.5.4 change, not on its own.
+  See §4n.
+
 - **§2.5.4 কমপ্লেইন্ট ডাটা still loses its sub-labels — the same defect as
   Class B, deliberately left.** Its header is two rows, exactly as §5.1.3's
   is: row 0 carries the programme groups (দাবি/বিসিইউপি, প্রগতি,
