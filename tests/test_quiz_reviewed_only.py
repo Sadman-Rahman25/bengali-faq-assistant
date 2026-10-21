@@ -144,6 +144,47 @@ def test_no_review_says_waiting_not_missing():
     assert not ui_strings.missing(), ui_strings.missing()
 
 
+def test_changed_manual_text_cancels_the_review():
+    """The §2.5.4 re-render case. On a SCRATCH COPY of the manifest, one
+    cited chunk's content hash changes while the question stays exactly as
+    reviewed: that question's review must be cancelled, it must leave the
+    quiz, and no other question may be affected. A missing manifest cancels
+    every review -- the quiz fails closed."""
+    import json
+    import quiz_recheck
+    man_path = ROOT / quiz_recheck.MANIFEST
+    qs_all, meta = quiz_app._load_bank(str(ROOT / quiz_app.BANK), 0)
+    state = meta["review_state"]
+    target = qs_all[0]
+    with tempfile.TemporaryDirectory() as tmp:
+        man = json.loads(man_path.read_text(encoding="utf-8"))
+        row = next(r for r in man["chunks"]
+                   if r["chunk_id"] == target["chunk_id"])
+        row["sha256"] = "0" * 64
+        scratch = Path(tmp) / "chunk_manifest.json"
+        scratch.write_text(json.dumps(man, ensure_ascii=False),
+                           encoding="utf-8")
+        hashes = quiz_recheck.chunk_hashes(scratch)
+        assert quiz_recheck.review_status(target, state, hashes) \
+            == "reviewed, changed since"
+        sharing = {q["id"] for q in qs_all
+                   if q["chunk_id"] == target["chunk_id"]}
+        real = quiz_recheck.MANIFEST
+        quiz_recheck.MANIFEST = scratch
+        try:
+            qs, _m = quiz_app.bank()
+            ids = {q["id"] for q in qs}
+            assert not (sharing & ids), sharing & ids
+            assert ids == {q["id"] for q in qs_all} - sharing
+            assert not (sharing & drawn_ids(qs))
+            quiz_recheck.MANIFEST = Path(tmp) / "absent.json"
+            assert quiz_app.bank()[0] == []
+        finally:
+            quiz_recheck.MANIFEST = real
+    assert (ROOT / quiz_recheck.MANIFEST).read_text(encoding="utf-8") \
+        == man_path.read_text(encoding="utf-8")
+
+
 def test_real_bank_ships_every_reviewed_question():
     qs, meta = quiz_app.bank()
     raw = yaml.safe_load((ROOT / quiz_app.BANK).read_text(
@@ -165,7 +206,7 @@ def test_the_real_bank_is_untouched():
 def canary():
     """With the filter off, the cancelled questions must be drawn."""
     real = quiz_app.shippable
-    quiz_app.shippable = lambda qs, meta: qs
+    quiz_app.shippable = lambda qs, meta, hashes: qs
     try:
         with tempfile.TemporaryDirectory() as tmp:
             path, edited, removed = scratch_bank(tmp)
@@ -192,6 +233,7 @@ def main():
     for fn in (test_cancelled_reviews_never_drawn,
                test_edit_leaves_the_quiz_without_a_restart,
                test_no_review_says_waiting_not_missing,
+               test_changed_manual_text_cancels_the_review,
                test_real_bank_ships_every_reviewed_question,
                test_the_real_bank_is_untouched):
         try:

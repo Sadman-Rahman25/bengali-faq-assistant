@@ -173,19 +173,21 @@ def draw(qs, n=N_PER_SESSION, cap=MAX_SAME_ANSWER, rng=random):
     return out
 
 
-def shippable(qs, meta):
+def shippable(qs, meta, hashes):
     """Only the questions a PERSON has reviewed as they now stand.
 
     A Claude or automated check does not count, and neither does a review
-    of an earlier wording: the bank's review_state holds each review with
-    the question's fingerprint, and an edit since voids it. A voided
-    question leaves the quiz until someone reviews it again -- it does not
-    stay visible on the strength of a review of different text. The rule is
-    quiz_recheck.review_status, imported rather than restated, so the quiz
-    and the unread sheet cannot disagree about what is reviewed."""
+    of an earlier wording or of an earlier manual text: the bank's
+    review_state holds each review with a fingerprint of the question AND
+    of the chunk it cites (`hashes`, from the manifest), and a change to
+    either voids it. A voided question leaves the quiz until someone
+    reviews it again -- it does not stay visible on the strength of a
+    review of different text. The rule is quiz_recheck.review_status,
+    imported rather than restated, so the quiz and the unread sheet cannot
+    disagree about what is reviewed."""
     from quiz_recheck import review_status
     state = meta.get("review_state") or {}
-    return [q for q in qs if review_status(q, state) == "reviewed"]
+    return [q for q in qs if review_status(q, state, hashes) == "reviewed"]
 
 
 @st.cache_data(show_spinner=False)
@@ -196,16 +198,29 @@ def _load_bank(path, mtime_ns):
     return (doc.get("questions") or []), (doc.get("meta") or {})
 
 
+@st.cache_data(show_spinner=False)
+def _load_hashes(path, mtime_ns):
+    """{chunk_id: content hash} from the manifest, cached per mtime."""
+    from quiz_recheck import chunk_hashes
+    return chunk_hashes(path)
+
+
 def bank():
     """-> (reviewed questions, meta). A YAML file; no model, no index.
 
-    KEYED ON THE FILE'S MTIME. The cache once had no key, so an edit to the
+    KEYED ON THE FILES' MTIMES. The cache once had no key, so an edit to the
     bank -- which voids that question's review -- was not seen until the
-    app restarted, and the question stayed in the quiz meanwhile."""
+    app restarted, and the question stayed in the quiz meanwhile. The
+    manifest is keyed the same way: a re-rendered chunk voids its
+    question's review too. A missing manifest voids every review -- the
+    quiz fails closed rather than trusting reviews it cannot check."""
+    from quiz_recheck import MANIFEST
     if not BANK.exists():
         return [], {}
     qs, meta = _load_bank(str(BANK), BANK.stat().st_mtime_ns)
-    return shippable(qs, meta), meta
+    hashes = (_load_hashes(str(MANIFEST), MANIFEST.stat().st_mtime_ns)
+              if MANIFEST.exists() else {})
+    return shippable(qs, meta, hashes), meta
 
 
 def bank_size():

@@ -689,6 +689,15 @@ def audit_canary(by_id, qb, registry, canon, canon_pattern):
     bm_q, _h = fixture("progoti_0187", bm[0], "role")
     line("4d", "progoti_0187: the BM with a plural ending",
          only_inside_a_word(bm_q, endings, canon, canon_pattern), False)
+
+    # 4e: a sentence cut from the chunk is in it; two pieces of the chunk
+    # joined -- the shape of a re-cut table row -- are not.
+    pos, _h = fixture("dabi_2025_0256", fig, "figure")
+    line("4e", "dabi_2025_0256: a sentence from the chunk",
+         not explanation_in_chunk(pos, ex_text, canon), False)
+    joined = dict(pos, explanation=ex_text[:40] + " " + ex_text[-40:])
+    line("4e", "dabi_2025_0256: two pieces of it joined",
+         not explanation_in_chunk(joined, ex_text, canon), True)
     lines.append("  " + ("DETECTED" if ok else "FAILED"))
     return ok, lines
 
@@ -703,14 +712,38 @@ def _endings(qb, registry, canon):
                   key=len, reverse=True)
 
 
+def explanation_in_chunk(q, chunk_text, canon):
+    """4e. Does the explanation shown beside the answer still occur, as one
+    continuous span, in the chunk it cites? Compared after canon() and with
+    whitespace runs collapsed; a trailing "..." -- explanation_sentence's
+    mark for a cut sentence -- is not part of the quote.
+
+    The table re-renders rewrote chunk text under unchanged chunk IDs, so a
+    quote that was verbatim when written can stop being so without anyone
+    touching the question."""
+    def norm(s):
+        return " ".join(canon(s or "").split())
+    e = (q.get("explanation") or "").rstrip()
+    for mark in ("...", "…"):
+        if e.endswith(mark):
+            e = e[:-len(mark)].rstrip()
+    return bool(e) and norm(e) in norm(chunk_text)
+
+
 def step4(qs, by_id, qb, registry, canon, canon_pattern):
     """-> {check: [(id, detail)]} over every question given."""
     keys = {canon(n): k for n, k in qb.role_vocabulary()}
     endings = _endings(qb, registry, canon)
-    hits = {"4a": [], "4b": [], "4c": [], "4d": []}
+    hits = {"4a": [], "4b": [], "4c": [], "4d": [], "4e": []}
     for q in qs:
         c = by_id.get(q["chunk_id"]) or {}
         heading = " > ".join(c.get("heading_path") or [])
+        if q["chunk_id"] not in by_id:
+            hits["4e"].append((q["id"], f"cited chunk {q['chunk_id']} is not "
+                                        f"in the corpus"))
+        elif not explanation_in_chunk(q, c.get("display_text") or "", canon):
+            hits["4e"].append((q["id"], f"{q['chunk_id']}: "
+                               f"{(q.get('explanation') or '')[:90]}"))
         for a, b, k in same_post_options(q, keys, canon):
             right = q["correct"] in (a, b)
             hits["4a"].append((q["id"], f"{a} / {b} ({k})"
@@ -746,27 +779,46 @@ def citation(q, manuals):
 # unseen. Each record holds the question's fingerprint at the time, so ANY
 # later change -- a hand edit, a re-pick -- voids it without anyone having
 # to remember to say so.
+#
+# THE SOURCE IS PART OF WHAT WAS REVIEWED. The fingerprint once covered the
+# question and the ID of the chunk it cites, not that chunk's text. The
+# §2.5.4 table re-render then moved Q-069's chunk to another programme's
+# column -- এএম still in it, for the wrong programme -- and the review
+# stood, because nothing a reviewer sees had changed. The cited chunk's
+# content hash, from the manifest, is now in the fingerprint: a change to
+# the manual text voids the review as surely as an edit to the question.
 REVIEW_NOTE = ("checked = an automated or Claude check; reviewed = a person "
                "read it and ticked it correct. Only reviewed counts for "
                "shipping. Each record holds the question's fingerprint at "
-               "that time; any later change to the question voids it.")
+               "that time, including the content hash of the chunk it "
+               "cites; any later change to the question or to that chunk's "
+               "text voids it.")
 REVIEW_FIELDS = ("question_bn", "options", "correct", "explanation",
                  "chunk_id")
 STATUSES = ("reviewed", "reviewed, changed since", "checked",
             "checked, changed since", "no check recorded")
 
 
-def fingerprint(q):
-    """Everything a reviewer sees, hashed. Option ORDER counts: it is part
-    of what was read."""
-    blob = json.dumps([q.get(f) for f in REVIEW_FIELDS], ensure_ascii=False)
+def chunk_hashes(path=None):
+    """{chunk_id: sha256 of its display_text} from the chunk manifest --
+    dedupe.manifest_sha's digest, read rather than recomputed."""
+    m = json.loads(Path(path or MANIFEST).read_text(encoding="utf-8"))
+    return {r["chunk_id"]: r["sha256"] for r in m["chunks"]}
+
+
+def fingerprint(q, hashes):
+    """Everything a reviewer sees, plus the content hash of the cited chunk,
+    hashed. Option ORDER counts: it is part of what was read. `hashes` is
+    required, so no caller can fingerprint a question without its source."""
+    blob = json.dumps([q.get(f) for f in REVIEW_FIELDS]
+                      + [hashes.get(q.get("chunk_id"))], ensure_ascii=False)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
-def review_status(q, state):
+def review_status(q, state, hashes):
     """One of STATUSES. A review outranks a check; a stale review is
     reported as such, never as a fresher check."""
-    fp = fingerprint(q)
+    fp = fingerprint(q, hashes)
     rv = (state.get("reviewed") or {}).get(q["id"])
     if rv:
         return "reviewed" if rv["fingerprint"] == fp \
@@ -780,23 +832,32 @@ def review_status(q, state):
 
 def review_canary():
     """Convention 3. A check never counts as a review, and a change to any
-    field a reviewer sees voids the review. -> (ok, [lines])"""
+    field a reviewer sees -- or to the text of the chunk it cites -- voids
+    the review. -> (ok, [lines])"""
     base = {"id": "X", "question_bn": "q", "options": ["a", "b", "c", "d"],
             "correct": "a", "explanation": "e", "chunk_id": "c"}
-    rec = {"date": "d", "by": "b", "fingerprint": fingerprint(base)}
-    cases = [("checked only is not reviewed", base,
+    hashes = {"c": "h1", "c2": "h2"}
+    rec = {"date": "d", "by": "b", "fingerprint": fingerprint(base, hashes)}
+    cases = [("checked only is not reviewed", base, hashes,
               {"checked": {"X": rec}}, "checked"),
-             ("reviewed as it stands", base,
-              {"reviewed": {"X": rec}, "checked": {"X": rec}}, "reviewed")]
+             ("reviewed as it stands", base, hashes,
+              {"reviewed": {"X": rec}, "checked": {"X": rec}}, "reviewed"),
+             ("cited chunk's text changed", base, dict(hashes, c="h1x"),
+              {"reviewed": {"X": rec}}, "reviewed, changed since"),
+             ("cited chunk gone from the manual", base, {"c2": "h2"},
+              {"reviewed": {"X": rec}}, "reviewed, changed since"),
+             ("another chunk's text changed", base, dict(hashes, c2="h2x"),
+              {"reviewed": {"X": rec}}, "reviewed")]
     # The fixture's own fields, not REVIEW_FIELDS: a field dropped from the
     # fingerprint must still be changed here, or its loss goes unseen.
     for f in (k for k in base if k != "id"):
         v = base[f][::-1] if isinstance(base[f], list) else base[f] + "x"
         cases.append((f"{f} changed voids the review", dict(base, **{f: v}),
-                      {"reviewed": {"X": rec}}, "reviewed, changed since"))
+                      hashes, {"reviewed": {"X": rec}},
+                      "reviewed, changed since"))
     lines, ok = [], True
-    for name, q, st, want in cases:
-        got = review_status(q, st)
+    for name, q, hs, st, want in cases:
+        got = review_status(q, st, hs)
         ok &= got == want
         lines.append(f"  {name:<36} {got:<24} "
                      f"[{'PASS' if got == want else 'FAIL'}]")
@@ -965,7 +1026,9 @@ def main(argv=None):
     for check, title in (("4a", "two options are the same post"),
                          ("4b", "answer is the post being checked"),
                          ("4c", "figure answer from a worked example"),
-                         ("4d", "role answer only inside a longer word")):
+                         ("4d", "role answer only inside a longer word"),
+                         ("4e", "explanation not verbatim in its cited "
+                                "chunk")):
         print(f"\n  {check} {title}: {len(hits4[check])} hit(s) "
               f"in {len(audited)} questions")
         for qid, detail in hits4[check]:
@@ -983,6 +1046,8 @@ def main(argv=None):
     kept_ids = {q["id"] for q in kept}
     state = meta.setdefault("review_state", {"note": REVIEW_NOTE,
                                              "checked": {}, "reviewed": {}})
+    state["note"] = REVIEW_NOTE
+    hashes = chunk_hashes()
     marked = []
     if args.mark_reviewed:
         ids = [i.strip() for i in args.mark_reviewed.split(",") if i.strip()]
@@ -995,15 +1060,17 @@ def main(argv=None):
             if q["id"] in ids:
                 state["reviewed"][q["id"]] = {
                     "date": args.date, "by": args.by,
-                    "fingerprint": fingerprint(q)}
+                    "fingerprint": fingerprint(q, hashes)}
                 marked.append(q["id"])
     groups = {}
     for q in kept:
-        groups.setdefault(review_status(q, state), []).append(q["id"])
-    unread = [q for q in kept if review_status(q, state) != "reviewed"]
+        groups.setdefault(review_status(q, state, hashes), []).append(q["id"])
+    unread = [q for q in kept
+              if review_status(q, state, hashes) != "reviewed"]
     notes = ["Only a person's review counts for shipping. checked = an "
              "automated or Claude check; reviewed = a person read it and "
-             "ticked it correct. A change to the question voids either."]
+             "ticked it correct. A change to the question, or to the text "
+             "of the chunk it cites, voids either."]
     for s in STATUSES:
         if s != "reviewed":
             notes.append(f"{s}: {', '.join(groups.get(s, [])) or 'none'}")

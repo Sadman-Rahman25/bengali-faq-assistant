@@ -379,416 +379,442 @@ meta:
     date: '2026-10-20'
     before: ফায়ার সেফটি ইন্স্যুরেন্সের বিমাদাবি’র নিয়মাবলী ও নিষ্পত্তিকরণ পদ্ধতিতে দায়িত্বপ্রাপ্ত পদবী
       কী?
+  - id: Q-043
+    action: edited
+    date: '2026-10-21'
+    reason: 'applied out/quiz_fixed_3.csv, the version a person reviewed: review cancelled by the §2.5.4
+      re-render. Cited progoti_0090_p1, which now holds দাবি/বিসিইউপি''s সমাধানের সময় column. Answer and
+      options unchanged (এএম); chunk_id -> progoti_0090_p4 and the explanation re-cut from the new text,
+      which names the programme and the role. Please re-review.'
+    before: কমপ্লেইন্ট ডাটার ব্যবহার অনুযায়ী, প্রগতি ঋণে "বন্ধকী দলিল/অন্যান্য নথি ফেরত না দেওয়া" অভিযোগের
+      সমাধানকারী কে?
+    explanation_before: 'অভিযোগের ধরণ: ১.৩ বন্ধকী দলিল/অন্যান্য নথি ফেরত না দেওয়া (প্রগতি ঋণের জন্য প্রযোজ্য)
+      — প্রগতি: ৭ — এএম ।'
+    chunk_id_before: progoti_0090_p1
+  - id: Q-069
+    action: edited
+    date: '2026-10-21'
+    reason: 'applied out/quiz_fixed_3.csv, the version a person reviewed: review cancelled by the §2.5.4
+      re-render, and the more dangerous of the two: it cited progoti_0090_p6, which now holds এনসিডিপি/এসসিডিপি
+      — সমাধানকারী, so এএম is still in that chunk but for the WRONG PROGRAMME and a string check passes.
+      The question asks about প্রগতি: chunk_id -> progoti_0090_p4. Answer and options unchanged. Please
+      re-review.'
+    before: কমপ্লেইন্ট ডাটার ব্যবহার অনুযায়ী, প্রগতি ঋণে "অতিরিক্ত ডকুমেন্টস চাওয়া" অভিযোগের সমাধানকারী
+      কে?
+    explanation_before: 'অভিযোগের ধরণ: ৩. অতিরিক্ত ডকুমেন্টস চাওয়া (প্রগতি ঋণের জন্য প্রযোজ্য) — প্রগতি:
+      ৩ — এএম ।'
+    chunk_id_before: progoti_0090_p6
   review_state:
     note: checked = an automated or Claude check; reviewed = a person read it and ticked it correct. Only
-      reviewed counts for shipping. Each record holds the question's fingerprint at that time; any later
-      change to the question voids it.
+      reviewed counts for shipping. Each record holds the question's fingerprint at that time, including
+      the content hash of the chunk it cites; any later change to the question or to that chunk's text
+      voids it.
     checked:
       Q-001:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 53548b2240994ae4
+        fingerprint: 337bb6b6a2bc6570
       Q-002:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 45e9ba2692ddfc2a
+        fingerprint: f07592e0fd2cafcb
       Q-011:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 7e759f1b16e987b5
+        fingerprint: a1cbfe70fdacb7e6
       Q-016:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 8f4bbb3b4dbfcf65
+        fingerprint: b56fffb061743967
       Q-017:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 1524c78e0bc37a29
+        fingerprint: 455911865fddb650
       Q-020:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 778be860938c88ac
+        fingerprint: 895a9a3d405df2cf
       Q-024:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 7975f71d14c6bdd0
+        fingerprint: 8a91987de218bb83
       Q-030:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: e9861542e90c4c6c
+        fingerprint: b41a38305701569d
       Q-031:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: a92ef36e14b3fdb9
+        fingerprint: 7e30cdea9bca2346
       Q-032:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 2e438bb4f18e678a
+        fingerprint: 2d9cc9e3cdbec4c0
       Q-033:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 63c28693ddb5eacb
+        fingerprint: e7c1385696984e32
       Q-034:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: cde976589d1668b7
+        fingerprint: 140bbf9e04b89235
       Q-035:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 5a10916d17191545
+        fingerprint: 263b6c6c49e5a487
       Q-036:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: b746af555c994f98
+        fingerprint: 22dcbb32f7fe1c19
       Q-037:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: f53d54eafe21ea4c
+        fingerprint: d3197dd8e434e335
       Q-038:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: e9722cdba491703c
+        fingerprint: 5303e0bed3b6d485
       Q-039:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: a5834c6568613ce0
+        fingerprint: 99db105e37f4fc98
       Q-040:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 51551c66daca1ba4
+        fingerprint: 010aebb728e06d72
       Q-041:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: f1f6286834ddbfc1
+        fingerprint: cbcff71c4124ea9c
       Q-042:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 06c088e3f841d75b
+        fingerprint: 7ed1be5b8ed079b8
       Q-043:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: f3da155f506ffad8
+        fingerprint: 93350d22ef6cde5d
       Q-044:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: b95db0fd349a9127
+        fingerprint: 474d30d8a94b3892
       Q-045:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: ccc640ddd490dc3b
+        fingerprint: 4b7dd5f698627354
       Q-046:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 04b3826d9d39342c
+        fingerprint: a841878777465fa2
       Q-047:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 17b6644274315181
+        fingerprint: f000ef2d843d75f3
       Q-048:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: d51c0217ef802737
+        fingerprint: 4731e9db7ea68b1f
       Q-049:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 0c02f66e83162338
+        fingerprint: a224fca866a06849
       Q-050:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: e6ff51431ffa3542
+        fingerprint: 4bec927c84c859c2
       Q-051:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 6767b3a6b214eafb
+        fingerprint: 5a6ac96ea0012e89
       Q-052:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: df2671b9a4cde41d
+        fingerprint: 13a46e9612defb8c
       Q-053:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 9eb511ea73aa9867
+        fingerprint: ae64f0a6c145089f
       Q-054:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: bee398bcecdd1ba0
+        fingerprint: e9d3b8ebe7bcc2dc
       Q-055:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 67271ce061dd4e53
+        fingerprint: 1653f76d13a0d484
       Q-056:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 33f391f2b315be44
+        fingerprint: 3fe2d12f2f4b3f00
       Q-057:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 179f3921a897e3e6
+        fingerprint: 535b94b76f302793
       Q-059:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 60b4989cb6ef6367
+        fingerprint: 3f53aed90c144658
       Q-060:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: a25aa965c110ff90
+        fingerprint: b665f0b1c074effd
       Q-062:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 46797d883a3a7a4a
+        fingerprint: b46859d459f4d820
       Q-064:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 780996655e02261c
+        fingerprint: 17075f8bf9e47e82
       Q-065:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 7ffa8f22c4c06159
+        fingerprint: 8fca63e81b0bae26
       Q-066:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 7503263295283c63
+        fingerprint: 3e2c786d67dc370c
       Q-067:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: aa417af3d6402cca
+        fingerprint: 833c07a997a39e11
       Q-068:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: f49c2e93af639caa
+        fingerprint: 381f2cf119dfa8b6
       Q-069:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: c7574da46ac4a232
+        fingerprint: f16555fccd3c7d74
       Q-070:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 5b04a8a26af8401f
+        fingerprint: bf73fb6fb9bdb043
       Q-071:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 1a39b72790dd59a0
+        fingerprint: 767b6da1f017eb48
       Q-072:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 515ab88f2c14f896
+        fingerprint: 34bba17bdda2ca01
       Q-073:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 3b51bad4e6127f9b
+        fingerprint: 07fdfbfea862789e
       Q-074:
         date: '2026-10-20'
         by: Claude, each question against its source chunk
-        fingerprint: 20ca72f6c56575b9
+        fingerprint: 9818cdbbb35ca981
     reviewed:
       Q-001:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 53548b2240994ae4
+        fingerprint: 337bb6b6a2bc6570
       Q-002:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 45e9ba2692ddfc2a
+        fingerprint: f07592e0fd2cafcb
       Q-003:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 8d2964cb4200c3a4
+        fingerprint: cf54aca5f9c8a65b
       Q-006:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: a53fd27fc25739b9
+        fingerprint: 7737f68ec7215a50
       Q-007:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 699e4a6dc04d85f1
+        fingerprint: 4b1c44d0db376abf
       Q-008:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 72ab798f7b6520d3
+        fingerprint: 182aac23625cda72
       Q-010:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: ed0bcf6722dd9cc4
+        fingerprint: c325bf5e79866842
       Q-011:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 20a1e88da6a0a02d
+        fingerprint: cbc665e0910f9ea6
       Q-013:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 3508b24f02dc1cec
+        fingerprint: 07f0cc327e66b7d6
       Q-014:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: da53cdb29c6e14cb
+        fingerprint: 4960c049e41e9ab8
       Q-015:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 26771b8f739109fb
+        fingerprint: 2fe63c30cc6d0391
       Q-017:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 1524c78e0bc37a29
+        fingerprint: 455911865fddb650
       Q-019:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: d22b193b8935cdb7
+        fingerprint: 10f9e6871fb73ae4
       Q-020:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 778be860938c88ac
+        fingerprint: 895a9a3d405df2cf
       Q-022:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: e485334ef2d4d6b9
+        fingerprint: c81f6be6b46fd502
       Q-024:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 7950b56733776ca8
+        fingerprint: 3d947c5465e8404e
       Q-025:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: ba5a10190691a902
+        fingerprint: 1c6f9a718cf58920
       Q-028:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 7172e66c7e71e5e0
+        fingerprint: 717c1941bd0e8f5d
       Q-029:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: a12b62d664739e17
+        fingerprint: 59dfd4ab101024b1
       Q-032:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 2e438bb4f18e678a
+        fingerprint: 2d9cc9e3cdbec4c0
       Q-033:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 63c28693ddb5eacb
+        fingerprint: e7c1385696984e32
       Q-036:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: b746af555c994f98
+        fingerprint: 22dcbb32f7fe1c19
       Q-038:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 7abe054dbfe8e1e3
+        fingerprint: d0e30fba624d064a
       Q-040:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 7e964493ee14f4d3
+        fingerprint: 87c356b303847215
       Q-042:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 1a4b624518e42019
+        fingerprint: 4e9676f4948c9e9d
       Q-043:
         date: '2026-10-21'
         by: Sadman Rahman
-        fingerprint: 5998edff10c9d0e6
+        fingerprint: f2b181beb36c6d26
       Q-044:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 71f7de5289e52dc1
+        fingerprint: e30606c5be727bca
       Q-046:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 04b3826d9d39342c
+        fingerprint: a841878777465fa2
       Q-048:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: d51c0217ef802737
+        fingerprint: 4731e9db7ea68b1f
       Q-050:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: e6ff51431ffa3542
+        fingerprint: 4bec927c84c859c2
       Q-052:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 9e2490ea989c5743
+        fingerprint: 68bca8aba8016656
       Q-053:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 71c16b0016774f3d
+        fingerprint: cded91edbdf067de
       Q-057:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 9ff0337dd118aeb2
+        fingerprint: 5fab454c01e7d209
       Q-060:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: a25aa965c110ff90
+        fingerprint: b665f0b1c074effd
       Q-062:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 46797d883a3a7a4a
+        fingerprint: b46859d459f4d820
       Q-064:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 8d908308907c103e
+        fingerprint: 1fb3e64fffdbd05d
       Q-065:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 0fd8bd57e02f588c
+        fingerprint: a6e0c4de448c1163
       Q-068:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 943046d8c53eb1ff
+        fingerprint: 1e07ece39f8784b3
       Q-069:
         date: '2026-10-21'
         by: Sadman Rahman
-        fingerprint: d213f97d505302d4
+        fingerprint: a59ab8d8b81235b7
       Q-070:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: dfdd10158aa04629
+        fingerprint: d2aa3dda8470f82d
       Q-071:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 1a39b72790dd59a0
+        fingerprint: 767b6da1f017eb48
       Q-072:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 515ab88f2c14f896
+        fingerprint: 34bba17bdda2ca01
       Q-004:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: f4e530ecd7fe13cb
+        fingerprint: de92319018b491b1
       Q-009:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 81045d4e77711c02
+        fingerprint: 8015a97cb22a540d
       Q-018:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 46a9a68f7ce38efc
+        fingerprint: 4be4603fc66827ec
       Q-023:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 4dbc1bc036029fa7
+        fingerprint: 769a692622290aaa
       Q-026:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 898b72b5d730537e
+        fingerprint: 653da38a9c838941
       Q-027:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: f40d992950e9add4
+        fingerprint: 9cc7ce7731be905d
       Q-035:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 5a10916d17191545
+        fingerprint: 263b6c6c49e5a487
       Q-041:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: f1f6286834ddbfc1
+        fingerprint: cbcff71c4124ea9c
       Q-055:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 67271ce061dd4e53
+        fingerprint: 1653f76d13a0d484
       Q-074:
         date: '2026-10-20'
         by: Sadman Rahman
-        fingerprint: 20ca72f6c56575b9
+        fingerprint: 9818cdbbb35ca981
 questions:
 - id: Q-001
   kind: figure
@@ -1304,9 +1330,9 @@ questions:
     Approval/ Rejection সংক্রান্ত ই-মেইলের কপি সংরক্ষণ করবেন।
 - id: Q-043
   kind: role
-  question_bn: কমপ্লেইন্ট ডাটার ব্যবহার অনুযায়ী, প্রগতি ঋণে "বন্ধকী দলিল/অন্যান্য নথি ফেরত না দেওয়া"
-    অভিযোগের সমাধানকারী কে?
-  chunk_id: progoti_0090_p1
+  question_bn: কমপ্লেইন্ট ডাটার ব্যবহার অনুযায়ী, প্রগতি ঋণে “বন্ধকী দলিল/অন্যান্য নথি ফেরত না দেওয়া” অভিযোগের
+    সমাধানকারী কে?
+  chunk_id: progoti_0090_p4
   manual_id: progoti
   clause: 2.5.4
   clause_display: ২.৫.৪
@@ -1316,8 +1342,8 @@ questions:
   - আঞ্চলিক ব্যবস্থাপক
   - সিও
   - পিএস
-  explanation: 'অভিযোগের ধরণ: ১.৩ বন্ধকী দলিল/অন্যান্য নথি ফেরত না দেওয়া (প্রগতি ঋণের জন্য প্রযোজ্য)
-    — প্রগতি: ৭ — এএম ।'
+  explanation: 'প্রগতি — সমাধানকারী — ১.৩ বন্ধকী দলিল/অন্যান্য নথি ফেরত না দেওয়া (প্রগতি ঋণের জন্য প্রযোজ্য):
+    এএম ।'
 - id: Q-044
   kind: role
   question_bn: দাবি কর্মসূচিতে অফিসের ফাইল ও রেজিস্টার লেখা সম্পন্ন হওয়ার পর ৩ বছর সংরক্ষণ করার দায়িত্ব
@@ -1518,9 +1544,9 @@ questions:
     তবে তার যথযথ কারন আঞ্চলিক ব্যবস্থাপক কর্তৃক ব্র্যাক সেন্ট্রাল টিম (mimfho@brac.net) কে জানাবেন।
 - id: Q-069
   kind: role
-  question_bn: কমপ্লেইন্ট ডাটার ব্যবহার অনুযায়ী, প্রগতি ঋণে "অতিরিক্ত ডকুমেন্টস চাওয়া" অভিযোগের সমাধানকারী
+  question_bn: কমপ্লেইন্ট ডাটার ব্যবহার অনুযায়ী, প্রগতি ঋণে “অতিরিক্ত ডকুমেন্টস চাওয়া” অভিযোগের সমাধানকারী
     কে?
-  chunk_id: progoti_0090_p6
+  chunk_id: progoti_0090_p4
   manual_id: progoti
   clause: 2.5.4
   clause_display: ২.৫.৪
@@ -1530,8 +1556,7 @@ questions:
   - এএম
   - সিও
   - সিডিও
-  explanation: 'অভিযোগের ধরণ: ৩. অতিরিক্ত ডকুমেন্টস চাওয়া (প্রগতি ঋণের জন্য প্রযোজ্য) — প্রগতি: ৩ — এএম
-    ।'
+  explanation: 'প্রগতি — সমাধানকারী — ৩. অতিরিক্ত ডকুমেন্টস চাওয়া (প্রগতি ঋণের জন্য প্রযোজ্য): এএম ।'
 - id: Q-070
   kind: role
   question_bn: ফায়ার সেফটি ইন্স্যুরেন্সে বিমা অন্তর্ভুক্তিকরণ ফর্ম অনুযায়ী ইআরপিতে প্রিমিয়ামের টাকা
