@@ -69,7 +69,9 @@ STRINGS = {
 
     # ---------------------------------------------------------------- tabs
     "tab_ask": {"en": "Ask anything", "bn": "প্রশ্ন করুন"},
-    "tab_faq": {"en": "50 FAQ", "bn": "৫০টি সাধারণ প্রশ্ন"},
+    # No number in the label: it said 50, and the tab shows what a person
+    # has approved, which is a different and moving count.
+    "tab_faq": {"en": "FAQ", "bn": "সাধারণ প্রশ্ন"},
     "tab_quiz": {"en": "Test yourself", "bn": "নিজেকে যাচাই করুন"},
 
     # -------------------------------------------------------- ask controls
@@ -312,26 +314,33 @@ STRINGS = {
     "members_photo_alt": {
         "en": "Members sitting together at a group meeting.",
         "bn": "একটি দলীয় সভায় সদস্যরা একসাথে বসে আছেন।"},
-    "faq_state": {"en": "Not started", "bn": "শুরু হয়নি"},
-    "faq_head": {
-        "en": "Fifty questions field officers actually ask, with reviewed answers.",
-        "bn": "মাঠকর্মীরা আসলে যে পঞ্চাশটি প্রশ্ন করেন, যাচাই করা উত্তরসহ।"},
-    "faq_body": {
-        "en": ("Each answer will be checked against the printed manual. "
-               "This section opens once the questions have been collected "
-               "from the field and their answers checked."),
-        "bn": ("প্রতিটি উত্তর ছাপা ম্যানুয়ালের সাথে মিলিয়ে দেখা হবে। মাঠ থেকে "
-               "প্রশ্ন সংগ্রহ করে উত্তর যাচাইয়ের পর এই অংশ চালু হবে।")},
-    "faq_body_dev": {
-        "en": ("The {n} questions in the evaluation set were written by "
-               "reading chunks, so they test retrieval mechanics rather than "
-               "what an officer walks in with. This surface waits on the field "
-               "questions being collected and their answers checked against "
-               "the printed manual by someone who has it."),
-        "bn": ("মূল্যায়ন সেটের {n}টি প্রশ্ন ম্যানুয়ালের অংশ পড়ে লেখা, তাই "
-               "সেগুলো খোঁজার কৌশল যাচাই করে, মাঠকর্মী আসলে কী জানতে চান তা "
-               "নয়। মাঠ থেকে প্রশ্ন সংগ্রহ এবং ছাপা ম্যানুয়াল হাতে আছে এমন "
-               "কারও দিয়ে উত্তর যাচাইয়ের পর এই অংশ চালু হবে।")},
+    # The count is READ from data/faq/answers.csv, never typed: it is the
+    # number of answers a person has approved as they now stand.
+    "faq_intro": {
+        "en": ("{n} common questions. Each answer was checked against the "
+               "operations manuals by a person."),
+        "bn": ("{n}টি সাধারণ প্রশ্ন। প্রতিটি উত্তর একজন মানুষ অপারেশন "
+               "ম্যানুয়ালের সাথে মিলিয়ে দেখেছেন।")},
+    "faq_empty": {"en": "No reviewed answers yet.",
+                  "bn": "এখনো কোনো যাচাই করা উত্তর নেই।"},
+    "faq_cat_loan": {"en": "Loans", "bn": "ঋণ"},
+    "faq_cat_savings": {"en": "Savings", "bn": "সঞ্চয়"},
+    "faq_cat_insurance": {"en": "Insurance", "bn": "বিমা"},
+    "faq_cat_procedure": {"en": "Procedures", "bn": "প্রক্রিয়া"},
+    "faq_cat_policy": {"en": "Policies", "bn": "নীতিমালা"},
+    # Shown in English mode when an answer's English is not yet approved:
+    # the page shows the reviewed Bengali instead, and says why, so an
+    # English reader is not left wondering.
+    "faq_en_pending": {
+        "en": ("The English version of this answer is waiting for review, "
+               "so the reviewed Bengali is shown."),
+        "bn": ("এই উত্তরের ইংরেজি অনুবাদ পর্যালোচনার অপেক্ষায়, তাই যাচাই "
+               "করা বাংলা উত্তর দেখানো হচ্ছে।")},
+    # DOWNLOAD BUTTONS, keyed "faq_dl_<file stem>" by the attachment column,
+    # so a second form needs a string here and a row there, nothing else.
+    "faq_dl_travelling_bill": {
+        "en": "Download the travelling bill form",
+        "bn": "ট্রাভেলিং বিল ফর্ম ডাউনলোড করুন"},
 
     # ------------------------------------------------------------ the quiz
     "quiz_no_bank": {"en": "No bank", "bn": "প্রশ্নভান্ডার নেই"},

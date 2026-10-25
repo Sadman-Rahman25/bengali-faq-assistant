@@ -45,6 +45,7 @@ import streamlit as st
 
 import generate
 import embed
+import faq
 import retrieve
 from bnnorm import canon
 import ui_strings
@@ -428,6 +429,7 @@ html, body, [data-testid="stApp"], [data-testid="stAppViewContainer"],
    explicitly. Never `*`: the expander arrow and the select chevron are
    Material Symbols glyphs, and a blanket rule turns them into words. */
 .bfa-header, .bfa-title, .bfa-sub, .bfa-card, .bfa-label, .bfa-answer-en,
+.bfa-faq-en,
 .bfa-chip, .bfa-flag, .bfa-meta, .bfa-chunk, .bfa-footer, .bfa-foot-note,
 .bfa-budget, .bfa-stat, .bfa-soon, .bfa-orphan, .bfa-badge,
 [data-testid="stMarkdownContainer"], [data-testid="stWidgetLabel"],
@@ -650,6 +652,15 @@ details:not([open]) [data-testid="stExpanderDetails"] { display: none; }
 /* The quiz container already carries the 22px gutter; without this the
    photo would sit 22px further in than the cards below it. */
 .st-key-quiz .bfa-photo { width: 100%; margin-left: 0; margin-right: 0; }
+/* THE FAQ (render_faq). One expander per approved question, in the same
+   22px gutter as every other section. The answer keeps its line breaks:
+   a figure list is lines, and run together it is a paragraph of numbers. */
+.st-key-faq { padding: 4px 22px 28px; }
+.st-key-faq .bfa-label { margin-top: 18px; }
+.st-key-faq [data-testid="stExpander"] summary p { font-size: 17px; }
+.bfa-faq-body { white-space: pre-line; }
+.bfa-faq-en { font-size: 15px; line-height: var(--leading);
+              color: var(--ink); }
 .bfa-soon { background: var(--card); border: 1px solid var(--card-line);
             border-radius: 10px; padding: 22px; margin: 4px 22px 22px;
             font-size: 14px; line-height: var(--leading);
@@ -1719,25 +1730,80 @@ def render_ask(a, lang):
 
 
 
+@st.cache_data(show_spinner=False)
+def faq_rows(path, mtime):
+    """The FAQ file, re-read when it changes on disk. `mtime` is the cache
+    key, so an approval recorded with `python faq.py approve` shows on the
+    next rerun without restarting the app -- the quiz bank is keyed the
+    same way, for the same reason.
+
+    The path is passed, not defaulted: faq.load's default is bound when
+    faq is imported, so the key and the load could name different files
+    the moment anything changed faq.PATH. The render test did exactly
+    that and was served the real file."""
+    return faq.load(path)
+
+
 def render_faq(lang):
-    """SURFACE 2. Not started, and saying so is the point.
+    """SURFACE 2. The reviewed FAQ.
 
-    An empty tab reads as broken; a stated gap reads as a plan. Nothing
-    here is a placeholder number or a fake row -- there is no data yet,
-    so there is nothing to render but the sentence saying what will go
-    here and what it will take.
+    ONLY WHAT A PERSON APPROVED, AS IT NOW STANDS (faq.shown): an answer
+    edited after its approval drops out until it is approved again, the
+    same rule as the quiz. Bengali mode shows the Bengali. English mode
+    shows the English only where that translation is approved too, and
+    otherwise the reviewed Bengali with a line saying why -- never an
+    unreviewed translation.
 
-    The header photo sits above the card, alone: one photograph per screen,
+    The header photo sits above the list, alone: one photograph per screen,
     and never inside the FAQ list or a citation.
     """
     header = photo_html("enterprise", lang)
     if header:
         st.markdown(header, unsafe_allow_html=True)
-    st.markdown(
-        f'<div class="bfa-soon"><span class="k">{esc(t("faq_state", lang))}'
-        f'</span><b>{esc(t("faq_head", lang))}</b><br>'
-        f'{esc(t("faq_body_dev" if DEV else "faq_body", lang, n=24))}'
-        '</div>', unsafe_allow_html=True)
+    p = faq.PATH
+    rows = faq.shown(faq_rows(str(p), p.stat().st_mtime if p.exists() else 0))
+    with st.container(key="faq"):
+        if not rows:
+            st.markdown(f'<div class="bfa-sub">{esc(t("faq_empty", lang))}'
+                        '</div>', unsafe_allow_html=True)
+            return
+        st.markdown(f'<div class="bfa-sub">'
+                    f'{esc(t("faq_intro", lang, n=len(rows)))}</div>',
+                    unsafe_allow_html=True)
+        manuals = manifest()[1]
+        for cat in faq.CATEGORIES:
+            items = [r for r in rows if r["category"] == cat]
+            if not items:
+                continue
+            st.markdown(f'<div class="bfa-label">'
+                        f'{esc(t(f"faq_cat_{cat}", lang))}</div>',
+                        unsafe_allow_html=True)
+            for r in items:
+                render_faq_item(faq.view(r, lang, manuals), lang)
+
+
+def render_faq_item(v, lang):
+    """One question. A form the answer refers to is offered ABOVE the
+    answer, because the answer's first lines point at it."""
+    import mimetypes
+    with st.expander(v["question"]):
+        att = Path(v["attachment"]) if v["attachment"] else None
+        if att and att.exists():
+            st.download_button(
+                t(f"faq_dl_{att.stem}", lang), data=att.read_bytes(),
+                file_name=att.name, key=f"faq_dl_{v['id']}",
+                mime=mimetypes.guess_type(att.name)[0]
+                or "application/octet-stream")
+        body = "bfa-answer" if v["lang_used"] == "bn" else "bfa-faq-en"
+        parts = [f'<div class="{body} bfa-faq-body">{esc(v["answer"])}</div>']
+        if v["cites"]:
+            chips = "".join(f'<span class="bfa-chip">{esc(c)}</span>'
+                            for c in v["cites"])
+            parts.append(f'<div class="bfa-chips">{chips}</div>')
+        if v["fell_back"]:
+            parts.append(f'<div class="bfa-flag note">'
+                         f'{esc(t("faq_en_pending", lang))}</div>')
+        st.markdown("".join(parts), unsafe_allow_html=True)
 
 # Convention 1: importing this module must never write a file or call a
 # provider. Everything above is a definition; main() does the work.

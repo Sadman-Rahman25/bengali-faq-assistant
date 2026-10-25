@@ -7,6 +7,9 @@ ocr_gold/runs/
 data/raw/
 *.pdf
 *.docx
+# ...except blank forms the app offers for download (e.g. the travelling
+# bill in the FAQ). A form carries no manual text.
+!assets/forms/*.pdf
 
 # generated artefacts: all regenerable from data/raw + the scripts, and they
 # change on every pipeline run. ~15MB if tracked.

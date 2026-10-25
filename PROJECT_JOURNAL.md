@@ -3426,6 +3426,32 @@ Highlights:
 
 **Not done**
 
+- **Every service-charge figure in the FAQ rests on the regulator's 24% cap
+  — and the regulator has said it will revisit it.** Recorded 2026-10-25
+  from the project owner: the Microcredit Regulatory Authority (MRA) has
+  capped microcredit service charges at 24% since 2019, and said in April
+  2026 that it plans to "rationalise" service charges. Neither statement
+  is checked against an MRA document in this repository; they are
+  recorded here because the FAQ depends on them, not because this repo
+  can vouch for them.
+
+  **What depends on it.** 13 answers in `data/faq/answers.csv` state a
+  service-charge rate: F-01, F-02, F-03, F-12 (24%); F-06, F-07, F-08, F-09,
+  F-10, F-11, F-14 (the 24/22/20% declining slab); F-13 (18%); F-22 (20% on
+  the unpaid balance). 24% is the top rate in eleven of them, so it is the
+  figure a lower cap would make wrong first. The English versions carry
+  the same figures, and `faq_check.py` holds the two languages to each
+  other, so an update to one without the other is caught.
+
+  **If the cap changes, update the registry and those answers together,**
+  in one change: the registry first (a `rule_updates.csv` row for the
+  affected clauses, so the chatbot stops quoting the old rate the moment
+  the manual is out of date), then each answer above, then a fresh review
+  — `python faq.py approve` — because editing an approved answer voids
+  its approval and it leaves the FAQ tab until someone re-approves it.
+  That is the intended behaviour: the alternative is a reviewed-looking
+  answer quoting a rate the regulator no longer allows.
+
 - **§2.5.4 puts the resolution time and the resolver in separate chunks, so
   a question asking both gets half an answer.** The column-major rendering
   fixed the labelling — every value now names its programme and its
