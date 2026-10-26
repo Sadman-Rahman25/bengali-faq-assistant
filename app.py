@@ -46,6 +46,7 @@ import streamlit as st
 import generate
 import embed
 import faq
+import faqmatch
 import retrieve
 from bnnorm import canon
 import ui_strings
@@ -323,6 +324,8 @@ OUT = Path("out")
 DEMO_RETRIEVED = OUT / "demo_retrieved.jsonl"   # the context of the last query
 DEMO_ANSWERS = OUT / "demo_answers.jsonl"
 DEMO_META = OUT / "demo_meta.jsonl"
+# The three tabs' string keys, in order.
+TABS = ("tab_ask", "tab_faq", "tab_quiz")
 
 ASSETS = Path("assets")
 
@@ -1101,11 +1104,18 @@ def _ts():
 
 
 def ask(question):
-    """Retrieve, guard, budget-check, generate, post-filter. -> render dict.
+    """Reviewed FAQ first; else retrieve, guard, budget-check, generate,
+    post-filter. -> render dict.
 
     Calls retrieve and generate as a run does. The only thing added is that
     every branch it can take is reported back, so nothing that changed the
     answer is invisible on the page.
+
+    A question an approved FAQ answer answers (faqmatch.py) gets that answer
+    and never reaches the model, so the registry's refusal rules in
+    generate.py are not consulted for it. The reviewed text is what a
+    person approved against the manuals and the registry's statuses, and
+    an edit to it voids that approval (faq.py).
     """
     qid = "D-" + _ts()
 
@@ -1129,7 +1139,13 @@ def ask(question):
     try:
         ix = index()
         loaded = True
-        chunks = ix.search(question, k=K)
+        # ONE EMBEDDING: matched against the reviewed FAQ first, then -- only
+        # if nothing matches -- reused for retrieval.
+        qv = ix.query_vector(question)
+        hit, match_why = faq_match(question, qv, ix)
+        if hit:
+            return reviewed_answer(qid, question, hit)
+        chunks = ix.search(question, k=K, qv=qv)
     except embed.EmbeddingUnavailable as exc:
         # THE HOSTED EMBEDDER IS DOWN OR THE DAY'S QUOTA IS SPENT.
         #
@@ -1269,6 +1285,9 @@ def ask(question):
     meta["k"] = K
     meta["index_dir"] = str(INDEX_DIR)
     meta["tpd_note"] = budget_msg
+    # the closest FAQ and why it was not shown: the evidence for moving
+    # faqmatch.THRESHOLD, collected from real questions
+    meta["faq_match"] = match_why
 
     for path, rec in ((DEMO_ANSWERS, answer), (DEMO_META, meta)):
         with path.open("a", encoding="utf-8", newline="\n") as fh:
@@ -1277,6 +1296,71 @@ def ask(question):
     return {"id": qid, "answer": answer, "meta": meta, "chunks": chunks,
             "guard": guard, "budget": budget_msg,
             "gold_id": (gold or {}).get("id")}
+
+
+def faq_match(question, qv, ix):
+    """REVIEWED ANSWERS FIRST. The approved FAQ answer this question asks
+    for, or None. -> (hit or None, why)
+
+    faqmatch decides; this only supplies the FAQ as it stands on disk and
+    keeps a failure here from costing the officer an answer. The FAQ
+    questions' vectors are cached by content (out/faq_match/), so this
+    embeds nothing on a warm cache; on a cold one -- a fresh clone, or a
+    question just re-worded by a reviewer -- it embeds them once. If that
+    fails, the question goes to retrieval as it did before this existed:
+    a missed match costs a generated answer, never the answer.
+
+    Only an index built with faqmatch.MODEL can match: a vector from any
+    other embedder is not comparable with the FAQ's."""
+    if ix.cfg.get("model") != faqmatch.MODEL:
+        return None, {"faq_skipped": f"index embedder {ix.cfg.get('model')} "
+                                     f"is not {faqmatch.MODEL}"}
+    p = faq.PATH
+    rows = faq_rows(str(p), p.stat().st_mtime if p.exists() else 0)
+    try:
+        hit, why = faqmatch.match(question, qv, ix.model, rows)
+    except embed.EmbeddingUnavailable as exc:
+        return None, {"faq_skipped": "embedding the FAQ questions: "
+                                     + str(exc)[:160]}
+    if hit:
+        # The officer's language, and the answer as approved in it --
+        # faq.view falls back to the reviewed Bengali, and says so, when
+        # the English is not approved.
+        row = next(r for r in rows if r["id"] == hit["id"])
+        hit["row"] = row
+        hit["view"] = faq.view(row, faqmatch.answer_lang(question,
+                                                         hit["lang"]),
+                               manifest()[1])
+    return hit, why
+
+
+def reviewed_answer(qid, question, hit):
+    """The render dict for a question the reviewed FAQ answers. No
+    retrieval and no provider call, so no tokens; the meta row says which
+    FAQ answered it and at what similarity, so a wrong match can be traced
+    and the threshold moved on evidence."""
+    meta = {"id": qid, "run_id": qid, "source": "demo",
+            "question_bn": question, "answered": True,
+            "answer_source": "reviewed FAQ", "faq_id": hit["id"],
+            "faq_score": hit["score"], "faq_matched_lang": hit["lang"],
+            "faq_answer_lang": hit["view"]["lang_used"],
+            "faq_threshold": faqmatch.THRESHOLD,
+            "provider": None, "model": None, "pinned_model": MODEL,
+            "floor_fired": False, "filter_fired": False, "filter_hits": [],
+            "top_fused": None, "n_chunks": 0,
+            "prompt_tokens": None, "output_tokens": None}
+    OUT.mkdir(parents=True, exist_ok=True)
+    with DEMO_META.open("a", encoding="utf-8", newline="\n") as fh:
+        fh.write(json.dumps(meta, ensure_ascii=False) + "\n")
+    return {"id": qid, "faq": hit, "chunks": [], "meta": meta}
+
+
+def open_in_faq(fid, lang):
+    """The reviewed answer's link: switch to the FAQ tab with that answer
+    open. A button callback, so both are set before the rerun draws the
+    tabs."""
+    st.session_state["tabs"] = t("tab_faq", lang)
+    st.session_state["faq_open"] = fid
 
 
 def product_rows(question):
@@ -1453,17 +1537,25 @@ def main():
     # KEYED, so a language switch -- which renames all three -- is the same
     # widget with new labels rather than three new tabs.
     #
-    # KNOWN LIMIT, MEASURED: A LANGUAGE SWITCH REOPENS THE FIRST TAB. The
-    # switch renames all three tabs, and with on_change="ignore" the browser
-    # never tells the server which tab is open -- session_state["tabs"] read
-    # None after a click on the quiz tab -- so there is nothing to carry the
-    # selection across the rename. A theme switch keeps the tab (labels
-    # unchanged). Fixing it needs on_change="rerun", i.e. a rerun on every
-    # tab click, which is the cost this design chose not to pay; not changed
-    # in a restyle. Journal 4m.
-    ask_tab, faq_tab, quiz_tab = st.tabs(
-        [t("tab_ask", lang), t("tab_faq", lang), t("tab_quiz", lang)],
-        key="tabs")
+    # on_change="rerun" SINCE THE REVIEWED-ANSWER LINK. A reviewed answer on
+    # the ask tab links to its FAQ entry (open_in_faq), and the server can
+    # select a tab only when the tabs track state. The cost is a rerun on
+    # every tab click; it is affordable for the reason above -- the ask is
+    # guarded by _asked and the quiz by its one draw per session, so a
+    # rerun spends nothing.
+    #
+    # TRACKED STATE IS A LABEL, so a language switch would leave it naming
+    # a tab that no longer exists. It is carried across here. (Before this
+    # the switch reopened the first tab -- journal 4m -- and now it does
+    # not.)
+    labels = [t(k, lang) for k in TABS]
+    open_tab = st.session_state.get("tabs")
+    if open_tab is not None and open_tab not in labels:
+        for k in TABS:
+            if open_tab in (t(k, other) for other in ui_strings.LANGS):
+                st.session_state["tabs"] = t(k, lang)
+    ask_tab, faq_tab, quiz_tab = st.tabs(labels, key="tabs",
+                                         on_change="rerun")
     with ask_tab:
         render_ask(a, lang)
     with faq_tab:
@@ -1604,6 +1696,36 @@ def render_ask(a, lang):
                     id=f'<code>{esc(result["id"])}</code>',
                     flag='<code>answered: false</code>')
                 + '</div>')
+    elif result.get("faq"):
+        # A REVIEWED ANSWER (faqmatch.py): approved text, in the officer's
+        # language, with the line that says so and which FAQ question it
+        # answers. The product-status panel is not added: the reviewed
+        # answer states the status, as approved.
+        v = result["faq"]["view"]
+        cls = "bfa-answer" if v["lang_used"] == "bn" else "bfa-faq-en"
+        body.append(f'<div class="{cls} bfa-faq-body">'
+                    f'{esc(v["answer"])}</div>')
+        # citations in the INTERFACE language, as on the FAQ tab (faq.view)
+        cites = [faq.cite_text(c, lang, manifest()[1])
+                 for c in faq.cite_list(result["faq"]["row"])]
+        if cites:
+            chips = "".join(f'<span class="bfa-chip">{esc(c)}</span>'
+                            for c in cites)
+            body.append(f'<div class="bfa-chips">{chips}</div>')
+        if v["fell_back"]:
+            body.append(f'<div class="bfa-flag note">'
+                        f'{esc(t("faq_en_pending", lang))}</div>')
+        body.append(f'<div class="bfa-flag note">'
+                    f'{esc(t("reviewed_note", lang, q=v["question"]))}</div>')
+        if DEV:
+            body.append(
+                '<div class="bfa-meta">'
+                + t("reviewed_meta", lang, id=esc(v["id"]),
+                    score=n(f'{result["faq"]["score"]:.3f}', lang),
+                    threshold=n(f'{faqmatch.THRESHOLD:.3f}', lang),
+                    rid=f'<code>{esc(result["id"])}</code>',
+                    path=esc(DEMO_META.as_posix()))
+                + '</div>')
     elif result.get("error") and not DEV:
         # The raw reason ("groq: 429 ...") is a diagnostic; the officer gets
         # what it means for them.
@@ -1709,11 +1831,18 @@ def render_ask(a, lang):
         if welcome:
             st.markdown(welcome, unsafe_allow_html=True)
 
+    reviewed = (result or {}).get("faq")
+    if reviewed:
+        # A form the answer refers to, ABOVE the answer, as on the FAQ tab.
+        render_attachment(reviewed["view"], lang, "ask")
     st.markdown(
         '<div class="bfa-section"><div class="bfa-card">'
         f'<div class="bfa-label">{esc(t("answer_label", lang))}</div>'
         + "".join(body) +
         '</div></div>' + budget_warn, unsafe_allow_html=True)
+    if reviewed:
+        st.button(t("reviewed_open", lang), key="reviewed_open",
+                  on_click=open_in_faq, args=(reviewed["id"], lang))
 
     # THE DIVIDER IS GONE (BRAND.md 5: the motif is never redrawn, and no
     # official export is in assets/). The 40px of white space that replaces
@@ -1737,7 +1866,8 @@ def render_ask(a, lang):
             if not chunks:
                 st.markdown(
                     '<div class="bfa-chunk"><span class="cl">'
-                    + esc(t({"embedder": "chunks_embedder",
+                    + esc(t("chunks_faq" if reviewed else
+                            {"embedder": "chunks_embedder",
                              "memory": "chunks_infra"}.get(
                                  (result or {}).get("infra"), "chunks_none"),
                             lang))
@@ -1815,18 +1945,29 @@ def render_faq(lang):
                 render_faq_item(faq.view(r, lang, manuals), lang)
 
 
+def render_attachment(v, lang, where):
+    """The download button for a form an answer refers to, if it has one.
+    `where` keeps the key unique: the same answer can be on the ask tab and
+    the FAQ tab in one run."""
+    import mimetypes
+    att = Path(v["attachment"]) if v["attachment"] else None
+    if att and att.exists():
+        st.download_button(
+            t(f"faq_dl_{att.stem}", lang), data=att.read_bytes(),
+            file_name=att.name, key=f"{where}_dl_{v['id']}",
+            mime=mimetypes.guess_type(att.name)[0]
+            or "application/octet-stream")
+
+
 def render_faq_item(v, lang):
     """One question. A form the answer refers to is offered ABOVE the
-    answer, because the answer's first lines point at it."""
-    import mimetypes
-    with st.expander(v["question"]):
-        att = Path(v["attachment"]) if v["attachment"] else None
-        if att and att.exists():
-            st.download_button(
-                t(f"faq_dl_{att.stem}", lang), data=att.read_bytes(),
-                file_name=att.name, key=f"faq_dl_{v['id']}",
-                mime=mimetypes.guess_type(att.name)[0]
-                or "application/octet-stream")
+    answer, because the answer's first lines point at it.
+
+    Open when the officer came here from a reviewed answer on the ask tab
+    (open_in_faq); that one only."""
+    with st.expander(v["question"],
+                     expanded=st.session_state.get("faq_open") == v["id"]):
+        render_attachment(v, lang, "faq")
         body = "bfa-answer" if v["lang_used"] == "bn" else "bfa-faq-en"
         parts = [f'<div class="{body} bfa-faq-body">{esc(v["answer"])}</div>']
         if v["cites"]:

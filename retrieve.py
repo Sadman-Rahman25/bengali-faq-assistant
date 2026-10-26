@@ -203,20 +203,31 @@ class Index:
                                for i, m in enumerate(self.meta)}
         return self._row_cache
 
+    def query_vector(self, query):
+        """The question as search() embeds it. For a caller that needs the
+        vector for something else first -- the app matches it against the
+        reviewed FAQ (faqmatch.py) -- and then passes it back as `qv`, so
+        one question costs one embedding."""
+        qt = query_text(expand_banglish(query))
+        return embed._encode(self.model, [qt], "query")[0]
+
     def search(self, query, k=10, manual_id=None, insurer=None,
-               programme=None, prefer_manual=None):
+               programme=None, prefer_manual=None, qv=None):
         """prefer_manual is NOT a filter. `manual_id` restricts the candidate
         pool; prefer_manual only decides which member of a 1.000 duplicate
         group survives the collapse, so a manual-scoped question is cited from
         the manual it asked about without narrowing what can be retrieved.
         Defaults to manual_id when that is given, since a filtered search
-        wants the same preference."""
+        wants the same preference.
+
+        `qv` is query_vector(query), when the caller already has it."""
         np = self._np
         allowed = self._allowed(manual_id, insurer, programme)
         if not allowed:
             return []
         qt = query_text(expand_banglish(query))
-        qv = embed._encode(self.model, [qt], "query")[0]
+        if qv is None:
+            qv = self.query_vector(query)
         fig = is_figure_query(query)
         sparse_raw = self.bm25.scores(qt)
         scores = rank_hybrid(qv, self.D, sparse_raw, fig, self.weights)

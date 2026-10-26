@@ -341,6 +341,25 @@ STRINGS = {
     "faq_dl_travelling_bill": {
         "en": "Download the travelling bill form",
         "bn": "ট্রাভেলিং বিল ফর্ম ডাউনলোড করুন"},
+    # A REVIEWED ANSWER ON THE ASK TAB (faqmatch.py): the question matched
+    # an approved FAQ question, so the page shows that answer instead of
+    # generating one. {q} is the FAQ question it answers, in the answer's
+    # language, so the officer can see what was matched.
+    "reviewed_note": {
+        "en": ("Reviewed answer – checked against the operations manuals by "
+               "a person. It is the FAQ answer to: “{q}”"),
+        "bn": ("যাচাই করা উত্তর – একজন মানুষ অপারেশন ম্যানুয়ালের সাথে "
+               "মিলিয়ে দেখেছেন। এটি সাধারণ প্রশ্নের এই প্রশ্নের উত্তর: “{q}”")},
+    "reviewed_open": {"en": "Open it in the FAQ",
+                      "bn": "সাধারণ প্রশ্নে দেখুন"},
+    "reviewed_meta": {
+        "en": ("No model call: approved FAQ {id}, similarity {score} "
+               "(threshold {threshold}) · {rid} · logged to {path}"),
+        "bn": ("মডেল ডাকা হয়নি: অনুমোদিত সাধারণ প্রশ্ন {id}, মিল {score} "
+               "(সীমা {threshold}) · {rid} · লগ: {path}")},
+    "chunks_faq": {
+        "en": "Nothing was searched – this is a reviewed FAQ answer.",
+        "bn": "কিছু খোঁজা হয়নি – এটি সাধারণ প্রশ্নের যাচাই করা উত্তর।"},
 
     # ------------------------------------------------------------ the quiz
     "quiz_no_bank": {"en": "No bank", "bn": "প্রশ্নভান্ডার নেই"},

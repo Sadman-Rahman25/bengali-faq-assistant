@@ -1,0 +1,153 @@
+query,expect,kind,note
+দাবি সাধারণ লোন কারা পায় আর কত টাকা দেওয়া হয়?,F-01,reword,
+দাবি+ লোনের পরিমাণ ও মেয়াদ কত?,F-01,reword,
+স্বাধীন লোন কি এখনও দেওয়া হচ্ছে?,F-02,reword,
+স্বাধীন লোন সম্পর্কে জানতে চাই,F-02,reword,
+১৮ মাসের লোন কারা নিতে পারে?,F-03,reword,
+১৮ মাস মেয়াদি লোনে কত টাকা দেওয়া হয়?,F-03,reword,
+ওয়াশ লোন কাদের দেওয়া হয়?,F-04,reword,
+স্যানিটেশনের জন্য ওয়াশ লোন কত টাকা পাওয়া যায়?,F-04,reword,
+প্রযুক্তি লোনে কত টাকা পাওয়া যায়?,F-05,reword,
+ডিভাইস কেনার জন্য প্রযুক্তি লোন কী?,F-05,reword,
+প্রগতি সাধারণ লোন কারা পায়?,F-06,reword,
+প্রগতির সাধারণ লোনে কত টাকা দেওয়া হয়?,F-06,reword,
+বিদেশে যাওয়ার জন্য মাইগ্রেশন লোন কত টাকা পাওয়া যায়?,F-07,reword,
+মাইগ্রেশন লোন কারা নিতে পারে?,F-07,reword,
+রেমিটেন্স লোন কাদের দেওয়া হয়?,F-08,reword,
+রেমিটেন্স লোন সম্পর্কে বলুন,F-08,reword,
+এগ্রিবিজনেস লোন কাদের জন্য?,F-09,reword,
+কৃষিভিত্তিক ব্যবসার জন্য এগ্রিবিজনেস লোন কী?,F-09,reword,
+নির্ভরতা লোনের মেয়াদ কত?,F-10,reword,
+চাকরিজীবীদের জন্য নির্ভরতা লোন কী?,F-10,reword,
+গতি লোন কি এখন চালু আছে?,F-11,reword,
+গতি লোন সম্পর্কে জানতে চাই,F-11,reword,
+উন্মেষ ঋণ কারা পায়?,F-12,reword,
+উন্মেষ লোনে কত টাকা দেওয়া হয়?,F-12,reword,
+প্রত্যাশা লোন কারা পায়?,F-13,reword,
+প্রত্যাশা লোনে সর্বোচ্চ কত টাকা দেওয়া হয়?,F-13,reword,
+রিফাইন্যান্স লোন কাদের দেওয়া হয়?,F-14,reword,
+রি-ফাইন্যান্স লোনে কত টাকা পাওয়া যায়?,F-14,reword,
+রিশিডিউল লোন কারা পায়?,F-15,reword,
+রি-সিডিউলড লোন কী?,F-15,reword,
+আরোগ্য ঋণ কি এখন পাওয়া যায়?,F-16,reword,
+চিকিৎসার জন্য আরোগ্য ঋণ কী?,F-16,reword,
+সাধারণ সঞ্চয়ে মুনাফা কত দেওয়া হয়?,F-17,reword,
+সাধারণ সঞ্চয় হিসাব কারা খুলতে পারে?,F-17,reword,
+ডিপিএস কত টাকা দিয়ে খোলা যায়?,F-18,reword,
+মাসিক জমা প্রকল্পের মেয়াদ শেষে কত টাকা পাওয়া যায়?,F-18,reword,
+মাসিক মুনাফা সঞ্চয় প্রকল্পে মাসে কত মুনাফা দেয়?,F-19,reword,
+মাসিক মুনাফাভিত্তিক সঞ্চয়ে সর্বনিম্ন কত টাকা রাখতে হয়?,F-19,reword,
+দ্বিগুণ মুনাফা প্রকল্পে কত বছরে টাকা ডাবল হয়?,F-20,reword,
+দ্বিগুণ মুনাফাভিত্তিক সঞ্চয় প্রকল্পে কত টাকা জমা রাখা যায়?,F-20,reword,
+দেড়গুণ মুনাফা প্রকল্পে কত বছরে টাকা দেড়গুণ হয়?,F-21,reword,
+দেড়গুণ সঞ্চয় প্রকল্পে কত টাকা রাখা যায়?,F-21,reword,
+মানি প্লান্ট সঞ্চয় প্রকল্প কী?,F-22,reword,
+মানি-প্লান্ট প্রকল্পে সর্বোচ্চ কত টাকা রাখা যায়?,F-22,reword,
+সঞ্চয় উত্তোলন করতে কী লাগে?,F-23,reword,
+জমানো টাকা তুলতে চাইলে কী করতে হবে?,F-23,reword,
+এককালীন স্থায়ী সঞ্চয় প্রকল্প কি এখন খোলা যায়?,F-24,reword,
+এককালীন সঞ্চয় প্রকল্প সম্পর্কে জানতে চাই,F-24,reword,
+ঋণ নিরাপত্তা বিমার আওতায় কারা আসে?,F-25,reword,
+ঋণ নিরাপত্তা বিমা কী?,F-25,reword,
+ছায়া সঞ্চয় বিমার প্রিমিয়াম কত?,F-26,reword,
+ছায়া-সঞ্চয় নিরাপত্তা বিমা কী?,F-26,reword,
+শস্য বিমায় কীভাবে অন্তর্ভুক্ত হওয়া যায়?,F-27,reword,
+শস্য নিরাপত্তা বিমা কারা পায়?,F-27,reword,
+গবাদিপ্রাণি বিমা কত ধরনের?,F-28,reword,
+গবাদিপ্রাণি সুরক্ষা বিমা কারা নিতে পারে?,F-28,reword,
+দুগ্ধজাত গাভীর বিমার প্রিমিয়াম কত?,F-29,reword,
+গাভীর বিমা কী?,F-29,reword,
+গরু মোটাতাজাকরণ বিমার প্রিমিয়াম কত?,F-30,reword,
+মোটাতাজাকরণ গরুর বিমা কী?,F-30,reword,
+ফায়ার সেফটি বিমার প্রিমিয়াম কত?,F-31,reword,
+অগ্নি বিমা কারা নিতে পারে?,F-31,reword,
+গবাদিপ্রাণি বিমার দাবি কেন বাতিল হয়?,F-32,reword,
+কোন কোন ক্ষেত্রে গবাদিপশুর বিমাদাবি গ্রহণযোগ্য নয়?,F-32,reword,
+নতুন সদস্য ভর্তির নিয়ম কী?,F-33,reword,
+সদস্য ভর্তির ধাপগুলো কী কী?,F-33,reword,
+লোনের জন্য কী কী কাগজ জমা দিতে হয়?,F-34,reword,
+ঋণ নিতে কোন কোন ডকুমেন্ট লাগে?,F-34,reword,
+গ্রুপ ঋণ কে অনুমোদন করেন?,F-35,reword,
+গ্রুপ লোনে কত টাকা পর্যন্ত কে অনুমোদন দেন?,F-35,reword,
+ইন্ডিভিজুয়াল ঋণের সর্বোচ্চ অনুমোদনকারী কে?,F-36,reword,
+ব্যক্তিগত ঋণ কে অনুমোদন করেন?,F-36,reword,
+ঋণ নিরাপত্তা বিমার দাবি কীভাবে করা হয়?,F-37,reword,
+ঋণী মারা গেলে বিমাদাবির প্রক্রিয়া কী?,F-37,reword,
+ছায়া-সঞ্চয় বিমার দাবি কীভাবে করব?,F-38,reword,
+ছায়া বিমার বিমাদাবি প্রক্রিয়া কী?,F-38,reword,
+শস্য বিমার দাবি কীভাবে করা হয়?,F-39,reword,
+ফসল নষ্ট হলে শস্য নিরাপত্তা বিমার টাকা কীভাবে পাওয়া যায়?,F-39,reword,
+আগুনে ক্ষতি হলে ফায়ার সেফটি বিমার দাবি কীভাবে করতে হয়?,F-40,reword,
+ফায়ার সেফটি ইন্স্যুরেন্সের বিমাদাবি প্রক্রিয়া কী?,F-40,reword,
+গবাদিপ্রাণি বিমায় সদস্য কীভাবে যুক্ত করা হয়?,F-41,reword,
+লাইভস্টক গ্রো বিমায় অন্তর্ভুক্তির প্রক্রিয়া কী?,F-41,reword,
+গ্রাহক কোথায় অভিযোগ জানাতে পারেন?,F-42,reword,
+অভিযোগ করার উপায় কী?,F-42,reword,
+কিস্তি খেলাপি হলে ঋণের শ্রেণি কী হয়?,F-43,reword,
+লেট-১ লেট-২ এনআইবিএল কী?,F-43,reword,
+মামলার খরচের বিল কে অনুমোদন করেন?,F-44,reword,
+মামলা সংক্রান্ত বিল-ভাউচার অনুমোদন কার?,F-44,reword,
+গ্রাহকের সাথে কর্মীর আচরণ কেমন হবে?,F-45,reword,
+গ্রাহকের সাথে ব্যবহারের নিয়ম কী?,F-45,reword,
+সেফগার্ডিং নীতিমালায় কী বলা আছে?,F-46,reword,live test T-07
+সুরক্ষা চ্যাম্পিয়ন কী?,F-46,reword,
+শাস্তির সিদ্ধান্তে আপত্তি থাকলে কর্মী কী করবে?,F-47,reword,
+শাস্তিমূলক ব্যবস্থার বিরুদ্ধে আপিল করা যায় কি?,F-47,reword,
+ভ্রমণ বিল কীভাবে পূরণ করব?,F-48,reword,
+ট্রাভেলিং বিল ফর্ম পূরণের নিয়ম কী?,F-48,reword,
+Who can get a Prottasha loan?,F-13,english,
+How do I fill in a travelling bill?,F-48,english,
+What documents are needed for a loan?,F-34,english,
+How can a client make a complaint?,F-42,english,
+What is the premium for dairy cow insurance?,F-29,english,
+How do I claim Credit Shield Insurance?,F-37,english,
+What is the Migration Loan?,F-07,english,
+How much profit does general savings pay?,F-17,english,
+Who approves group loans?,F-35,english,
+What happens to a loan when instalments are overdue?,F-43,english,
+How do members take out their savings?,F-23,english,
+Is the Goti loan available now?,F-11,english,
+prottasha loan ki?,F-13,banglish,
+travelling bill kivabe puron korbo?,F-48,banglish,
+loan nite ki ki kagoj lage?,F-34,banglish,
+abhijog kivabe korbo?,F-42,banglish,
+DPS koto taka diye khola jay?,F-18,banglish,
+goti loan ki ekhon pawa jay?,F-11,banglish,
+migration loan koto taka?,F-07,banglish,
+sanchay tolar niyom ki?,F-23,banglish,
+প্রত্যাশা লোনের সার্ভিস চার্জ কত?,F-13,real,six wrong-figure set: F-13 states ১৮%
+রি-সিডিউলড লোনের মেয়াদ কত?,F-15,real,six wrong-figure set: F-15 states ১–৯ মাস
+মাইগ্রেশন লোনের ঋণসীমা কত?,F-07,real,six wrong-figure set
+রেমিটেন্স লোনের ঋণসীমা কত?,F-08,real,six wrong-figure set: F-08 states ১–১৫ লক্ষ
+এগ্রিবিজনেস লোনের ঋণসীমা কত?,F-09,real,six wrong-figure set
+নির্ভরতা লোনের ঋণসীমা কত?,F-10,real,six wrong-figure set
+দাবি কর্মসূচিতে শাখা ব্যবস্থাপক কত টাকা পর্যন্ত নতুন ঋণ অনুমোদন করেন?,F-35,real,F-35 gives the Dabi/BCUP BM ceilings for both branch types
+ট্রাভেলিং বিল কত দিনের মধ্যে জমা দিতে হয়?,none,near_miss,F-48 gives no deadline
+কল সেন্টারের নম্বর কত?,none,near_miss,F-42 names the call centre but not its number; the registry withholds it (live test T-04)
+দুগ্ধজাত গাভীর বিমার দাবি কীভাবে করতে হয়?,none,near_miss,no FAQ covers a livestock claim procedure (F-29 is the premium)
+ডিপিএস হিসাব অন্য শাখায় স্থানান্তর করা যায় কি?,none,near_miss,F-18 says nothing about transfer
+মাইগ্রেশন লোন কোন কোন দেশে যাওয়ার জন্য দেওয়া হয়?,none,near_miss,F-07 lists no countries
+ঋণ নিরাপত্তা বিমার প্রিমিয়ামের হার কত?,none,near_miss,F-25 has no premium; the registry withholds it (live test T-01)
+সদস্যপদ বাতিল করতে কী করতে হয়?,none,near_miss,F-33 covers admission only
+ফায়ার সেফটি ইন্স্যুরেন্সের মেয়াদ কত দিনের?,none,near_miss,F-31 gives no term
+শস্য নিরাপত্তা বিমার প্রিমিয়াম কত টাকা?,none,near_miss,F-27 says the premium follows the land area but gives no amount
+মানি-প্লান্ট প্রকল্পে কিস্তি দিতে দেরি হলে জরিমানা কত?,none,near_miss,F-22 has no penalty
+সেইফগার্ডিং বিষয়ে কর্মীদের কী প্রশিক্ষণ দেওয়া হয়?,none,near_miss,F-46 mentions no training
+ঋণ অবলোপন কে অনুমোদন করেন?,none,near_miss,no FAQ covers write-off approval
+এনআইবিএল ঋণ কীভাবে আদায় করা হয়?,none,near_miss,F-43 gives no recovery methods
+সদস্য মারা গেলে সঞ্চয়ের টাকা কে পাবে?,none,near_miss,F-23 says nothing about nominees or death
+প্রগতি লোন আগাম পরিশোধ করলে সার্ভিস চার্জ কি কমে?,none,near_miss,F-06 says nothing about prepayment
+ছায়া-সঞ্চয় বিমা নিতে বয়সসীমা কত?,none,near_miss,F-26 gives no age limit; the registry says the current limit is unconfirmed (live test T-11)
+একাধিক ডিপিএসের উপর বিমা করা যায় কি?,none,near_miss,F-26 does not answer it; the registry withholds the old rule (live test T-02)
+লোনের কাগজপত্র কত দিন সংরক্ষণ করতে হয়?,none,near_miss,F-34 lists documents needed and says nothing about keeping them (live test T-05)
+বন্ধ হয়ে যাওয়া প্রোডাক্টগুলো কবে থেকে বন্ধ?,none,near_miss,no FAQ gives suspension dates (live test T-03)
+ঋণ নেওয়ার আগে সদস্যকে কত সঞ্চয় জমা দিতে হয়?,none,near_miss,no FAQ answers the deposit rule for both programmes
+বছরে কত দিন অর্জিত ছুটি পাওয়া যায়?,none,off_topic,live test T-08
+ডাইনিং রুম ব্যবহারের নিয়ম কী?,none,off_topic,live test T-09
+নিয়োগ ও পদোন্নতির নিয়ম কী?,none,off_topic,live test T-10
+অফিসের ইন্টারনেট সংযোগের অনুমোদন কে দেন?,none,off_topic,
+মোটরসাইকেল কেনার অনুমোদন কে দেন?,none,off_topic,
+“গুড কাস্টমার লোন” সম্পর্কে বলুন।,none,off_topic,live test T-06
+নীলকমল ঋণ কী?,none,off_topic,
+ব্র্যাক কবে প্রতিষ্ঠিত হয়?,none,off_topic,
+আজ ঢাকার আবহাওয়া কেমন?,none,off_topic,

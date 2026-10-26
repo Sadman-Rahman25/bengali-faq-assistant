@@ -3391,6 +3391,151 @@ from the parsed source: both clean, self-check passing.
 
 ---
 
+## 4r. Reviewed answers first; and the heading the Dabi manual never prints
+
+Four last answer-quality items before field testing, 2026-10-26/27.
+
+### The Progoti heading, carried into the Dabi chunks
+
+The Dabi manual prints §২.১.২(ক)–(গ) — the individual-client rules — under
+no ২.১.২ heading. The Progoti manual prints it: `২.১.২ ইন্ডিভিজুয়াল সেবা
+(প্রগতি কর্মসূচি)`. So five Dabi chunks carried Progoti's figures (the
+deposit rule's ৪% / ২% among them) under headings that named no programme,
+and neither answering rule 9 nor `programme_label` had anything to label
+them with (§7, "Open", 2026-10-26). A survey of both manuals found this the
+only clause where one manual prints lettered sub-clauses without the
+parent heading the other prints.
+
+**The fix, in extraction, from the manual's own words — the caption fix's
+approach (§4q).** `ex.BORROWED_PARENTS = {"2.1.2": the Progoti .docx}`;
+`borrowed_parents()` reads the heading text from that manual (and stops the
+build if it is ever missing), and it is placed in the heading path above
+the first lettered sub-heading. Nothing is typed by hand.
+
+| | result |
+|---|---|
+| scope | exactly the five Dabi §2.1.2 chunks changed: `dabi_2025_0054_p1`–`_p3`, `0055`, `0056`. Progoti and livestock finals unchanged |
+| text | each = old chunk + the borrowed heading line (45 characters); body byte-identical |
+| figures | unchanged; `table_rows` equal the Word cells, read fresh |
+| programme tag | `[]` → `[progoti]` on all five |
+| twins | 276 groups before and after; 0 stopped collapsing, 0 newly merged |
+| `validate_gold` | `gold/bootstrap.yaml` consistent |
+| index | `out/index_gemini_v2` rebuilt: 5 encoded, 868 reused byte-identical |
+
+**What cites a changed chunk.** Validated quiz bank: none (52 reviews
+stand). Draft banks: Q-043 in `bank.yaml` and `bank_64.yaml` cites
+`dabi_2025_0054_p2` (a different question from the validated bank's
+Q-043). Gold: none. FAQ: F-43 cites `dabi_2025 §2.1.2` — a clause
+citation, and an FAQ approval covers the FAQ's own text, so nothing is
+voided; its content is unaffected.
+
+**The deposit question, asked twice** ("ঋণ নেওয়ার আগে সদস্যকে কত সঞ্চয় জমা
+দিতে হয়?"):
+
+> ঋণ নেওয়ার আগে সদস্যকে প্রথম ঋণের জন্য চাওয়া ঋণ পরিমাণের **৪ %** এবং
+> পুনরাবৃত্তি (রিপিট) ঋণের জন্য **২ %** সঞ্চয় জমা দিতে হয়। (দাবি অপারেশন
+> ম্যানুয়াল ২০২৫ §২.১.২)
+> এই তথ্য প্রগতি কর্মসূচির।
+
+> প্রথমবারের ঋণের জন্য কাঙ্খিত ঋণ পরিমাণের **৪ %** সঞ্চয় জমা দিতে হবে, আর
+> পুনরাবৃত্তি (রিপিট) ঋণের ক্ষেত্রে **২ %** সঞ্চয় জমা দিতে হবে। (দাবি
+> অপারেশন ম্যানুয়াল ২০২৫ §২.১.২)
+> এই তথ্য প্রগতি কর্মসূচির।
+
+Both say the figures are Progoti's. A third ask, through the new
+reviewed-answers path below, gave the same figures and the same label.
+
+### ভুক্তভোগী → সারভাইভার
+
+`data/registry/term_updates.csv`, per BRAND.md 10.1 (survivor, never
+victim). Two rows, **the possessive first**: a plain swap turns ভুক্তভোগীর
+into সারভাইভারর. Checked: ভুক্তভোগীকে → সারভাইভারকে, ভুক্তভোগীর →
+সারভাইভারের, ভুক্তভোগীদের → সারভাইভারদের, ভুক্তভোগীরা → সারভাইভারেরা. The
+FAQ already says সারভাইভার and never ভুক্তভোগী, so a live answer and the
+reviewed one now use the same word. `registry.py --check` passes.
+
+### Reviewed answers first (`faqmatch.py`)
+
+When a question on the Ask anything tab matches an approved FAQ question,
+the page shows that reviewed answer, in the officer's language, with a line
+saying it is a reviewed answer and which FAQ question it answers, and a
+button that opens it on the FAQ tab. Nothing is generated. Otherwise the
+question goes to retrieval and the model as before.
+
+**Measured on `data/faq/match_tests.csv`**, 152 questions written for it:
+123 that should match (two rewordings of each of the 48 FAQ questions, 12
+in English, 8 in Banglish, 7 real field questions) and 29 that must not
+(20 near misses — same product, a fact the reviewed answer lacks, each
+noted with why — and 9 off-topic); ten of the eleven live tests are among
+them.
+
+**Similarity alone cannot do it.** "মাইগ্রেশন লোন কোন কোন দেশে যাওয়ার জন্য
+দেওয়া হয়?" scores 0.907 against the Migration Loan answer, which lists no
+countries; the real question "প্রত্যাশা লোনের সার্ভিস চার্জ কত?" scores 0.815
+against the answer that states it. A threshold above every must-not-match
+(0.912) keeps 69 of 123, and one new near miss scoring higher would break
+it.
+
+**So two tests, both required.** Similarity, against the 96 approved
+questions (Bengali and English), embedded exactly as the retriever embeds
+a query, so one vector serves both. And **coverage**: every content word of
+the question must appear in that FAQ's question or answer, by the
+registry's own word matcher. Coverage stops 28 of the 29; the 29th, "কল
+সেন্টারের নম্বর কত?" (the complaints answer names the call centre but not
+its number), scores 0.617. The one wrong FAQ that passes coverage — a DPS
+question closest to the monthly-profit scheme (0.843) — sets the
+threshold: **0.848**, 0.005 above it.
+
+| at 0.848 | result |
+|---|---|
+| must not match | **0 of 29** shown a reviewed answer |
+| wrong FAQ | **0** questions shown a different FAQ's answer |
+| should match | **74 of 123**: rewordings 62/96, English 11/12, Banglish 0/8, real 1/7 |
+
+The 49 that do not match get a generated answer, as before: 19 score
+below the threshold, 3 are closest to another FAQ, and 27 use a word the
+reviewed answer puts differently — ঋণসীমা for a limit it states as a
+range, ডকুমেন্ট for কাগজপত্র, and every Banglish word. Coverage takes no
+synonyms on purpose: it is the part that cannot be argued into a wrong
+match. Four of the seven real questions ask a product's ঋণসীমা.
+
+**In the app.** One embedding per question. The FAQ's question vectors are
+cached by content in `out/faq_match/`, which is not in git: a fresh clone
+embeds the 96 on its first question, and if that fails, the question is
+answered as before rather than not at all. Every generated answer's meta
+row records the closest FAQ and why it was not shown — the evidence for
+moving the threshold later. A reviewed answer's row records which FAQ, at
+what similarity, with no model and no tokens. The registry's refusal rules
+are not consulted for a reviewed answer: it is text a person approved.
+
+**The tabs now rerun on a click** (`on_change="rerun"`): the server can open
+the FAQ tab only when the tabs track state. The ask and the quiz are both
+guarded against reruns, so this spends nothing. It also ends §4m's known
+limit: the open tab survives a language switch. The FAQ entry is opened in
+place; the list is not scrolled to it.
+
+**Live, through `app.ask`:** "মাইগ্রেশন লোন কারা নিতে পারে?" → F-07 in
+Bengali; "What is the Migration Loan?" → F-07 in English; "ট্রাভেলিং বিল
+ফর্ম কীভাবে পূরণ করতে হয়?" → F-48 with its form; 0 tokens each. The
+countries question → not covered (দেশে) → generated: "…ম্যানুয়ালটি মাইগ্রেশন
+লোন কোন কোন দেশে দেওয়া হয় তা উল্লেখ করে না।" The deposit question →
+F-23 at 0.706, below threshold → generated, labelled Progoti.
+
+`tests/test_faq_match.py`, 10 tests: coverage stops every pinned near miss;
+below-threshold and uncovered both refuse; the officer's language; a match
+skips the model and spends one embedding; a near miss is retrieved with
+that same vector; the page, its link and the language switch, rendered;
+the measured threshold equals the one in code, on the cached vectors.
+Canary: with coverage disarmed, the near-miss test fails.
+
+### T-10, a known limitation
+
+"নিয়োগ ও পদোন্নতির নিয়ম কী?" gives §6.3 content in 5 of 7 runs and a flat
+"the manual does not say" otherwise. Recorded as a known limitation and
+not pursued: no further tokens are spent on it.
+
+---
+
 ## 5. The four conventions, and why they are checks rather than prose
 
 All four exist because they were broken repeatedly — **fifteen times between
@@ -3671,6 +3816,11 @@ Highlights:
   heading -- Dabi never prints ২.১.২, and these chunks have no Progoti twin
   -- so neither rule 9 nor the code can label them; carrying the Progoti
   manual's ২.১.২ heading into them at extraction would. (2) F-08. (3) T-10.
+  **Since (§4r, 2026-10-27):** (1) done -- the heading is carried, and the
+  deposit answer now says Progoti (2 of 2). (3) recorded as a known
+  limitation: §6.3 content in 5 of 7 runs, a flat "not in the manual"
+  otherwise. Questions an approved FAQ answers now get the reviewed answer
+  (74 of 123 test rewordings, 0 of 29 must-not-match).
 - **One follow-up left from the caption fix (§4q, 2026-10-26): single-row
   tables are dropped from the corpus** (Dabi table 36 and its Progoti twin).
   The others are done: F-35 opens by saying its table is Dabi/BCUP's and
@@ -3831,6 +3981,9 @@ python gold_eval.py --gold gold/bootstrap.yaml \
 python generate.py --make-synthetic
 python generate.py --retrieved out/synthetic_retrieved.jsonl \
     --gold gold/synthetic.yaml --score --no-registry
+# Reviewed answers first: re-measure the threshold after an FAQ question
+# changes (also warms out/faq_match/ for the app). See 4r.
+python faqmatch.py --measure
 
 # Reading a chunk by eye
 python show_chunk.py progoti_0062 dabi_2025_0033
