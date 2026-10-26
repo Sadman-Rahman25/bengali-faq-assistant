@@ -52,6 +52,15 @@ Every product has three names, and all three should match a question:
 - `name_en` — official English, or the Banglish name where none exists
 - `name_banglish` — romanised Bengali, so a question typed in Banglish matches
 
+and, where `name_en` is Banglish, one more:
+
+- `name_en_gloss` — plain English in brackets after the name on its first
+  mention, e.g. "Dugdhojato Gavir Bima (dairy cow insurance)". Blank when
+  `name_en` is real English. A description, not a name: it is not matched
+  against questions ("general savings" is not the product's name), and
+  English text should use these words, not new ones. `faq_check.py` holds
+  the FAQ's English to it.
+
 ## How the chatbot uses it
 
 1. A product is named in the question → look up `products.csv` and say

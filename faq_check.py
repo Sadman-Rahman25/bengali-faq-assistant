@@ -10,6 +10,15 @@
   products   a product the Bengali names is named in English by the
              registry's name_en, with the Bengali name in brackets on its
              first mention, so an officer can match it to a Bengali form.
+             Where name_en is Banglish, the plain-English gloss comes first
+             in that bracket: "Name (gloss; বাংলা)".
+  gloss      every glossed name (products.csv name_en_gloss) carries its
+             gloss on its first mention in the question and in the answer,
+             wherever it appears -- the gloss is the registry's, so the
+             chatbot and the FAQ say the same plain English.
+  insurers   an insurer named in full in the English is named as the
+             registry names it now (PLC). The Bengali keeps the manual's
+             wording; a short form ("Guardian") is not a full name.
   roles      a post the Bengali names is named in English from ONE
              glossary, built from roles.py, so the same post never has two
              English names in two answers.
@@ -77,12 +86,13 @@ def role_glossary():
 
 
 EXTRA_ROLES = {
+    # abbreviations confirmed in review, 2026-10-26
     "সহকারী এলাকা "
     "ব্যবস্থাপক":
-        "Assistant Area Manager",
+        "Assistant Area Manager (AAM)",
     "সহকারী আঞ্চলিক "
     "ব্যবস্থাপক":
-        "Assistant Regional Manager",
+        "Assistant Regional Manager (ARM)",
     # the same post as বিভাগীয় ব্যবস্থাপক, written in English letters
     "ডিভিশনাল ম্যানেজার":
         "Divisional Manager (DM)",
@@ -215,7 +225,53 @@ def short(name_en):
     return name_en.split(" / ")[0].strip()
 
 
-def canaries(glossary):
+def glossed(registry):
+    """[(short name_en, gloss)] for the products whose name_en is Banglish.
+    The gloss lives in products.csv, not here (Convention 2)."""
+    return [(short(p["name_en"]), p["name_en_gloss"].strip())
+            for p in registry.values()
+            if (p.get("name_en_gloss") or "").strip()]
+
+
+def first_bracket(name_bn, gloss):
+    """What follows a product's first mention in the English answer."""
+    return f"({gloss}; {name_bn})" if gloss else f"({name_bn})"
+
+
+def gloss_missing(text, name, gloss):
+    """True if the first mention of a glossed name lacks its gloss."""
+    m = re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", text or "")
+    return bool(m) and not text[m.end():].startswith(f" ({gloss}")
+
+
+def strip_glosses(text, glosses):
+    """A gloss restates the name -- 18 Mash Meyadi Loan (18-month loan) --
+    so its figures are the name's, not new ones."""
+    for _name, g in glosses:
+        text = text.replace(f" ({g})", "").replace(f"({g}; ", "(")
+    return text
+
+
+def insurer_names():
+    with io.open("data/registry/insurers.csv", encoding="utf-8") as f:
+        return [r["name_en"] for r in csv.DictReader(f)]
+
+
+def insurer_misnamed(text, names):
+    """Full-name mentions -- the insurer's stem plus a company suffix --
+    that are not the registry's name. -> [as written]"""
+    out = []
+    for name in names:
+        stem = re.split(r" (?:Life|Insurance|PLC)\b", name)[0]
+        rx = re.compile(re.escape(stem)
+                        + r"(?:\s+(?:Life|Insurance|Company))*"
+                        + r"\s+(?:Limited|Ltd\.?|PLC)\b")
+        out += [m.group(0) for m in rx.finditer(text or "")
+                if m.group(0) != name]
+    return out
+
+
+def canaries(glossary, glosses, insurers):
     """Convention 3: each check must be seen to fail before it is trusted."""
     ok = True
     bad = [
@@ -238,9 +294,25 @@ def canaries(glossary):
         ("roles: সহকারী এলাকা ব্যবস্থাপক is not an Area Manager",
          roles_in("সহকারী এলাকা "
                   "ব্যবস্থাপক",
-                  glossary) == ["Assistant Area Manager"]),
+                  glossary) == ["Assistant Area Manager (AAM)"]),
         ("words: 'beneficiaries' is caught",
          bool(BANNED.search("loans for beneficiaries"))),
+    ]
+    # fixtures from the registry itself, so no product or insurer name is
+    # written here
+    name, g = glosses[0]
+    ins = next(n for n in insurers if n.endswith(" PLC"))
+    bad += [
+        ("gloss: a glossed name without its gloss is caught",
+         gloss_missing(f"About {name}.", name, g)),
+        ("gloss: the gloss on the first mention passes",
+         not gloss_missing(f"About {name} ({g}). {name}.", name, g)),
+        ("gloss: its figures are not counted twice",
+         strip_glosses(f"{name} ({g})", glosses) == name),
+        ("insurers: a superseded 'Limited' is caught",
+         bool(insurer_misnamed(ins[:-4] + " Limited", insurers))),
+        ("insurers: the registry's name passes",
+         not insurer_misnamed(f"{ins}; {ins.split()[0]} alone", insurers)),
     ]
     for name, good in bad:
         print("  canary %-48s %s" % (name, "OK" if good else "FAILED"))
@@ -253,8 +325,10 @@ def main():
     rows = faq.load()
     glossary = role_glossary()
     reg = registry()
+    glosses = glossed(reg)
+    insurers = insurer_names()
     print("CANARIES")
-    if not canaries(glossary):
+    if not canaries(glossary, glosses, insurers):
         print("a check failed its own canary; nothing below is trusted")
         return 2
     print()
@@ -276,8 +350,9 @@ def main():
             if r[f] != unicodedata.normalize("NFC", r[f]):
                 report(rid, "nfc", f"{f} is not NFC")
         if en:
-            only_bn, only_en = number_diff(r["question_bn"] + "\n" + bn,
-                                           r["question_en"] + "\n" + en)
+            only_bn, only_en = number_diff(
+                r["question_bn"] + "\n" + bn,
+                strip_glosses(r["question_en"] + "\n" + en, glosses))
             if only_bn:
                 report(rid, "numbers", f"in Bengali only: {only_bn}")
             if only_en:
@@ -300,11 +375,22 @@ def main():
                                     f"{name_bn}, not renamed")
                     continue
                 subject.discard(pid)
+                want = first_bracket(name_bn,
+                                     reg[pid].get("name_en_gloss", "").strip())
                 if short(name_en) not in en:
                     report(rid, "products", f"needs \"{short(name_en)}\"")
-                elif f"({name_bn})" not in en:
+                elif want not in en:
                     report(rid, "products",
-                           f"first mention needs \"({name_bn})\"")
+                           f"first mention needs \"{want}\"")
+            for name, g in glosses:
+                for f in ("question_en", "answer_en"):
+                    if gloss_missing(r[f], name, g):
+                        report(rid, "gloss", f"first \"{name}\" in {f} "
+                                             f"needs \"({g}\"")
+            for found in insurer_misnamed(r["question_en"] + "\n" + en,
+                                          insurers):
+                report(rid, "insurers", f"\"{found}\" is not the "
+                                        "registry's name")
             for m in BANNED.finditer(en + " " + r["question_en"]):
                 report(rid, "words", f"\"{m.group(0)}\"")
         for m in LATIN.finditer(r["question_bn"] + " " + bn):

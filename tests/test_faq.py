@@ -57,7 +57,8 @@ def test_status_and_notes_are_not_content():
 
 def test_english_needs_its_own_approval():
     rows = _rows()
-    r = next(x for x in rows if faq.approved(x, "bn"))
+    r = next(x for x in rows
+             if faq.approved(x, "bn") and not faq.approved(x, "en"))
     assert not faq.approved(r, "en")
     assert faq.view(r, "en")["fell_back"]
     faq.approve(rows, r["id"], "TEST", "en")
@@ -125,7 +126,10 @@ def test_the_tab_renders_both_languages():
         at = _render(tmp, lang)
         labels = [e.label for e in at.expander]
         md = " ".join(m.value for m in at.markdown)
-        exp = next(e for e in at.expander if e.label == att["question_bn"])
+        # its label is the English question once that is approved too
+        q = att["question_en"] if lang == "en" and faq.approved(att, "en") \
+            else att["question_bn"]
+        exp = next(e for e in at.expander if e.label == q)
         first = next(iter(exp.children.values()))
         assert type(first).__name__ == "DownloadButton", "button not first"
         if lang == "en":
