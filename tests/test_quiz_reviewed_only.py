@@ -50,7 +50,10 @@ def scratch_bank(tmp):
     shutil.copy(ROOT / quiz_app.BANK, path)
     doc = yaml.safe_load(path.read_text(encoding="utf-8"))
     reviewed = doc["meta"]["review_state"]["reviewed"]
-    qs = [q for q in doc["questions"] if q["id"] in reviewed]
+    # Only questions whose review is current: cancelling one that is
+    # already void would prove nothing.
+    current = current_reviews(doc["questions"], doc["meta"]["review_state"])
+    qs = [q for q in doc["questions"] if q["id"] in current]
     edited, removed = qs[0], qs[1]
     edited["question_bn"] += " (edited)"
     del reviewed[removed["id"]]
@@ -155,7 +158,11 @@ def test_changed_manual_text_cancels_the_review():
     man_path = ROOT / quiz_recheck.MANIFEST
     qs_all, meta = quiz_app._load_bank(str(ROOT / quiz_app.BANK), 0)
     state = meta["review_state"]
-    target = qs_all[0]
+    # Measured against the REAL manifest, not assumed: a review the corpus
+    # has already voided (the caption fix voided three) is not shipped
+    # today, so it can be neither the target nor an expected survivor.
+    current = current_reviews(qs_all, state)
+    target = next(q for q in qs_all if q["id"] in current)
     with tempfile.TemporaryDirectory() as tmp:
         man = json.loads(man_path.read_text(encoding="utf-8"))
         row = next(r for r in man["chunks"]
@@ -175,7 +182,7 @@ def test_changed_manual_text_cancels_the_review():
             qs, _m = quiz_app.bank()
             ids = {q["id"] for q in qs}
             assert not (sharing & ids), sharing & ids
-            assert ids == {q["id"] for q in qs_all} - sharing
+            assert ids == current - sharing
             assert not (sharing & drawn_ids(qs))
             quiz_recheck.MANIFEST = Path(tmp) / "absent.json"
             assert quiz_app.bank()[0] == []
@@ -185,12 +192,24 @@ def test_changed_manual_text_cancels_the_review():
         == man_path.read_text(encoding="utf-8")
 
 
+def current_reviews(qs, state):
+    """Ids whose review is current against the real manifest. -> set"""
+    import quiz_recheck
+    hashes = quiz_recheck.chunk_hashes(ROOT / quiz_recheck.MANIFEST)
+    return {q["id"] for q in qs
+            if quiz_recheck.review_status(q, state, hashes) == "reviewed"}
+
+
 def test_real_bank_ships_every_reviewed_question():
+    """Every question whose review is CURRENT ships, and no other. A review
+    record voided since -- by an edit or by a change to the manual text --
+    is in the file but not in the quiz."""
     qs, meta = quiz_app.bank()
     raw = yaml.safe_load((ROOT / quiz_app.BANK).read_text(
         encoding="utf-8"))["questions"]
-    reviewed = meta["review_state"]["reviewed"]
-    assert {q["id"] for q in qs} == {q["id"] for q in raw if q["id"] in reviewed}
+    current = current_reviews(raw, meta["review_state"])
+    assert current, "no question has a current review"
+    assert {q["id"] for q in qs} == current
     assert quiz_app.answer_capacity(qs) >= quiz_app.N_PER_SESSION
     drawn_ids(qs)
 

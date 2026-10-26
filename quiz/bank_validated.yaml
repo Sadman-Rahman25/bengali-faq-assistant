@@ -404,6 +404,26 @@ meta:
     explanation_before: 'অভিযোগের ধরণ: ৩. অতিরিক্ত ডকুমেন্টস চাওয়া (প্রগতি ঋণের জন্য প্রযোজ্য) — প্রগতি:
       ৩ — এএম ।'
     chunk_id_before: progoti_0090_p6
+  - id: Q-003
+    action: edited
+    reason: 'its range ১৫,০০০-৭০,০০০ is the NCDP/SCDP table''s (dabi_2025_0050), not Dabi''s. Now asks
+      the Dabi/BCUP table (dabi_2025_0049): who approves new loans of ২০,০০০-৭০,০০০ in a high-demand branch.
+      Answer and options unchanged (বিএম; four different posts, no distractor in the chunk). Explanation:
+      the chunk''s caption and the high-demand row, verbatim, joined with " — "'
+    date: '2026-10-26'
+    before: গ্রুপ ভিত্তিক সেবা অনুযায়ী ১৫,০০০ থেকে ৭০,০০০ টাকার নতুন ঋণ অনুমোদনের দায়িত্ব কার?
+    explanation_before: 'নতুন ঋণ: ১৫০০০-৭০০০০ — বিএম — রিপিট ঋণ: ১৫০০০-১২০০০০ — বিএম ।'
+    chunk_id_before: dabi_2025_0050
+  - id: Q-002
+    action: checked, unchanged
+    reason: 'review cancelled: dabi_2025_0021 gained a caption line ("(ক) মাসিক জমা প্রকল্প/ DPS-"). Explanation
+      still verbatim in the chunk; nothing changed'
+    date: '2026-10-26'
+  - id: Q-040
+    action: checked, unchanged
+    reason: 'review cancelled: progoti_0062 gained a caption line ("প্রগতি কর্মসূচির ঋণ অনুমোদন সিলিং").
+      Explanation still verbatim in the chunk; nothing changed'
+    date: '2026-10-26'
   review_state:
     note: checked = an automated or Claude check; reviewed = a person read it and ticked it correct. Only
       reviewed counts for shipping. Each record holds the question's fingerprint at that time, including
@@ -847,8 +867,9 @@ questions:
   explanation: 'সময়কাল: ৫ম বছর পর কিন্তু ৮ম বৎসরপূর্ণ নাহলে — লভ্যাংশ: পুরোজমা + ৬% লভ্যাংশ ।'
 - id: Q-003
   kind: role
-  question_bn: গ্রুপ ভিত্তিক সেবা অনুযায়ী ১৫,০০০ থেকে ৭০,০০০ টাকার নতুন ঋণ অনুমোদনের দায়িত্ব কার?
-  chunk_id: dabi_2025_0050
+  question_bn: দাবি ও বিসিইউপি কর্মসূচিতে উচ্চ চাহিদার শাখায় ২০,০০০ থেকে ৭০,০০০ টাকার নতুন ঋণ অনুমোদনের
+    দায়িত্ব কার?
+  chunk_id: dabi_2025_0049
   manual_id: dabi_2025
   clause: 2.1.1
   clause_display: ২.১.১
@@ -858,7 +879,8 @@ questions:
   - বিভাগীয় ব্যবস্থাপক
   - বিএম
   - কর্মসূচি প্রধান
-  explanation: 'নতুন ঋণ: ১৫০০০-৭০০০০ — বিএম — রিপিট ঋণ: ১৫০০০-১২০০০০ — বিএম ।'
+  explanation: 'শাখার ধরন অনুযায়ী ঋণ অনুমোদনের সিলিং (দাবি ও বিসিইউপি) — ঋণের চাহিদা অনুযায়ী শাখা: উচচ
+    চাহিদা — নতুন ঋণ: ২০০০০-৭০০০০ — বিএম — রিপিট ঋণ: ২০০০০-১২০০০০ — বিএম ।'
 - id: Q-004
   kind: role
   question_bn: সদস্যদের অভিযোগ প্রদানের মাধ্যম অনুযায়ী, দাবি+ সদস্যরা সরাসরি কথা বলে কোন পদের কর্মকর্তার
