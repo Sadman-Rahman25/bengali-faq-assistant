@@ -295,6 +295,16 @@ seeded `must_not` against quoting the §7.1 procurement limits.
 
 ## 3.4 §2.1.1(চ) carries two different group-loan approval tables
 
+> **Withdrawn 2026-10-26 — not a document defect.** Both manuals DO label
+> both tables: `শাখার ধরন অনুযায়ী ঋণ অনুমোদনের সিলিং (দাবি ও বিসিইউপি)`
+> above the first, and `… (এনসিডিপি ও এসসিডিপি)` as the anchor of the
+> second, which is a floating table. Our extraction left both captions in
+> the parent table's text, ahead of both tables, so neither chunk carried
+> its own label. The extraction now puts each caption in its table's chunk
+> (project journal §4q). The two tables do not disagree: they cover
+> different programmes. **No action is needed from the programme team.**
+> The text below is kept as the record of how it was misread.
+
 Both manuals print **two** new-loan approval tables under the same clause
 §2.1.1(চ), and they disagree about the branch manager's lower bound. Neither
 table is labelled in a way that tells a reader which one applies to them.

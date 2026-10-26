@@ -268,7 +268,7 @@
   },
   {
    "chunk_id": "dabi_2025_0019",
-   "sha256": "b70003743c1b94279b2a5e5e0c6b47a47b5c4a45e8b6b77f40692d3a0e413260",
+   "sha256": "7463527eb7f66e82363f287a529bd463bfe8edec8de0858c1e81dbb96095e7db",
    "manual_id": "dabi_2025",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -277,8 +277,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 731,
-   "dup_group": "6a3c02d5c005"
+   "n_chars": 825,
+   "dup_group": "9e9b39448a37"
   },
   {
    "chunk_id": "dabi_2025_0020",
@@ -296,7 +296,7 @@
   },
   {
    "chunk_id": "dabi_2025_0021",
-   "sha256": "10aad040d1a9b77f0e4266a4a3534754289dd8175d216ec6affbafa3d91b620b",
+   "sha256": "6c095012759c2560c411134081c8e2e30377874c5848779544635e0707007c85",
    "manual_id": "dabi_2025",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -305,8 +305,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 454,
-   "dup_group": "1b85d8d3079d"
+   "n_chars": 575,
+   "dup_group": "afe07810e25a"
   },
   {
    "chunk_id": "dabi_2025_0022",
@@ -324,7 +324,7 @@
   },
   {
    "chunk_id": "dabi_2025_0023",
-   "sha256": "36e9da9cae260374fa419acff698a01070b33c0aef8399a82ad9e7ca89567e60",
+   "sha256": "47686297d59eae111858ab92aa5242c678c03307849d9fe8551ab8b86eeeb203",
    "manual_id": "dabi_2025",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -333,8 +333,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 175,
-   "dup_group": "09ae61de2a9c"
+   "n_chars": 264,
+   "dup_group": "e0ac49592e12"
   },
   {
    "chunk_id": "dabi_2025_0024",
@@ -352,7 +352,7 @@
   },
   {
    "chunk_id": "dabi_2025_0025",
-   "sha256": "9939b004995ce189760b8b9760eab1968449146b9b855bd50ca9f1299215ea9b",
+   "sha256": "25a83eb9d185944027760b556dfb91e4e368870f267bd9c4cf0833212cd853a4",
    "manual_id": "dabi_2025",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -361,8 +361,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 243,
-   "dup_group": "2cbde64ff3de"
+   "n_chars": 354,
+   "dup_group": "5dbb7e3d01b7"
   },
   {
    "chunk_id": "dabi_2025_0026",
@@ -380,7 +380,7 @@
   },
   {
    "chunk_id": "dabi_2025_0027",
-   "sha256": "43b0dedde169daaf092f66535256593fdf99d72bb595421ffcd148a2f86f3813",
+   "sha256": "34cc62baae8f1ed9bb5cb2a94df9ded33d714808838e6843d1291d297f52dd35",
    "manual_id": "dabi_2025",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -389,8 +389,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 708,
-   "dup_group": "4bcf66d73bfa"
+   "n_chars": 841,
+   "dup_group": "3a66856ec0e5"
   },
   {
    "chunk_id": "dabi_2025_0028",
@@ -408,7 +408,7 @@
   },
   {
    "chunk_id": "dabi_2025_0029",
-   "sha256": "e00cb3e6204c7bb9d9ee289a70f30b0c311edf46cbafe2f9b8b87e9e92b54dc9",
+   "sha256": "9e435cf43d21cd0471ae4cf6155db10e14c9489f07855e9704501af6a4d771f3",
    "manual_id": "dabi_2025",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -417,8 +417,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 464,
-   "dup_group": "302b31dd76a5"
+   "n_chars": 598,
+   "dup_group": "a6d839d7da0f"
   },
   {
    "chunk_id": "dabi_2025_0030",
@@ -436,7 +436,7 @@
   },
   {
    "chunk_id": "dabi_2025_0031",
-   "sha256": "e49c6abac19d041c2abb550a972e3019bb82ce5701c213d2aa98983ecdac3c85",
+   "sha256": "1a97ec8811ab9e3cb66d148f1907ff101f154a211027b9476ca3473c22c5f92e",
    "manual_id": "dabi_2025",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -445,8 +445,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 976,
-   "dup_group": "90522dc37594"
+   "n_chars": 1043,
+   "dup_group": "32b4e3ae8c19"
   },
   {
    "chunk_id": "dabi_2025_0032",
@@ -763,7 +763,7 @@
   },
   {
    "chunk_id": "dabi_2025_0049",
-   "sha256": "3102c99b5fc3cc6d54aae2e36ae092cfdb6599a9fd1110c040e640de50374c94",
+   "sha256": "29b4ab3a848424eec5e5adfd98108d8ac16300e0871418698b8e66562a61fc48",
    "manual_id": "dabi_2025",
    "clause": "2.1.1",
    "clause_display": "২.১.১",
@@ -773,12 +773,12 @@
     "২.১.১ গ্রুপভিত্তিক সেবা (দাবি, বিসিইউপি ও সিডিপি)",
     "২.১.১(চ) গ্রুপ ভিত্তিক সেবা (ঋণ বিতরণ ও আদায় প্রক্রিয়া)"
    ],
-   "n_chars": 921,
-   "dup_group": "08ff4a2708cf"
+   "n_chars": 977,
+   "dup_group": "581db8f1699e"
   },
   {
    "chunk_id": "dabi_2025_0050",
-   "sha256": "bc954f14bdf59af69859f2f65eb0d020a050c814d6d2ca5f07aa3894e341d330",
+   "sha256": "1fb65f73d35d2a9a3e12f0344be059ad0fb54d65e7888b83d15c1e5d65264bde",
    "manual_id": "dabi_2025",
    "clause": "2.1.1",
    "clause_display": "২.১.১",
@@ -788,8 +788,8 @@
     "২.১.১ গ্রুপভিত্তিক সেবা (দাবি, বিসিইউপি ও সিডিপি)",
     "২.১.১(চ) গ্রুপ ভিত্তিক সেবা (ঋণ বিতরণ ও আদায় প্রক্রিয়া)"
    ],
-   "n_chars": 559,
-   "dup_group": "a6f45fc8575e"
+   "n_chars": 619,
+   "dup_group": "04e2e34d4b42"
   },
   {
    "chunk_id": "dabi_2025_0051",
@@ -6407,7 +6407,7 @@
   },
   {
    "chunk_id": "progoti_0026",
-   "sha256": "b70003743c1b94279b2a5e5e0c6b47a47b5c4a45e8b6b77f40692d3a0e413260",
+   "sha256": "7463527eb7f66e82363f287a529bd463bfe8edec8de0858c1e81dbb96095e7db",
    "manual_id": "progoti",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -6416,8 +6416,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 731,
-   "dup_group": "6a3c02d5c005"
+   "n_chars": 825,
+   "dup_group": "9e9b39448a37"
   },
   {
    "chunk_id": "progoti_0027",
@@ -6435,7 +6435,7 @@
   },
   {
    "chunk_id": "progoti_0028",
-   "sha256": "10aad040d1a9b77f0e4266a4a3534754289dd8175d216ec6affbafa3d91b620b",
+   "sha256": "6c095012759c2560c411134081c8e2e30377874c5848779544635e0707007c85",
    "manual_id": "progoti",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -6444,8 +6444,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 454,
-   "dup_group": "1b85d8d3079d"
+   "n_chars": 575,
+   "dup_group": "afe07810e25a"
   },
   {
    "chunk_id": "progoti_0029",
@@ -6463,7 +6463,7 @@
   },
   {
    "chunk_id": "progoti_0030",
-   "sha256": "36e9da9cae260374fa419acff698a01070b33c0aef8399a82ad9e7ca89567e60",
+   "sha256": "47686297d59eae111858ab92aa5242c678c03307849d9fe8551ab8b86eeeb203",
    "manual_id": "progoti",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -6472,8 +6472,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 175,
-   "dup_group": "09ae61de2a9c"
+   "n_chars": 264,
+   "dup_group": "e0ac49592e12"
   },
   {
    "chunk_id": "progoti_0031",
@@ -6491,7 +6491,7 @@
   },
   {
    "chunk_id": "progoti_0032",
-   "sha256": "9939b004995ce189760b8b9760eab1968449146b9b855bd50ca9f1299215ea9b",
+   "sha256": "25a83eb9d185944027760b556dfb91e4e368870f267bd9c4cf0833212cd853a4",
    "manual_id": "progoti",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -6500,8 +6500,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 243,
-   "dup_group": "2cbde64ff3de"
+   "n_chars": 354,
+   "dup_group": "5dbb7e3d01b7"
   },
   {
    "chunk_id": "progoti_0033",
@@ -6519,7 +6519,7 @@
   },
   {
    "chunk_id": "progoti_0034",
-   "sha256": "43b0dedde169daaf092f66535256593fdf99d72bb595421ffcd148a2f86f3813",
+   "sha256": "34cc62baae8f1ed9bb5cb2a94df9ded33d714808838e6843d1291d297f52dd35",
    "manual_id": "progoti",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -6528,8 +6528,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 708,
-   "dup_group": "4bcf66d73bfa"
+   "n_chars": 841,
+   "dup_group": "3a66856ec0e5"
   },
   {
    "chunk_id": "progoti_0035",
@@ -6547,7 +6547,7 @@
   },
   {
    "chunk_id": "progoti_0036",
-   "sha256": "e00cb3e6204c7bb9d9ee289a70f30b0c311edf46cbafe2f9b8b87e9e92b54dc9",
+   "sha256": "9e435cf43d21cd0471ae4cf6155db10e14c9489f07855e9704501af6a4d771f3",
    "manual_id": "progoti",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -6556,8 +6556,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 464,
-   "dup_group": "302b31dd76a5"
+   "n_chars": 598,
+   "dup_group": "a6d839d7da0f"
   },
   {
    "chunk_id": "progoti_0037",
@@ -6575,7 +6575,7 @@
   },
   {
    "chunk_id": "progoti_0038",
-   "sha256": "e49c6abac19d041c2abb550a972e3019bb82ce5701c213d2aa98983ecdac3c85",
+   "sha256": "1a97ec8811ab9e3cb66d148f1907ff101f154a211027b9476ca3473c22c5f92e",
    "manual_id": "progoti",
    "clause": "1.2.2",
    "clause_display": "১.২.২",
@@ -6584,8 +6584,8 @@
     "১.২ সঞ্চয় প্রোডাক্ট:",
     "১.২.২ মেয়াদী সঞ্চয়:"
    ],
-   "n_chars": 976,
-   "dup_group": "90522dc37594"
+   "n_chars": 1043,
+   "dup_group": "32b4e3ae8c19"
   },
   {
    "chunk_id": "progoti_0039",
@@ -6902,7 +6902,7 @@
   },
   {
    "chunk_id": "progoti_0056",
-   "sha256": "3102c99b5fc3cc6d54aae2e36ae092cfdb6599a9fd1110c040e640de50374c94",
+   "sha256": "29b4ab3a848424eec5e5adfd98108d8ac16300e0871418698b8e66562a61fc48",
    "manual_id": "progoti",
    "clause": "2.1.1",
    "clause_display": "২.১.১",
@@ -6912,12 +6912,12 @@
     "২.১.১ গ্রুপভিত্তিক সেবা (দাবি, বিসিইউপি ও সিডিপি)",
     "২.১.১(চ) গ্রুপ ভিত্তিক সেবা (ঋণ বিতরণ ও আদায় প্রক্রিয়া)"
    ],
-   "n_chars": 921,
-   "dup_group": "08ff4a2708cf"
+   "n_chars": 977,
+   "dup_group": "581db8f1699e"
   },
   {
    "chunk_id": "progoti_0057",
-   "sha256": "bc954f14bdf59af69859f2f65eb0d020a050c814d6d2ca5f07aa3894e341d330",
+   "sha256": "1fb65f73d35d2a9a3e12f0344be059ad0fb54d65e7888b83d15c1e5d65264bde",
    "manual_id": "progoti",
    "clause": "2.1.1",
    "clause_display": "২.১.১",
@@ -6927,8 +6927,8 @@
     "২.১.১ গ্রুপভিত্তিক সেবা (দাবি, বিসিইউপি ও সিডিপি)",
     "২.১.১(চ) গ্রুপ ভিত্তিক সেবা (ঋণ বিতরণ ও আদায় প্রক্রিয়া)"
    ],
-   "n_chars": 559,
-   "dup_group": "a6f45fc8575e"
+   "n_chars": 619,
+   "dup_group": "04e2e34d4b42"
   },
   {
    "chunk_id": "progoti_0058",
@@ -7022,7 +7022,7 @@
   },
   {
    "chunk_id": "progoti_0062",
-   "sha256": "ba447202b53d4f0e8948c2371059f499ea0fc919d5763ccde28afe4c56834a34",
+   "sha256": "a3e2413d7ef646e30c1107ed63239a411cabf1814c0692f9330c83ce23d3f5fd",
    "manual_id": "progoti",
    "clause": "2.1.2",
    "clause_display": "২.১.২",
@@ -7032,7 +7032,7 @@
     "২.১.২ ইন্ডিভিজুয়াল সেবা (প্রগতি কর্মসূচি)",
     "২.১.২(গ) ইন্ডিভিজুয়াল ক্লায়েন্ট (ঋণ বিতরণ ও আদায় প্রক্রিয়া)"
    ],
-   "n_chars": 1205,
+   "n_chars": 1239,
    "dup_group": null
   },
   {

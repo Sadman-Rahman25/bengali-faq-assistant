@@ -114,7 +114,85 @@ def rows_of(tb, d):
 # serial() moved to tablerender.py, which ex.py and resplit.py now share.
 # It was defined identically in both files, and a renderer that has to be
 # changed in two places is one that will eventually be changed in one.
-from tablerender import serial
+from tablerender import serial, clause_of_path
+
+# A TABLE'S OWN CAPTION, carried into the table's chunk.
+#
+# Word keeps a caption as an ordinary paragraph beside the table, so it was
+# emitted wherever that paragraph fell: a top-level table's caption into
+# the prose chunk before it, a nested table's into its parent cell's text.
+# §2.1.1(চ) holds two approval tables in one cell, one per pair of
+# programmes, and both captions landed in the parent chunk, ahead of both
+# tables -- so the second table's chunk, read alone, gave its BM ceiling as
+# a rule for every programme in the heading. That table is also FLOATING:
+# Word positions it against the paragraph after it, and that paragraph is
+# its caption.
+#
+# The caption is found by position and formatting, never by wording:
+#   - the nearest title paragraph above the table (every run bold, or
+#     centred; not a heading, list item or sentence-length text), with at
+#     most one ordinary paragraph between, in the same body or cell;
+#   - and the lettered sub-section title -- "(ক) …", "খ) …" -- the table
+#     sits under. §1.2.2 prints five savings schemes as lettered bold
+#     paragraphs, not headings, and its seven tables' own lead-ins ("…
+#     নিম্নরূপ:") never say which scheme. Without the letter title the
+#     table names no product at all;
+#   - for a floating table with nothing above, the anchor paragraph after
+#     it -- unless that is the NEXT lettered title. §1.2.2's floating table
+#     is anchored to the following scheme's title; reading the anchor there
+#     would file one scheme's withdrawal rates under the next.
+#
+# SCOPE IS BY CLAUSE, as tablerender's is. The survey found captions outside
+# their tables in more clauses than these, but elsewhere the caption repeats
+# what the chunk already says (§7.1's lead-in restates its heading; a loan's
+# feature table carries the loan's name in its own banner row). Changing
+# those chunks would name nothing new and would void the quiz reviews that
+# cite them. Listed here: the clauses where the caption is the only place
+# the programme or product is named.
+CAPTION_CLAUSES = frozenset({"1.2.2", "2.1.1", "2.1.2"})
+LETTERED_RX = re.compile(r"^\(?[^\s()]{1,2}\)\s*\S")
+
+def title_text(p, d):
+    """A paragraph's text if it is set as a title, else ""."""
+    P = Paragraph(p, d); t = nm(P.text)
+    if not t or len(t) > 150 or head_lvl(P) is not None: return ""
+    pr = p.find(qn("w:pPr"))
+    if pr is not None and pr.find(qn("w:numPr")) is not None: return ""
+    jc = pr.find(qn("w:jc")) if pr is not None else None
+    runs = [r for r in P.runs if (r.text or "").strip()]
+    if runs and all(r.bold for r in runs): return t
+    return t if (jc is not None and jc.get(qn("w:val")) == "center") else ""
+
+def own_caption(tbl, d, hp):
+    """The caption lines of one table (a w:tbl element), "\\n"-joined."""
+    if clause_of_path(hp) not in CAPTION_CLAUSES: return ""
+    def above():
+        e = tbl.getprevious()
+        while e is not None:
+            if e.tag == qn("w:p") and head_lvl(Paragraph(e, d)) is not None: return
+            yield e
+            e = e.getprevious()
+    lines, gap = [], 0
+    for e in above():
+        if e.tag == qn("w:tbl"): break
+        if e.tag != qn("w:p") or not nm(Paragraph(e, d).text): continue
+        t = title_text(e, d)
+        if t: lines.append(t); break
+        gap += 1
+        if gap > 1: break
+    for e in above():
+        t = title_text(e, d) if e.tag == qn("w:p") else ""
+        if t and LETTERED_RX.match(t):
+            if t not in lines: lines.insert(0, t)
+            break
+    pr = tbl.find(qn("w:tblPr"))
+    if not lines and pr is not None and pr.find(qn("w:tblpPr")) is not None:
+        e = tbl.getnext()
+        while e is not None and e.tag == qn("w:p") and not nm(Paragraph(e, d).text):
+            e = e.getnext()
+        t = title_text(e, d) if e is not None and e.tag == qn("w:p") else ""
+        if t and not LETTERED_RX.match(t): lines = [t]
+    return "\n".join(lines)
 
 blocks, path, st = [], {}, Counter()
 def cp(): return [path[k] for k in sorted(path) if path.get(k)]
@@ -122,11 +200,16 @@ def etab(tb, cap, nest, i, d):
     # nest is a DEPTH, not a flag: 0 for a top-level table, parent+1 for a
     # table living inside a cell. Truthiness is unchanged, so the counter
     # below and the NESTED marker in the extract still read the same.
+    # `cap` is the context a nested table inherits from its parent; `own`
+    # is the table's own caption, printed first. Children get `cap` as
+    # before, so a caption never leaks into a table inside the table.
 
     rs = rows_of(tb, d)
     if not any(any(c for c in r) for r in rs): return
     st["tables_nested" if nest else "tables"] += 1
-    blocks.append(dict(type="table", hp=cp(), rows=rs, cap=cap, nest=nest, ti=i))
+    own = own_caption(tb._tbl, d, cp())
+    if own: st["captions"] += 1
+    blocks.append(dict(type="table", hp=cp(), rows=rs, cap=cap, own=own, nest=nest, ti=i))
     pt = " ".join(c for c in rs[0] if c).strip()
     for tr in tb._tbl.tr_lst:
         for tc in tr.tc_lst:
@@ -198,7 +281,7 @@ def main(src, tag):
     for b in blocks:
         if b["type"] == "head": flush(); continue
         if b["type"] == "table":
-            flush(); s = serial(b["rows"], b["cap"], b["hp"])
+            flush(); s = serial(b["rows"], "\n".join(x for x in (b["own"], b["cap"]) if x), b["hp"])
             if s.strip(): add(b["hp"], s, "table", False, b["rows"], b["nest"])
             continue
         if buf and b["hp"] != buf[0]["hp"]: flush()
@@ -213,7 +296,8 @@ def main(src, tag):
         if b["type"] == "head": L.append("#"*b["lvl"]+" "+b["text"])
         elif b["type"] == "table":
             L.append(f"\n<!-- table {b['ti']}{' NESTED' if b['nest'] else ''} under: {' > '.join(b['hp'])} -->")
-            if b["cap"]: L.append("**"+nm(b["cap"])+"**")
+            for c in (b["own"], b["cap"]):
+                if c: L.append("**"+nm(c)+"**")
             for i, r in enumerate(b["rows"]):
                 L.append("| "+" | ".join(r)+" |")
                 if i == 0: L.append("|"+"---|"*max(len(r),1))

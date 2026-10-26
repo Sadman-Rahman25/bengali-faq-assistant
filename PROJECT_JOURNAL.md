@@ -3230,6 +3230,167 @@ are not used; the English chrome's line height (see exception 3).
 
 ---
 
+## 4q. A caption in the wrong chunk — the third table defect
+
+The third way a table has lost its meaning on the way into the corpus, after
+**flattened columns** (4n: a banner row labelling every cell) and the
+**merged header row** (§2.5.4's two-level header, whose sub-labels labelled
+nothing). This one loses the table's *subject*: which programme or product
+the figures are for.
+
+**Found by the quiz chat.** `dabi_2025_0050` and its twin `progoti_0057` hold
+the NCDP/SCDP approval table. Its caption, `শাখার ধরন অনুযায়ী ঋণ অনুমোদনের
+সিলিং (এনসিডিপি ও এসসিডিপি)`, sat in `dabi_2025_0048_p2` — the parent
+process table's text — **ahead of both** approval tables, next to the Dabi/BCUP
+table's caption. Read alone, the chunk was a table of BM ceilings under a
+heading naming দাবি, so the chatbot could give `১৫,০০০–৭০,০০০` as the Dabi
+rule. Validated quiz question Q-003 was written that way: "গ্রুপ ভিত্তিক সেবা
+অনুযায়ী ১৫,০০০ থেকে ৭০,০০০ টাকার নতুন ঋণ…".
+
+**This corrects §5's instance #14 and `data/corpus_gaps.md` §3.4.** Both
+called the two §2.1.1(চ) tables a corpus ambiguity that the programme team
+should label. The manual had labelled them. The ambiguity was ours; the
+corpus-gaps entry is withdrawn.
+
+### How a caption gets lost
+
+Word keeps a caption as an ordinary paragraph beside its table, and `ex.py`
+emitted it wherever that paragraph fell:
+
+- a **top-level** table's caption went into the prose chunk before it — a
+  table was given no caption at all (`cap=""`);
+- a **nested** table's caption went into its parent cell's text, which is
+  rendered as part of the parent table; the nested table got only a context
+  line built from the parent's row 0 and the cell's first 100 characters;
+- a **floating** table is positioned against the paragraph *after* it. The
+  NCDP/SCDP table is floating, and that anchor paragraph is its caption.
+
+### The survey: 89 tables, every one read
+
+Both `_unicode.docx` files, every `w:tbl` including nested ones (5) and
+floating ones (6), each with the paragraphs either side of it, its chunk
+matched by cell contents, and the chunk each neighbour actually landed in.
+
+**Fixed — the caption is the only place the programme or product is named
+(19 chunks):**
+
+| clause | table chunks (Dabi / Progoti) | caption now first in the chunk |
+|---|---|---|
+| §1.2.2 | `0019` / `0026` | (ক) মাসিক জমা প্রকল্প/ DPS- · এই সঞ্চয় স্কীমে … মোট প্রাপ্য: |
+| §1.2.2 | `0021` / `0028` | (ক) মাসিক জমা প্রকল্প/ DPS- · মেয়াদ পূর্তির পূর্বে … নিম্নরূপ: |
+| §1.2.2 | `0023` / `0030` | খ) মাসিক মুনাফাভিত্তিক সঞ্চয় প্রকল্প: · মুনাফা বা লভ্যাংশ … নিম্নরূপ: |
+| §1.2.2 | `0025` / `0032` (floating) | খ) মাসিক মুনাফাভিত্তিক সঞ্চয় প্রকল্প: · … মেয়াদান্তের পূর্বে আমানত উত্তোলন: |
+| §1.2.2 | `0027` / `0034` | গ) দ্বিগুণ মুনাফাভিত্তিক সঞ্চয় প্রকল্প · মেয়াদ পূর্তির পূর্বে … নিম্নরূপ: |
+| §1.2.2 | `0029` / `0036` | ঘ) দেড়গুণ মুনাফাভিত্তিক সঞ্চয় প্রকল্প: · মেয়াদ পূর্তির পূর্বে … নিম্নরূপ: |
+| §1.2.2 | `0031` / `0038` | ঙ) মানি-প্লান্ট সঞ্চয় প্রকল্প: · মেয়াদান্তের পূর্বে আমানত উত্তোলন: |
+| §2.1.1(চ), nested | `0049` / `0056` | শাখার ধরন অনুযায়ী ঋণ অনুমোদনের সিলিং (দাবি ও বিসিইউপি) |
+| §2.1.1(চ), nested, floating | `0050` / `0057` | শাখার ধরন অনুযায়ী ঋণ অনুমোদনের সিলিং (এনসিডিপি ও এসসিডিপি) |
+| §2.1.2(গ), nested | — / `progoti_0062` | প্রগতি কর্মসূচির ঋণ অনুমোদন সিলিং |
+
+**§1.2.2 was the bigger case, and nobody had reported it.** Its five savings
+schemes are printed as lettered **bold paragraphs**, not headings, so no
+heading path carries them. The seven tables' own lead-ins ("…লভ্যাংশের হার
+হবে নিম্নরূপ:") never name the scheme either. The early-withdrawal tables of
+the দ্বিগুণ and দেড়গুণ schemes print the same first rows, and nothing in
+either chunk said which scheme it was. So for these tables the caption
+includes the lettered scheme title.
+
+**The trap in it:** §1.2.2's floating table (`0025`/`0032`) is anchored to
+the *next* scheme's title, `গ) দ্বিগুণ…`. A rule that read a floating
+table's anchor as its caption would file the monthly-profit scheme's
+withdrawal rates under the doubling scheme. The anchor is read only when
+nothing is found above the table, and never when it is a lettered title.
+
+**Found, and deliberately left — the caption repeats what the chunk already
+says:** §1.1.1–§1.1.3's product feature tables (each loan is named in the
+table's own banner row); §3.5 `মিটিংয়ের সময়সীমা`; §5.1.8 `বিমাদাবি সংক্রান্ত
+টাইমলাইন` and `ঋণ নিরাপত্তা বিমার হটলাইন নম্বরসমুহ` (the heading line
+already names ঋণ নিরাপত্তা বিমা); §7.1's lead-in (restates its heading).
+Adding them would name nothing new and would void the human reviews of
+every quiz question citing those chunks — §7.1 alone is 17 parts.
+
+**Captions printed below an inline table: none.** Every title paragraph
+below a table was the next section's title or the next table's lead-in.
+
+### The fix
+
+`ex.py`'s `own_caption()` finds a table's caption by position and
+formatting, never by wording. It takes the nearest title paragraph above
+the table (every run bold, or centred), with at most one ordinary paragraph
+between. It adds the lettered sub-section title the table sits under. For a
+floating table with nothing above, it takes the anchor paragraph, unless
+that is a lettered title. Scope is a reviewed clause list, `CAPTION_CLAUSES =
+{1.2.2, 2.1.1, 2.1.2}`, as `tablerender` scopes the column fix. The caption
+is printed after the heading line. Everything else in the chunk stays
+exactly where it was, including the original caption text in its old chunk
+and the nested tables' old context line. Child tables inherit the old
+context, so a caption cannot leak into a table nested inside the table.
+
+### What it was accepted against
+
+| | result |
+|---|---|
+| unchanged pipeline reproduces today's files | 11 of 11 byte-identical, run first, so the diff below is the change and nothing else |
+| nothing outside the listed tables changes | 19 changed, 0 outside the list, 0 chunks added, removed or renumbered; livestock untouched |
+| every figure still matches its Word cell | each changed chunk = old chunk + 1–2 caption lines, the rest byte-identical; `table_rows` equal the cells read fresh from the `.docx`; every row figure is in the cells. Canary: one digit changed is caught |
+| twins still render identically | 276 groups, 554 chunks before and after; 0 stopped collapsing, 0 newly merged |
+| `validate_gold` | `gold/bootstrap.yaml` consistent. `bootstrap_livestock_grow.yaml` (23 problems) and `synthetic.yaml` (`UnboundLocalError` in `canary_selftest`) fail identically on the **old** corpus — pre-existing, not this change |
+
+Two programme tags moved as intended: `0050`/`0057` now carry `ncdp, scdp`.
+
+**Rebuilt `out/index_gemini_v2`: 19 encoded, 854 reused.** The 854 vectors
+are byte-identical to the previous index; the 19 re-encoded are exactly the
+changed chunks. Cost: 19 embedding items.
+
+**The live question**, through `app.ask` on the rebuilt index —
+"দাবি কর্মসূচিতে শাখা ব্যবস্থাপক কত টাকা পর্যন্ত নতুন ঋণ অনুমোদন করেন?":
+
+> দাবি কর্মসূচিতে শাখা ব্যবস্থাপক সর্বোচ্চ ৭০,০০০ টাকা পর্যন্ত নতুন ঋণ
+> অনুমোদন করতে পারেন। — dabi_2025 §2.1.1
+
+It no longer gives `১৫,০০০–৭০,০০০` as the Dabi rule. It is **incomplete**:
+৭০,০০০ is the high-demand ceiling; in an ordinary-demand branch the BM's
+new-loan band is ১৫,০০০–৬০,০০০, and the answer does not say so. Retrieval
+returned `progoti_0062`, `dabi_2025_0049`, `dabi_2025_0050` as its top 3.
+
+### What cites a changed chunk
+
+- **Validated quiz bank:** Q-002 (`dabi_2025_0021`), Q-003 (`dabi_2025_0050`),
+  Q-040 (`progoti_0062`). `quiz_recheck`'s fingerprint includes the cited
+  chunk's manifest hash, so all three now read as changed since review.
+  **Q-003's question is the defect itself**: it presents the NCDP/SCDP band
+  as the group-service rule.
+- **Draft banks:** Q-035 (`0021`), Q-056 (`0050`, the same wording as Q-003),
+  Q-026 (`progoti_0038`), Q-061 (`progoti_0057`).
+- **Gold:** G-206, G-207 (`progoti_0056`), G-208 (`progoti_0062`); still
+  consistent.
+- **FAQ** (cites clauses, and an FAQ approval covers only the FAQ's own
+  text, so none is voided): **F-35 is wrong in scope.** It answers "গ্রুপ
+  ঋণে" from the Dabi/BCUP table and says nothing about NCDP/SCDP's
+  different one. Its 2026-10-25 source note — "§2.1.1 is গ্রুপভিত্তিক সেবা,
+  so 'গ্রুপ ঋণে' stays" — read the clause heading and missed the two
+  captions. F-36's table carries a note printed below it, `নিম্ন চাহিদার
+  অঞ্চলের জন্য পূর্বের ঋণ অনুমোদন সিলিং অপরিবর্তিত থাকবে।`, which F-36 does not
+  mention. F-18–F-22 and F-24 cite §1.2.2; their content is unaffected.
+
+### Also found, not fixed here
+
+**A single-row table is dropped from the corpus entirely.** `serial()` takes
+row 0 as the header and renders rows 1 onward, so a one-row table renders as
+nothing and no chunk is written. Dabi table 36 and its Progoti twin — the
+eight data categories of the branch dashboard module (`১. ভিও পরিদর্শনের তথ্য …`)
+— are in neither corpus. A fourth table defect, and a cheaper one to fix.
+
+**A process slip.** `python conventions_check.py --help` ran the full check:
+the script takes no arguments and ignores them. It was stopped within the
+2-minute timeout. It only reads files, and `git status` showed nothing
+written, but it is the run I was asked not to start while the quiz chat was
+writing: its import-writes rule compares the timestamp of every file in the
+repository around each import. Rules 1 and 2 were then run on `ex.py` alone,
+from the parsed source: both clean, self-check passing.
+
+---
+
 ## 5. The four conventions, and why they are checks rather than prose
 
 All four exist because they were broken repeatedly — **fifteen times between
@@ -3279,7 +3440,7 @@ Seventeen instances of a check passing on data it could not see:
 | 11 | the gold-span **extractor**, verified against its own copy | it sliced facts out of a body built with `.replace("\n", " ")`, then asserted `literal in that same flattened body` -- so the check agreed with the bug and passed. The stored fact was NOT byte-exact in the chunk: G-216's span glued the heading line `১. প্রত্যাশা লোন:` to the following sentence across a newline. `validate_gold` caught it only because it reads the RAW `display_text` independently. Same shape as instance 3 -- a check that imports the thing it is asserting against verifies self-consistency, not correctness |
 | 12 | ad-hoc acronym **counting**, going around a guard that already existed | a one-off `str.count` reported **440** occurrences of the four programme acronyms where the guarded figure is **282** across 134 chunks; `সিডিপি` alone read 180 against a true 22, because it is a substring of `এনসিডিপি` and `এসসিডিপি`. NOT a new collision -- row 4 of §6.3, guarded in `productmatch` since Phase 6 by `(?<![নস])সিডিপি`. The script simply never reached the registry. Nothing threw, and the number was written into a gold-file note as evidence. Fixed by `bn_shared.count_literal`, which is shorter than the loop it replaces; Convention 2 was NOT extended, because a rule costing more than the wrong thing collects exemptions |
 | 13 | a **canary fixture** hand-typed instead of sliced from the stored run | A DISTINCT CLASS from every row above: not a check blind to its data, but a check **passing on data that resembled the real data**. `language_match_ids` was given qwen's answer as hand-typed codepoints and got two wrong -- `\u0938` (Devanagari `स`) for `\u09b8` (Bengali `স`), and composed `\u09df` where qwen emits `য়` **decomposed** as `\u09af\u09bc`. Both render identically; neither is visible by re-reading. It went green on a string no model ever produced, satisfying Convention 3's letter (a real failure, watched going red) while breaking its intent. Surfaced only because a hit printed as `িনথেটিক_এ` -- the Devanagari character sat outside the Bengali range being scanned, so the token started one character late. Fixture now generated from the saved answer and asserted to be a verbatim prefix of it; rule recorded in CONVENTIONS.md under Convention 3 |
-| 14 | the **class-A classifier** I proposed -- and then the correction to my own correction | G-207's gold fact is `নতুন ঋণ: ২০০০০-৭০০০০ — বিএম`; **both** models answered `১৫,০০০-৭০,০০০`. I recorded this as a fabricated figure on the grounds that `১৫,০০০` "appears in NEITHER manual". **THAT IS FALSE, and checking it took one query.** `১৫০০০` occurs 12 times in 4 chunks, and `progoti_0057` / `dabi_2025_0050` -- a declared twin pair in the SAME clause §2.1.1(চ) -- print the row `নতুন ঋণ: ১৫০০০-৭০০০০ — বিএম` verbatim. §2.1.1(চ) carries TWO approval tables: one split by branch demand category (`উচচ চাহিদা` → `২০০০০-৭০০০০`, `সাধারণ চাহিদা` → `১৫০০০-৬০০০০`, chunks `progoti_0056`/`dabi_2025_0049`) and one that is not (`১৫০০০-৭০০০০`, chunks `progoti_0057`/`dabi_2025_0050`). **`progoti_0057` was IN the model's context and `progoti_0056` was not** -- so the model quoted its context correctly and the gold ref points at the other table. Not a fabrication: a corpus ambiguity, now in `corpus_gaps.md`. The classifier's 0.8 overlap was *right* and my reading of it was wrong. What survives is the narrower lesson -- **a similarity proxy cannot be the last word on a figure** -- and a new one that cost more: **I asserted a negative about the corpus without running the count.** `bn_shared.count_literal` answers it in one line and exists for exactly this |
+| 14 | the **class-A classifier** I proposed -- and then the correction to my own correction | G-207's gold fact is `নতুন ঋণ: ২০০০০-৭০০০০ — বিএম`; **both** models answered `১৫,০০০-৭০,০০০`. I recorded this as a fabricated figure on the grounds that `১৫,০০০` "appears in NEITHER manual". **THAT IS FALSE, and checking it took one query.** `১৫০০০` occurs 12 times in 4 chunks, and `progoti_0057` / `dabi_2025_0050` -- a declared twin pair in the SAME clause §2.1.1(চ) -- print the row `নতুন ঋণ: ১৫০০০-৭০০০০ — বিএম` verbatim. §2.1.1(চ) carries TWO approval tables: one split by branch demand category (`উচচ চাহিদা` → `২০০০০-৭০০০০`, `সাধারণ চাহিদা` → `১৫০০০-৬০০০০`, chunks `progoti_0056`/`dabi_2025_0049`) and one that is not (`১৫০০০-৭০০০০`, chunks `progoti_0057`/`dabi_2025_0050`). **`progoti_0057` was IN the model's context and `progoti_0056` was not** -- so the model quoted its context correctly and the gold ref points at the other table. Not a fabrication: a corpus ambiguity, now in `corpus_gaps.md`. The classifier's 0.8 overlap was *right* and my reading of it was wrong. What survives is the narrower lesson -- **a similarity proxy cannot be the last word on a figure** -- and a new one that cost more: **I asserted a negative about the corpus without running the count.** `bn_shared.count_literal` answers it in one line and exists for exactly this. **Corrected again in §4q (2026-10-26):** the corpus was not ambiguous either. The manual captions the second table `(এনসিডিপি ও এসসিডিপি)`, and the extraction had left that caption in another chunk |
 
 | 15 | the **reranker measurement**, which scored a model whose tokenizer never loaded | `AutoTokenizer.from_pretrained("BAAI/bge-reranker-v2-m3", local_files_only=True)` **did not raise** against a cache holding only `config.json`, `model.safetensors`, `adapter_config.json` and `modules.json` -- **no `tokenizer.json`, no `sentencepiece.bpe.model`, no `tokenizer_config.json`**. It silently built an `XLMRobertaTokenizer` with **`vocab_size 5`**. Every real token became `<unk>` (id 3), so Bengali text and ASCII gibberish of the same token count produce **byte-identical `input_ids`** -- verified: `tok([q],['গোলাপ ফুল সুন্দর'])` and `tok([q],['xyzzy plugh frobnitz'])` both give `[0,3,3,2,2,3,3,3,2]`. The ONLY surviving signal is token count, so the "reranker" was ranking by **sequence length**. Every recall figure produced from it is void. It went undetected because the load was run through `grep -vE "Warning|warn"`, which removed the one line that said so -- see CONVENTIONS.md rule 3, "never filter the output of a check you have not read once in full". **A model that loads is not a model that works, and `local_files_only=True` will assemble a tokenizer out of nothing rather than tell you the files are missing** |
 | 16 | the **quiz builder's rule 4**, disabled entirely while reporting clean | The distinguishing-token test split questions and evidence into Bengali words with `[অ-হ়-ৌ]{4,}` -- a range that covers letters and vowel signs and **omits the virama U+09CD**. Bengali cannot be written without it: every conjunct broke, so `আঞ্চলিক` came out as `চলিক` and `ব্যবস্থাপক` as `থাপক`. Fragments match nothing in a real question, so the test found no distinctive token anywhere, concluded every question was adequately scoped, and **refused nothing**. Rule 4 ran, printed clean, and enforced nothing -- measured: it should have dropped 4 questions (Q-003/Q-024 and Q-031/Q-037, two §7.1 authority rows each giving the same role a different limit) and dropped 0. Widening to the full Bengali block `[ঀ-৿]` fired all four. **A character class over Bengali that omits U+09CD does not match Bengali words, it matches the pieces between their conjuncts** |
@@ -3451,6 +3612,13 @@ Highlights:
   its approval and it leaves the FAQ tab until someone re-approves it.
   That is the intended behaviour: the alternative is a reviewed-looking
   answer quoting a rate the regulator no longer allows.
+
+- **Three follow-ups from the caption fix (§4q, 2026-10-26).** F-35 answers
+  "গ্রুপ ঋণে" from the Dabi/BCUP table alone and needs NCDP/SCDP's table or a
+  narrower question. Q-003 (validated) and Q-056 (draft) present the
+  NCDP/SCDP band as the group-service rule; Q-002, Q-003 and Q-040 need
+  re-review because their cited chunks changed (quiz chat). Single-row
+  tables are dropped from the corpus (Dabi table 36 and its Progoti twin).
 
 - **§2.5.4 puts the resolution time and the resolver in separate chunks, so
   a question asking both gets half an answer.** The column-major rendering
