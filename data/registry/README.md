@@ -14,7 +14,7 @@ Read with `encoding="utf-8"` — no BOM handling needed.
 | products.csv | 30 | product_id | status, availability, all three names, the availability sentence |
 | insurers.csv | 5 | insurer_id | whether each still carries BRAC policies, and what it covers |
 | rule_updates.csv | 26 | rule_id | manual rules checked by the field team |
-| term_updates.csv | 2 | old_term | job titles and system names that changed |
+| term_updates.csv | 4 | old_term | job titles, system names and words that changed (ভুক্তভোগী → সারভাইভার, BRAND.md 10.1) |
 | not_available.csv | 10 | item | what the bot must say it does not know |
 | not_products.csv | 1 | name_bn | names the manual uses for something that is not a product |
 

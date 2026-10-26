@@ -1,3 +1,5 @@
 old_term,new_term,scope,source
 শাখা/এলাকা ব্যবস্থাপক-প্রগতি/এডিসি,এলাকা ব্যবস্থাপক (Area Manager),Every occurrence — 12 in the Dabi manual,Confirmed in review: change it everywhere.
 Complaint Management System (CMS),CRM,Every occurrence,Confirmed in review: already renamed.
+ভুক্তভোগীর,সারভাইভারের,Every occurrence -- the possessive first: a plain swap would write সারভাইভারর,BRAND.md 10.1: survivor never victim (2026-10-26)
+ভুক্তভোগী,সারভাইভার,Every occurrence,BRAND.md 10.1: survivor never victim (2026-10-26)
