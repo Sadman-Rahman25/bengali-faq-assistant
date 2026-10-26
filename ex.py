@@ -42,7 +42,48 @@ def letter_of(t):
     m = SUBCLAUSE_RX.match((t or "").strip())
     return m.group(1) if m else ""
 
-def subclause_demotions(d):
+# A PARENT HEADING ONE MANUAL NEVER PRINTS, copied from the other manual.
+#
+# The Dabi manual prints ২.১.২(ক)-(ঘ) but never ২.১.২ itself. In the Progoti
+# manual that heading is "২.১.২ ইন্ডিভিজুয়াল সেবা (প্রগতি কর্মসূচি)" -- the
+# only place either manual says these clauses are the individual (Progoti)
+# programme's. Without it, a Dabi §2.1.2 chunk named no programme in any
+# heading, so neither the answering rules nor programme_label() could say
+# whose ৪%/২% deposit rule it was, and the answer read as everyone's.
+#
+# SCOPE IS A REVIEWED LIST, as CAPTION_CLAUSES is. Surveyed 2026-10-26: this
+# is the only lettered clause in either manual with no parent heading. The
+# heading TEXT is never typed here: it is read from the named manual's own
+# .docx, in the same folder, at extraction. {folded clause: that .docx}
+BORROWED_PARENTS = {"2.1.2": "progoti_manual_2025_unicode.docx"}
+
+
+def borrowed_parents(src, d):
+    """{folded clause: heading text} for each BORROWED_PARENTS clause this
+    manual prints only as lettered sub-clauses. Raises if the other manual
+    has no such heading -- a missing parent cannot be guessed."""
+    heads = [nm(Paragraph(ch, d).text) for ch in d.element.body.iterchildren()
+             if ch.tag == qn("w:p") and head_lvl(Paragraph(ch, d)) is not None]
+    have = {fold(clause_of(t)) for t in heads if clause_of(t) and not letter_of(t)}
+    lettered = {fold(clause_of(t)) for t in heads if letter_of(t)}
+    out = {}
+    for clause, other in BORROWED_PARENTS.items():
+        if clause in have or clause not in lettered:
+            continue
+        o = Document(os.path.join(os.path.dirname(src), other))
+        for ch in o.element.body.iterchildren(qn("w:p")):
+            P = Paragraph(ch, o)
+            t = nm(P.text)
+            if (head_lvl(P) is not None and fold(clause_of(t)) == clause
+                    and not letter_of(t)):
+                out[clause] = t
+                break
+        else:
+            raise SystemExit(f"ex.py: {other} has no heading for {clause}")
+    return out
+
+
+def subclause_demotions(d, borrowed=()):
     """Heading ordinals to push one level deeper: lettered sub-clauses whose
     own parent is printed at the SAME Word level.
 
@@ -86,8 +127,11 @@ def subclause_demotions(d):
         if L is not None:
             heads.append(nm(p.text.strip()))
     bare = {clause_of(t) for t in heads if clause_of(t) and not letter_of(t)}
+    # a parent borrowed from the other manual is a parent like any other:
+    # its lettered children move one level down beneath it
     return {i for i, t in enumerate(heads)
-            if letter_of(t) and clause_of(t) in bare}
+            if letter_of(t) and (clause_of(t) in bare
+                                 or fold(clause_of(t)) in borrowed)}
 
 def nm(s):
     s = ZW.sub("", unicodedata.normalize("NFC", s or "")).replace("৷","।")
@@ -226,7 +270,9 @@ def main(src, tag):
     os.makedirs(OUT, exist_ok=True)
 
     d = Document(src)
-    demote = subclause_demotions(d)   # see its docstring
+    borrowed = borrowed_parents(src, d)   # see BORROWED_PARENTS
+    demote = subclause_demotions(d, set(borrowed))   # see its docstring
+    placed = set()
     ti = 0
     hn = -1
     for ch in d.element.body.iterchildren():
@@ -241,7 +287,16 @@ def main(src, tag):
                 hn += 1
                 if hn in demote:
                     L += 1; st["h_demoted"] += 1
-                tx = nm(tx); path[L] = tx
+                tx = nm(tx)
+                c = fold(clause_of(tx))
+                if letter_of(tx) and c in borrowed and c not in placed:
+                    # the parent this manual never prints, at the level its
+                    # first lettered child had before moving down beneath it
+                    path[L - 1] = borrowed[c]
+                    for k in [k for k in path if k > L - 1]: path.pop(k)
+                    placed.add(c); st["h_borrowed"] += 1
+                    blocks.append(dict(type="head", lvl=L - 1, text=borrowed[c], hp=cp()))
+                path[L] = tx
                 for k in [k for k in path if k > L]: path.pop(k)
                 st[f"h{L}"] += 1; blocks.append(dict(type="head", lvl=L, text=tx, hp=cp()))
             elif tx:
