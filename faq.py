@@ -27,8 +27,8 @@ convincing than the same figure in a language the reader may check.
 Approve from the command line, which records who, when and the
 fingerprint, exactly as quiz_recheck --mark-reviewed does:
 
-    python faq.py approve F-33 --by "Sadman Rahman"
-    python faq.py approve F-01 --by "Sadman Rahman" --en
+    python faq.py approve F-33 --by "Pilot review"
+    python faq.py approve F-01 --by "Pilot review" --en
 """
 import argparse
 import csv

@@ -61,10 +61,20 @@ def test_status_and_notes_are_not_content():
     assert faq.approved(r, "bn")
 
 
+def _unapprove(r, lang):
+    """Void one approval in memory, as an edit would. The tests make the
+    state they test: since 2026-10-26 every answer in the real file is
+    approved in both languages, so "find an unapproved one" finds nothing."""
+    if lang == "en":
+        r.update(en_status="needs_review", en_fingerprint="")
+    else:
+        r.update(status="fix_needed", fingerprint="")
+
+
 def test_english_needs_its_own_approval():
     rows = _rows()
-    r = next(x for x in rows
-             if faq.approved(x, "bn") and not faq.approved(x, "en"))
+    r = next(x for x in rows if faq.approved(x, "bn"))
+    _unapprove(r, "en")
     assert not faq.approved(r, "en")
     assert faq.view(r, "en")["fell_back"]
     faq.approve(rows, r["id"], "TEST", "en")
@@ -85,7 +95,8 @@ def test_a_bengali_edit_voids_the_english_approval():
 
 def test_english_cannot_be_approved_first():
     rows = _rows()
-    r = next(x for x in rows if x["status"] != "approved")
+    r = rows[0]
+    _unapprove(r, "bn")
     try:
         faq.approve(rows, r["id"], "TEST", "en")
     except SystemExit:
@@ -127,6 +138,11 @@ def test_the_tab_renders_both_languages():
     faq.approve(rows, att["id"], "TEST")
     en = next(r for r in rows if faq.approved(r, "bn") and r is not att)
     faq.approve(rows, en["id"], "TEST", "en")
+    # one answer whose English is not approved, so English mode must fall
+    # back to its Bengali and say so
+    fb = next(r for r in rows
+              if faq.approved(r, "bn") and r is not att and r is not en)
+    _unapprove(fb, "en")
     faq.save(rows, tmp)
     for lang in ("bn", "en"):
         at = _render(tmp, lang)

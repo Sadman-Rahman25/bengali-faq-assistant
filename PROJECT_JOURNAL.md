@@ -3643,12 +3643,19 @@ Highlights:
   the Dabi manual never prints the ২.১.২ heading that says প্রগতি. Once it
   degenerated into "দাবি দাবি দাবি …" to the cap; not reproduced on the
   repeat. Rules move answers; they do not guarantee them.
-- **Three follow-ups from the caption fix (§4q, 2026-10-26).** F-35 now opens
-  by saying its table is Dabi/BCUP's and NCDP/SCDP have their own (awaiting
-  review). Q-003 (validated) and Q-056 (draft) present the
-  NCDP/SCDP band as the group-service rule; Q-002, Q-003 and Q-040 need
-  re-review because their cited chunks changed (quiz chat). Single-row
-  tables are dropped from the corpus (Dabi table 36 and its Progoti twin).
+- **One follow-up left from the caption fix (§4q, 2026-10-26): single-row
+  tables are dropped from the corpus** (Dabi table 36 and its Progoti twin).
+  The others are done: F-35 opens by saying its table is Dabi/BCUP's and
+  NCDP/SCDP have their own, approved by the reviewer; Q-003 now asks the
+  Dabi/BCUP table, and Q-002, Q-003 and Q-040 were re-reviewed (quiz chat,
+  5a043e7). Q-056, in the draft bank, still presents the NCDP/SCDP band as
+  the group-service rule.
+- **Reviews are recorded as "Pilot review", never by a person's name**
+  (decided 2026-10-26). Every earlier FAQ and quiz review record was
+  relabelled; the label is not part of any fingerprint, so no review
+  changed status -- checked question by question before and after.
+  Commit messages written before that date still name the reviewer;
+  rewriting pushed history was not done.
 
 - **§2.5.4 puts the resolution time and the resolver in separate chunks, so
   a question asking both gets half an answer.** The column-major rendering
