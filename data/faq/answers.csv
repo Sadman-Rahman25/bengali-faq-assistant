@@ -143,14 +143,14 @@ F-14,loan,"রি-ফাইন্যান্স লোন কী, কারা 
 - ১২ মাসের লোনে ৪–৯ কিস্তি, ১৮ মাসের লোনে ৪–১৫ কিস্তি পরিশোধ থাকতে হবে
 - সাপ্তাহিক ঋণে ৭–৩৬ কিস্তি পরিশোধ হতে হবে
 - সার্ভিস চার্জ দাবি+ ২৪%; প্রগতি ২৪/২২/২০% স্ল্যাব
-রি-ফাইন্যান্স লোনের উদ্দেশ্য হল বন্যা, প্রাকৃতিক দুর্যোগ বা মহামারিতে আর্থিকভাবে ক্ষতিগ্রস্ত খেলাপি সদস্যদের পুনরায় অর্থায়ন করা। এই লোনের জন্য আবেদনকারীকে শাখার কর্ম এলাকার স্থায়ী বাসিন্দা হতে হবে এবং লোন পরিশোধের ইচ্ছা ও সক্ষমতা থাকতে হবে। লোনের পরিমাণ নির্ধারিত হয় পূর্বের চলতি ঋণের ৩০% অথবা নির্দিষ্ট সর্বোচ্চ সীমা পর্যন্ত: দাবি+ এর ক্ষেত্রে সর্বোচ্চ ১৫,০০০ টাকা, এবং প্রগতি এর ক্ষেত্রে সর্বোচ্চ ৫০,০০০ টাকা। লোনের মেয়াদ ৯, ১২ অথবা ১৮ মাস, এবং মাসিক কিস্তিতে আদায় করা হয়।",progoti §1.1.3,approved,Sadman Rahman,2026-10-21,,a40968c89554f6b3c36fa3cbbe044b368d1835e1d13e996710236aab5b169ef5,,"What is the Refinance Loan, who gets it, and how much is given?","The Refinance Loan (রি-ফাইন্যান্স লোন) is given in special circumstances. It refinances defaulting members affected by floods, natural disasters or epidemics; the applicant must be a permanent resident of the branch's working area.
+রি-ফাইন্যান্স লোনের উদ্দেশ্য হল বন্যা, প্রাকৃতিক দুর্যোগ বা মহামারিতে আর্থিকভাবে ক্ষতিগ্রস্ত খেলাপি সদস্যদের পুনরায় অর্থায়ন করা। এই লোনের জন্য আবেদনকারীকে শাখার কর্ম এলাকার স্থায়ী বাসিন্দা হতে হবে এবং লোন পরিশোধের ইচ্ছা ও সক্ষমতা থাকতে হবে। লোনের পরিমাণ পূর্বের চলতি ঋণের ৩০% অথবা একটি নির্দিষ্ট অঙ্ক (দাবি+ এর ক্ষেত্রে ১৫,০০০ টাকা, প্রগতি এর ক্ষেত্রে ৫০,০০০ টাকা) — এর মধ্যে যেটি সর্বোচ্চ। লোনের মেয়াদ ৯, ১২ অথবা ১৮ মাস, এবং মাসিক কিস্তিতে আদায় করা হয়।",progoti §1.1.3,fix_needed,,,"Fixed 2026-10-26 per review: the prose said 'সর্বোচ্চ ১৫,০০০ / ৫০,০০০' (a cap). Both manuals' product table (§1.1.3) says 'নূন্যতম পূর্বের চলতি ঋণের পরিমানের ৩০% বা ১৫ হাজার টাকা (যেটি সর্বোচ্চ)' — whichever is higher, so the figure is a floor. The prose now matches the list, in both languages. Was approved by Sadman Rahman on 2026-10-21; this edit cancels that. Needs your tick.",,,"What is the Refinance Loan, who gets it, and how much is given?","The Refinance Loan (রি-ফাইন্যান্স লোন) is given in special circumstances. It refinances defaulting members affected by floods, natural disasters or epidemics; the applicant must be a permanent resident of the branch's working area.
 - Dabi+: 30% of the previous current loan or Tk 15,000, whichever is higher
 - Progoti: 30% of the previous current loan or Tk 50,000, whichever is higher
 - Term 9, 12 and 18 months
 - For a 12-month loan, 4–9 instalments must have been repaid; for an 18-month loan, 4–15 instalments
 - For a weekly loan, 7–36 instalments must have been repaid
 - Service charge: Dabi+ 24%; Progoti 24/22/20% slab
-The Refinance Loan aims to finance again defaulting members who have been financially affected by floods, natural disasters or epidemics. For this loan the applicant must be a permanent resident of the branch's working area and must have the intention and ability to repay. The loan amount is set at 30% of the previous current loan or up to a set maximum: a maximum of Tk 15,000 for Dabi+, and a maximum of Tk 50,000 for Progoti. The loan term is 9, 12 or 18 months, collected in monthly instalments.",needs_review,,,
+The Refinance Loan aims to finance again defaulting members who have been financially affected by floods, natural disasters or epidemics. For this loan the applicant must be a permanent resident of the branch's working area and must have the intention and ability to repay. The loan amount is 30% of the previous current loan or a set amount (Tk 15,000 for Dabi+, Tk 50,000 for Progoti), whichever is higher. The loan term is 9, 12 or 18 months, collected in monthly instalments.",needs_review,,,
 F-15,loan,"রি-সিডিউলড লোন কী, কারা পান এবং কত টাকা দেওয়া হয়?","রি-সিডিউলড লোন বিশেষ পরিস্থিতিতে দেওয়া হয়।
 - মেয়াদ ১–৯ মাস
 রি-সিডিউলড লোন এমন খেলাপী সদস্যদের জন্য যাদের বকেয়া পরিশোধের ইচ্ছা আছে কিন্তু বন্যা, প্রাকৃতিক দুর্যোগ বা মহামারিতে অর্থনৈতিকভাবে ক্ষতিগ্রস্ত হওয়ায় সামর্থ্য নেই; তাদের কিস্তির পরিমাণ কমিয়ে এবং সময় বাড়িয়ে দেওয়া হয়। লোনের পরিমাণ নির্ধারিত হয় আসল ও সার্ভিস চার্জসহ বকেয়া স্থিতি অনুযায়ী।",progoti §1.1.3,approved,Sadman Rahman,2026-10-21,,551862ac2eb0551af0ef9562e27bce0c1a4b355be0fa1c336076109f131ff085,,"What is the Rescheduled Loan, who gets it, and how much is given?","The Rescheduled Loan (রি-সিডিউলড লোন) is given in special circumstances.
@@ -442,12 +442,16 @@ Ordinary-demand branch, repeat loan:
 There are two lists: one for high-demand branches, the other for ordinary-demand branches. So for a new loan, the BM's lower limit is Tk 20,000 in a high-demand branch and Tk 15,000 in an ordinary-demand branch.",needs_review,,,
 F-36,procedure,ইন্ডিভিজুয়াল ঋণে সর্বোচ্চ স্তরে কে অনুমোদন করেন?,"সর্বোচ্চ স্তরে কর্মসূচি প্রধান অনুমোদন করেন।
 - ৬,০০,০০০ পর্যন্ত — সহকারী এলাকা ব্যবস্থাপক (ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে)
-- ৮,০০,০০১–১০,০০,০০০ — সহকারী আঞ্চলিক ব্যবস্থাপক
+- ৮,০০,০০০ পর্যন্ত — এলাকা ব্যবস্থাপক (ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে)
+- প্রযোজ্য ক্ষেত্রে ৮,০০,০০১–১০,০০,০০০ — সহকারী আঞ্চলিক ব্যবস্থাপক
+- প্রযোজ্য ক্ষেত্রে ৮,০০,০০১–১২,০০,০০০ — আঞ্চলিক ব্যবস্থাপক
 - ১২,০০,০০১–২৫,০০,০০০ — ডিভিশনাল ম্যানেজার
 - ২৫,০০,০০১–৪০,০০,০০০ — সিনিয়র ম্যানেজার
-- ৪০,০০,০০১ থেকে উপরে — কর্মসূচি প্রধান",progoti §2.1.2,approved,Sadman Rahman,2026-10-21,,57c3a987dab5f8415b58b5db9b3f120834c921cbbcb99594fac74a4ba540f1c5,,"In individual loans, who approves at the highest level?","The Programme Head approves at the highest level.
-- Up to 6,00,000 — Assistant Area Manager (subject to approval by the Divisional Manager (DM))
-- 8,00,001–10,00,000 — Assistant Regional Manager
+- ৪০,০০,০০১ থেকে উপরে — কর্মসূচি প্রধান",progoti §2.1.2,fix_needed,,,"Fixed 2026-10-26 per review: checked cell by cell against the Word table (progoti_manual_2025.docx §2.1.2(গ), column ঋণ অনুমোদন (ঘ); 7 rows, no header row). Added row 2 (৮,০০,০০০ পর্যন্ত — এলাকা ব্যবস্থাপক, ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে) and row 4 (৮,০০,০০১–১২,০০,০০০ — আঞ্চলিক ব্যবস্থাপক); restored 'প্রযোজ্য ক্ষেত্রে' on row 3, and kept it on row 4, whose Word cell carries it too. Rows 4–5 print the grouping as '৮০০,০০১ থেকে ১২০০,০০০' / '১২০০,০০১'; written with lakh grouping, same values. Was approved by Sadman Rahman on 2026-10-21; this edit cancels that. Needs your tick.",,,"In individual loans, who approves at the highest level?","The Programme Head approves at the highest level.
+- Up to 6,00,000 — Assistant Area Manager, subject to approval by the Divisional Manager (DM)
+- Up to 8,00,000 — Area Manager (AM), subject to approval by the DM
+- 8,00,001–10,00,000 (where applicable) — Assistant Regional Manager
+- 8,00,001–12,00,000 (where applicable) — Regional Manager (RM)
 - 12,00,001–25,00,000 — Divisional Manager (DM)
 - 25,00,001–40,00,000 — Senior Manager
 - 40,00,001 and above — Programme Head",needs_review,,,
