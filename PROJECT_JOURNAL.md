@@ -3613,9 +3613,25 @@ Highlights:
   That is the intended behaviour: the alternative is a reviewed-looking
   answer quoting a rate the regulator no longer allows.
 
-- **Three follow-ups from the caption fix (§4q, 2026-10-26).** F-35 answers
-  "গ্রুপ ঋণে" from the Dabi/BCUP table alone and needs NCDP/SCDP's table or a
-  narrower question. Q-003 (validated) and Q-056 (draft) present the
+- **A question asking "কত শতাংশ সঞ্চয়" is refused as an unknown product.**
+  Found 2026-10-26. `registry.unknown_product_name()` takes the word before
+  ঋণ/সঞ্চয় for a product name: "ঋণ নিতে সদস্যকে কাঙ্খিত ঋণের কত শতাংশ সঞ্চয়
+  জমা দিতে হয়?" returned "এই নামে কোনো প্রোডাক্ট ম্যানুয়ালে নেই।" with
+  `unknown_product: কাঙ্খিত`, and two rewordings fired on শতাংশ. কাঙ্খিত ঋণ is
+  the manual's own phrase. A false refusal on an ordinary question; not
+  fixed.
+- **Answering rule 8, added 2026-10-26** (`generate.SYSTEM_PROMPT`): where
+  the context gives different figures for different branch types, products
+  or programmes, give every one, labelled, even when the question asks for a
+  maximum. Answers produced before this date ran on seven rules, so gold
+  runs either side of it are not one-for-one comparable. Tested on three
+  questions: the branch-type case now gives both ceilings; a product case
+  asked which scheme was meant (rule 6) instead of listing them; a programme
+  case gave only Progoti's figure because retrieval missed the group-based
+  one. Whether rule 8 should override rule 6's "ask which one" is open.
+- **Three follow-ups from the caption fix (§4q, 2026-10-26).** F-35 now opens
+  by saying its table is Dabi/BCUP's and NCDP/SCDP have their own (awaiting
+  review). Q-003 (validated) and Q-056 (draft) present the
   NCDP/SCDP band as the group-service rule; Q-002, Q-003 and Q-040 need
   re-review because their cited chunks changed (quiz chat). Single-row
   tables are dropped from the corpus (Dabi table 36 and its Progoti twin).

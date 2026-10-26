@@ -630,13 +630,15 @@ python -c "import json;print(sum(1 for c in map(json.loads,open('data/processed/
 | ~~Medium~~ DONE | ~~Confirm whether ক্রেডিট শিল্ড is ঋণ নিরাপত্তা বিমা~~ — answered 2026-10-17, see §1.4 | Field team |
 | High | Re-run `dedupe.py` over `*_final.jsonl` so `dup_*` survives (see §6) | Pipeline |
 | Medium | Decide whether the Dabi manual should state the Progoti bill-voucher rule in §3.9.6 (see §7) | Operations |
-| Medium | Label the second §2.1.1(চ) approval table, or say which branches it covers (see §3.4) | Operations |
+| ~~Medium~~ WITHDRAWN | ~~Label the second §2.1.1(চ) approval table, or say which branches it covers~~ — the manual labels both tables; our extraction lost the labels (§3.4, journal §4q) | — |
 | Low | Settle one spelling for সেফগার্ডিং / সেইফগার্ডিং (§6.2 vs §10.7) — see §5.1 | Copy-edit |
 | Low | Fix শস্য নি**া**পত্তা in §5.3.1 | Copy-edit |
 | Low | Decide on অরগানোগ্রাম vs অর্গানোগ্রাম | Copy-edit |
 | Low | Introduce the underwriters where first named | Insurance unit |
 | High | Registry rule 9: do existing এককালীন স্থায়ী সঞ্চয় প্রকল্প accounts still earn ৩ মাসে ৮%, ৬ মাসে ৯%, ১২ মাসে ১০%? `products.csv` lists the product as suspended; rule 9 says still_valid. Not in `not_available.csv`: a match there replaces the suspension line instead of following it | Field team |
 | High | Registry rule 23: does "এখন যেকোনো বয়সে" mean the ছায়া-সঞ্চয় insurance benefit now covers DPS holders of any age? §5.2.3's limit is a condition of the insurance benefit, not of opening a DPS; the row's old wording, "ডিপিএস বয়সসীমা", read as the latter. Set to not_confirmed until answered: the bot now says the current age limit for the benefit could not be confirmed | Field team |
+| High | §2.1.2(ঘ), both manuals: when does an 18-month Progoti loan move to এনআইবিএল-১? The clause says "চলতি ঋণের ১২ মাস এবং লেট-এর ১২ মাসসহ মোট ২৪ মাস পর", but its own steps for an 18-month loan (চলতি ১৮ মাস; লেট-১ from ১৮ মাস; লেট-২ from ২৪ মাস; six months each) add up to 30. FAQ F-43 leaves the 18-month NIBL-1 start out until this is answered | Field team |
+| High | §2.1.2(গ), Progoti: what are the earlier loan approval ceilings for low-demand areas? The note under the ceiling table says "নিম্ন চাহিদার অঞ্চলের জন্য পূর্বের ঋণ অনুমোদন সিলিং অপরিবর্তিত থাকবে।", and neither manual lists those ceilings. FAQ F-36 says so | Field team |
 
 ---
 

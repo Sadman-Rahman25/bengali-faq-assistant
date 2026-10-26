@@ -69,7 +69,7 @@ from pathlib import Path
 from bn_shared import canon, canon_pattern
 
 # --------------------------------------------------------------- the prompt
-# SEVEN RULES. Each comment names the failure the rule exists to prevent, so
+# EIGHT RULES. Each comment names the failure the rule exists to prevent, so
 # nobody "simplifies" a rule whose cost is invisible in the prompt itself.
 SYSTEM_PROMPT = """You answer questions about BRAC microfinance operation manuals for field officers.
 
@@ -87,6 +87,10 @@ SYSTEM_PROMPT = """You answer questions about BRAC microfinance operation manual
    is meant instead of answering for one.
 7. Answer in the language of the question, but keep role names, product names
    and clause citations in BENGALI exactly as the context spells them.
+8. If the context gives different figures for different branch types,
+   products or programmes, give the figure for every one of them and say
+   which is which -- even when the question asks for a maximum, a limit or
+   a single figure. Never give only one of them.
 
 End your reply with a line:
 CITATIONS: <manual_id> §<clause>; <manual_id> §<clause>
@@ -471,6 +475,22 @@ If you cannot answer, write CITATIONS: none
 #   Manager approves" cannot act on it; the form they need on the paperwork
 #   is এএম. Translating a role out of Bengali destroys its usefulness while
 #   looking helpful.
+# Rule 8 -- prevents: one case given as the whole answer. Added 2026-10-26.
+#   Asked "দাবি কর্মসূচিতে শাখা ব্যবস্থাপক কত টাকা পর্যন্ত নতুন ঋণ অনুমোদন
+#   করেন?", the live chatbot answered ৭০,০০০ -- the high-demand branches'
+#   ceiling -- and stopped; ordinary-demand branches' is ৬০,০০০, in the same
+#   table. Each figure was right and the answer was wrong for half the
+#   branches, with nothing on the page to say a second case existed. Rule 6
+#   still applies when the question leaves the programme open: asking which
+#   one is meant is allowed, giving only one case is not.
+#
+#   THE "EVEN WHEN" CLAUSE IS THE WORKING PART. The first wording -- "give
+#   every case and say which figure belongs to which" -- left that answer
+#   unchanged: the model read "কত টাকা পর্যন্ত" as a request for the overall
+#   maximum, which ৭০,০০০ is. Naming that case moved it to both branch types,
+#   labelled (1 of 1, gpt-oss-120b, 2026-10-26). A rule cannot supply a case
+#   retrieval did not bring: asked what savings a member deposits before a
+#   loan, the context held only Progoti's ৪%/২%, and the answer gave those.
 
 # --------------------------------------------------------------- the floor
 # SET FROM THE DATA, and the data says a floor cannot do the job asked of it.
@@ -1791,8 +1811,8 @@ def canary_selftest(verbose=True):
        a correct abstention does not. Copying it here would be a second
        implementation of the same rule, which is how the two copies of
        resolve_ref diverged. It is imported and run.
-    2. PROMPT RULES INTACT. Seven numbered rules must be present. A prompt
-       silently truncated to six still produces fluent answers, and the score
+    2. PROMPT RULES INTACT. Eight numbered rules must be present. A prompt
+       silently truncated to seven still produces fluent answers, and the score
        moves for a reason nobody can see.
     3. SYNTHETIC IS SYNTHETIC. Every fixture literal is checked against
        productmatch: if a fixture ever names a real product, "the first run is
@@ -1824,12 +1844,12 @@ def canary_selftest(verbose=True):
         if verbose:
             print(f"  canary forbidden_overbroad  NOT BUILDABLE: {e}")
 
-    n_rules = sum(1 for i in range(1, 8)
+    n_rules = sum(1 for i in range(1, 9)
                   if f"\n{i}. " in SYSTEM_PROMPT)
-    ok2 = n_rules == 7
+    ok2 = n_rules == 8
     ok &= ok2
     if verbose:
-        print(f"  canary prompt_rules         {n_rules} of 7 numbered rules "
+        print(f"  canary prompt_rules         {n_rules} of 8 numbered rules "
               f"present  [{'PASS' if ok2 else 'FAIL'}]")
 
     real = []

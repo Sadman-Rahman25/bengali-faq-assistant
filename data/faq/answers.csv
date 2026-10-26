@@ -403,7 +403,8 @@ F-34,procedure,লোন নিতে গ্রাহকের কী কী ক
 দাবি কর্মসূচির বিশেষ শর্তাবলিতে উল্লেখ আছে যে নতুন গ্রাহকের ছবি, জাতীয় পরিচয়পত্র, জন্ম নিবন্ধন অথবা পাসপোর্টের কপি প্রদান করতে হবে; পুরাতন গ্রাহকের ক্ষেত্রে যদি পূর্বে এই নথিগুলি সংরক্ষিত থাকে তবে পুনরায় জমা দিতে হবে না, তবে প্রয়োজন হলে আপডেট করা যাবে। এছাড়া, জামিনদার যাচাই প্রয়োজনীয় এবং প্রগতিতে সিলিং অতিক্রম করলে জমির দলিল, খারিজ/খতিয়ান, খাজনা রশিদ জমা দিতে হবে।",dabi_2025 §1.1.1; progoti §1.1.2; dabi_2025 §2.1.1,approved,Sadman Rahman,2026-10-21,,a8bf029383dc64690f44cd5fea686ae7b4f4e3deb9907f189d36c2c65ce743c7,,What documents does a client need to take a loan?,"A new client needs a photo and a copy of the national ID card, birth certificate or passport; an existing client does not need to give the copy again if it was kept before, but must update it if needed.
 - For the 1st and 2nd loan, if above Tk 1.50 lakh, a guarantor from outside the group (third-party guarantor)
 The special conditions of the Dabi programme state that a new client must provide a photo and a copy of the national ID card, birth certificate or passport; for an existing client, if these documents were kept before they need not be submitted again, but they can be updated if needed. In addition, guarantor verification is required, and in Progoti, if the ceiling is exceeded, a land deed, mutation/khatian and land-tax (khajna) receipt must be submitted.",approved,Sadman Rahman,2026-10-26,e44456d17803ffd19bd95a65839a94657e4bf034e4f3827bff813cc4c7fe924b
-F-35,procedure,গ্রুপ ঋণে কোন অঙ্কের ঋণ কে অনুমোদন করেন?,"গ্রুপ ঋণে অনুমোদনকারী নির্ভর করে শাখাটি উচ্চ চাহিদার না সাধারণ চাহিদার, এবং ঋণটি নতুন না রিপিট তার ওপর।
+F-35,procedure,গ্রুপ ঋণে কোন অঙ্কের ঋণ কে অনুমোদন করেন?,"নিচের তালিকা দাবি ও বিসিইউপি কর্মসূচির জন্য; এনসিডিপি ও এসসিডিপি কর্মসূচির নিজস্ব আলাদা তালিকা আছে।
+গ্রুপ ঋণে অনুমোদনকারী নির্ভর করে শাখাটি উচ্চ চাহিদার না সাধারণ চাহিদার, এবং ঋণটি নতুন না রিপিট তার ওপর।
 উচ্চ চাহিদা শাখা, নতুন ঋণ:
 - ২০,০০০–৭০,০০০ — বিএম
 - ৭০,০০১–১,০০,০০০ — এএম
@@ -421,7 +422,8 @@ F-35,procedure,গ্রুপ ঋণে কোন অঙ্কের ঋণ ক
 - ৮০,০০১–১,৫০,০০০ — এএম
 - ১,৫০,০০০–৫,০০,০০০ — আরএম
 - ৫,০০,০০০+ — ডিএম
-তালিকা দুটি: একটি উচ্চ চাহিদা শাখার, অন্যটি সাধারণ চাহিদা শাখার। তাই নতুন ঋণে বিএম-এর নিম্নসীমা উচ্চ চাহিদা শাখায় ২০,০০০ টাকা এবং সাধারণ চাহিদা শাখায় ১৫,০০০ টাকা।",progoti §2.1.1,approved,Sadman Rahman,2026-10-26,"Fixed 2026-10-25 per review note: rechecked against §2.1.1(চ). Kept 'গ্রুপ ঋণে' -- §2.1.1 is গ্রুপভিত্তিক সেবা (দাবি, বিসিইউপি ও সিডিপি). The old answer was missing 5 repeat-loan brackets; all 13 rows of the table are now listed. The two lists are high-demand and ordinary branches. Needs your tick.",5ac0ea2f42db7103321da49a11c3d6a1bf6515ed8e55841bf9e4c8157b973040,,"In group loans, who approves which loan amount?","In group loans, the approver depends on whether the branch is a high-demand or an ordinary-demand branch, and whether the loan is new or repeat.
+তালিকা দুটি: একটি উচ্চ চাহিদা শাখার, অন্যটি সাধারণ চাহিদা শাখার। তাই নতুন ঋণে বিএম-এর নিম্নসীমা উচ্চ চাহিদা শাখায় ২০,০০০ টাকা এবং সাধারণ চাহিদা শাখায় ১৫,০০০ টাকা।",progoti §2.1.1,fix_needed,,,"Fixed 2026-10-26 per review: opening line says the table is for Dabi and BCUP -- its caption, শাখার ধরন অনুযায়ী ঋণ অনুমোদনের সিলিং (দাবি ও বিসিইউপি) -- and that NCDP/SCDP have their own table. Was approved by Sadman Rahman on 2026-10-26; this edit cancels that. Needs your tick.",,,"In group loans, who approves which loan amount?","The lists below are for the Dabi and BCUP programmes; the NCDP and SCDP programmes have their own table.
+In group loans, the approver depends on whether the branch is a high-demand or an ordinary-demand branch, and whether the loan is new or repeat.
 High-demand branch, new loan:
 - 20,000–70,000 — Branch Manager (BM)
 - 70,001–1,00,000 — Area Manager (AM)
@@ -439,7 +441,7 @@ Ordinary-demand branch, repeat loan:
 - 80,001–1,50,000 — AM
 - 1,50,000–5,00,000 — RM
 - 5,00,000+ — DM
-There are two lists: one for high-demand branches, the other for ordinary-demand branches. So for a new loan, the BM's lower limit is Tk 20,000 in a high-demand branch and Tk 15,000 in an ordinary-demand branch.",approved,Sadman Rahman,2026-10-26,7d89e973a7bce707835c264059063b9faf4f2cd8df527099cf0535ddaa037672
+There are two lists: one for high-demand branches, the other for ordinary-demand branches. So for a new loan, the BM's lower limit is Tk 20,000 in a high-demand branch and Tk 15,000 in an ordinary-demand branch.",needs_review,,,
 F-36,procedure,ইন্ডিভিজুয়াল ঋণে সর্বোচ্চ স্তরে কে অনুমোদন করেন?,"সর্বোচ্চ স্তরে কর্মসূচি প্রধান অনুমোদন করেন।
 - ৬,০০,০০০ পর্যন্ত — সহকারী এলাকা ব্যবস্থাপক (ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে)
 - ৮,০০,০০০ পর্যন্ত — এলাকা ব্যবস্থাপক (ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে)
@@ -447,14 +449,16 @@ F-36,procedure,ইন্ডিভিজুয়াল ঋণে সর্বো
 - প্রযোজ্য ক্ষেত্রে ৮,০০,০০১–১২,০০,০০০ — আঞ্চলিক ব্যবস্থাপক
 - ১২,০০,০০১–২৫,০০,০০০ — ডিভিশনাল ম্যানেজার
 - ২৫,০০,০০১–৪০,০০,০০০ — সিনিয়র ম্যানেজার
-- ৪০,০০,০০১ থেকে উপরে — কর্মসূচি প্রধান",progoti §2.1.2,approved,Sadman Rahman,2026-10-26,"Fixed 2026-10-26 per review: checked cell by cell against the Word table (progoti_manual_2025.docx §2.1.2(গ), column ঋণ অনুমোদন (ঘ); 7 rows, no header row). Added row 2 (৮,০০,০০০ পর্যন্ত — এলাকা ব্যবস্থাপক, ডিভিশনাল ম্যানেজারের অনুমোদন সাপেক্ষে) and row 4 (৮,০০,০০১–১২,০০,০০০ — আঞ্চলিক ব্যবস্থাপক); restored 'প্রযোজ্য ক্ষেত্রে' on row 3, and kept it on row 4, whose Word cell carries it too. Rows 4–5 print the grouping as '৮০০,০০১ থেকে ১২০০,০০০' / '১২০০,০০১'; written with lakh grouping, same values. Was approved by Sadman Rahman on 2026-10-21; this edit cancels that. Needs your tick.",e556d64a502a767572ed5975f1ef263cc339ec69be21adf10b40147432585c53,,"In individual loans, who approves at the highest level?","The Programme Head approves at the highest level.
+- ৪০,০০,০০১ থেকে উপরে — কর্মসূচি প্রধান
+নিম্ন চাহিদার অঞ্চলের জন্য পূর্বের ঋণ অনুমোদন সিলিং অপরিবর্তিত থাকবে — ম্যানুয়াল তালিকার নিচে এ কথা বলেছে, তবে পূর্বের সেই সিলিং ম্যানুয়ালে দেওয়া নেই।",progoti §2.1.2,fix_needed,,,"Fixed 2026-10-26 per review: adds the note printed under the table, নিম্ন চাহিদার অঞ্চলের জন্য পূর্বের ঋণ অনুমোদন সিলিং অপরিবর্তিত থাকবে।, and that neither manual lists those earlier ceilings (a field-team question). Was approved by Sadman Rahman on 2026-10-26; this edit cancels that. Needs your tick.",,,"In individual loans, who approves at the highest level?","The Programme Head approves at the highest level.
 - Up to 6,00,000 — Assistant Area Manager (AAM), subject to approval by the Divisional Manager (DM)
 - Up to 8,00,000 — Area Manager (AM), subject to approval by the DM
 - 8,00,001–10,00,000 (where applicable) — Assistant Regional Manager (ARM)
 - 8,00,001–12,00,000 (where applicable) — Regional Manager (RM)
 - 12,00,001–25,00,000 — Divisional Manager (DM)
 - 25,00,001–40,00,000 — Senior Manager
-- 40,00,001 and above — Programme Head",approved,Sadman Rahman,2026-10-26,53a7e2ae11bfb543a907aecdaa46606ff360aaf4598bb06f319a89d7e915c0ab
+- 40,00,001 and above — Programme Head
+For low-demand areas, the earlier loan approval ceilings stay unchanged — the manual says so under the table, but it does not list those earlier ceilings.",needs_review,,,
 F-37,procedure,ঋণ নিরাপত্তা বিমার দাবি কীভাবে করতে হয়?,"ঋণ নিরাপত্তা বিমা বর্তমানে চালু আছে। ঋণ নিরাপত্তা বিমার দাবি করতে হলে প্রথমে ইনসিডেন্ট নোটিফিকেশন ও সেটআপ করে তাৎক্ষণিক আর্থিক সুবিধা প্রদান করতে হবে, তারপর ডকুমেন্ট সংগ্রহ ও সিস্টেমে আপলোড করে অনুমোদন/বাতিলের প্রক্রিয়া অনুসরণ করতে হবে।
 
 - সিডিও/শাখা/এলাকা ব্যবস্থাপক (দাবি) মৃত্যুর/দুর্ঘটনার সংবাদ পেয়ে শাখা হিসাব কর্মকর্তাকে ইনসিডেন্ট সেটআপ করতে নির্দেশ দেন
@@ -541,17 +545,17 @@ F-42,procedure,গ্রাহক অভিযোগ করতে চাইল�
 - A written complaint can be sent to BRAC's official Facebook page by inbox message or wall post.
 - A detailed email to info@brac.net will be forwarded by the Central Communications team to the Microfinance team.
 - Depending on the type of complaint, the BM, the Area Manager (AM), the Regional Manager (RM) or the call centre team will start the resolution process at the right level.",approved,Sadman Rahman,2026-10-26,6bc97ed44ca65de31cf3efe1f081613d10e7491ad04fb71de2bfd61dc50e3067
-F-43,procedure,কিস্তি বকেয়া হলে ঋণ কোন শ্রেণিতে যায়?,"কিস্তি বকেয়া হলে ঋণ প্রথমে লেট-১, তারপর লেট-২, এরপর এনআইবিএল-১ এবং শেষমেশ এনআইবিএল-২‑এ স্থানান্তরিত হয়।
-- চলতি: বিতরণ থেকে মেয়াদ শেষ পর্যন্ত (১২ মাস / ৫২ সপ্তাহ)
-- এনআইবিএল-১: মোট ২৪ মাস (১০৪ সপ্তাহ) পর
-- ১৮০ দিন বকেয়ার পর নতুন করে সুদ, জরিমানা বা ফি আরোপ নিষিদ্ধ
-- দাবি ও প্রগতির মেয়াদকাল আলাদা — প্রগতিতে ১৮ মাস মেয়াদী ঋণও আছে
-চলতি ঋণের মেয়াদ শেষ হলে (১২ মাস বা ৫২ সপ্তাহ) তা লেট-১‑এ যায় এবং পরবর্তী ছয় মাস (৫৩‑৭৮ সপ্তাহ) পর্যন্ত লেট-১ হিসেবে বিবেচিত হয়। লেট-১‑এ ছয় মাস পরও বকেয়া থাকলে ঋণ লেট-২‑এ স্থানান্তরিত হয় এবং ৭৯‑১০৪ সপ্তাহ পর্যন্ত লেট-২ হিসেবে ধরা হয়। লেট-২‑এর ছয় মাস পরেও বকেয়া থাকলে মোট ২৪ মাস (১০৪ সপ্তাহ) অতিক্রান্ত হওয়ার পর ঋণ এনআইবিএল-১‑এ যায়, যেখানে কোনো নির্ধারিত সময়সীমা নেই। এনআইবিএল-১‑এর পরবর্তী পর্যায় এনআইবিএল-২, যারও কোনো নির্ধারিত সময়সীমা নেই এবং এতে নতুন সুদ আরোপ করা হয় না।",dabi_2025 §2.1.1; dabi_2025 §2.1.2,approved,Sadman Rahman,2026-10-21,,a266ca67067f3adba5475226c34708d628c36bdf72a3f67527101bbf0cc4500e,,Into which category does a loan move when instalments are overdue?,"When instalments are overdue, a loan moves first to Late-1, then to Late-2, then to NIBL-1 and finally to NIBL-2.
-- Current: from disbursement to the end of the term (12 months / 52 weeks)
-- NIBL-1: after a total of 24 months (104 weeks)
-- After 180 days overdue, charging new interest, penalties or fees is prohibited
-- Dabi and Progoti terms differ — Progoti also has 18-month loans
-When a current loan's term ends (12 months or 52 weeks), it moves to Late-1 and is treated as Late-1 for the next six months (weeks 53–78). If it is still overdue six months into Late-1, the loan moves to Late-2 and is treated as Late-2 for weeks 79–104. If it is still overdue six months after Late-2, then once a total of 24 months (104 weeks) has passed, the loan moves to NIBL-1, which has no set time limit. The stage after NIBL-1 is NIBL-2, which also has no set time limit, and no new interest is charged on it.",approved,Sadman Rahman,2026-10-26,d4dd19ddebec48b01fde8445f5e6158b3200f10711329990c2d7d79be4f2a8d3
+F-43,procedure,কিস্তি বকেয়া হলে ঋণ কোন শ্রেণিতে যায়?,"গ্রুপভিত্তিক সেবা (দাবি, বিসিইউপি ও সিডিপি) এবং প্রগতি — দুই কর্মসূচিতেই ঋণ একই পাঁচ শ্রেণিতে ভাগ করা হয়: চলতি, লেট-১, লেট-২, এনআইবিএল-১ ও এনআইবিএল-২। কিস্তি বকেয়া হলে ঋণ প্রথমে লেট-১, তারপর লেট-২, এরপর এনআইবিএল-১ এবং শেষমেশ এনআইবিএল-২‑এ স্থানান্তরিত হয়।
+- চলতি: বিতরণ থেকে মেয়াদ শেষ পর্যন্ত (এক বছর মেয়াদি ঋণে ১২ মাস / ৫২ সপ্তাহ)
+- এনআইবিএল-১: এক বছর মেয়াদি ঋণে মোট ২৪ মাস (১০৪ সপ্তাহ) পর
+- শুধু গ্রুপভিত্তিক সেবায় (দাবি, বিসিইউপি ও সিডিপি): ১৮০ দিন বকেয়ার পর নতুন করে সুদ, জরিমানা বা ফি আরোপ নিষিদ্ধ
+- প্রগতির ১৮ মাস মেয়াদী ঋণে: চলতি ১৮ মাস; ১৮ মাস অতিক্রান্ত হলে লেট-১, পরবর্তী ছয় মাস; ২৪ মাস অতিক্রান্ত হলে লেট-২, পরবর্তী ছয় মাস
+এক বছর মেয়াদি চলতি ঋণের মেয়াদ শেষ হলে (১২ মাস বা ৫২ সপ্তাহ) তা লেট-১‑এ যায় এবং পরবর্তী ছয় মাস (৫৩‑৭৮ সপ্তাহ) পর্যন্ত লেট-১ হিসেবে বিবেচিত হয়। লেট-১‑এ ছয় মাস পরও বকেয়া থাকলে ঋণ লেট-২‑এ স্থানান্তরিত হয় এবং ৭৯‑১০৪ সপ্তাহ পর্যন্ত লেট-২ হিসেবে ধরা হয়। লেট-২‑এর ছয় মাস পরেও বকেয়া থাকলে মোট ২৪ মাস (১০৪ সপ্তাহ) অতিক্রান্ত হওয়ার পর ঋণ এনআইবিএল-১‑এ যায়, যেখানে কোনো নির্ধারিত সময়সীমা নেই। এনআইবিএল-১‑এর পরবর্তী পর্যায় এনআইবিএল-২, যারও কোনো নির্ধারিত সময়সীমা নেই এবং এতে নতুন সুদ আরোপ করা হয় না।",dabi_2025 §2.1.1; dabi_2025 §2.1.2,fix_needed,,,"Fixed 2026-10-26 per review: says the five classes apply to both group-based services (§2.1.1(ছ)) and Progoti (§2.1.2(ঘ)); the 180-day rule is marked group-based only (printed only under §2.1.1(ছ)); Progoti's 18-month timings added as §2.1.2(ঘ) prints them, except the NIBL-1 start (the manual says ২৪ মাস, its steps add to 30) -- a field-team question. The NIBL time-limit sentences are UNCHANGED, pending the reviewer's decision (see out/faq_last_review.csv). Was approved by Sadman Rahman on 2026-10-21; this edit cancels that. Needs your tick.",,,Into which category does a loan move when instalments are overdue?,"Group-based services (Dabi, BCUP and CDP) and Progoti both use the same five classes: Current, Late-1, Late-2, NIBL-1 and NIBL-2. When instalments are overdue, a loan moves first to Late-1, then to Late-2, then to NIBL-1 and finally to NIBL-2.
+- Current: from disbursement to the end of the term (12 months / 52 weeks for a one-year loan)
+- NIBL-1: after a total of 24 months (104 weeks) for a one-year loan
+- In group-based services (Dabi, BCUP and CDP) only: after 180 days overdue, charging new interest, penalties or fees is prohibited
+- Progoti's 18-month loans: current for 18 months; Late-1 once 18 months have passed, for the next six months; Late-2 once 24 months have passed, for the next six months
+When a one-year current loan's term ends (12 months or 52 weeks), it moves to Late-1 and is treated as Late-1 for the next six months (weeks 53–78). If it is still overdue six months into Late-1, the loan moves to Late-2 and is treated as Late-2 for weeks 79–104. If it is still overdue six months after Late-2, then once a total of 24 months (104 weeks) has passed, the loan moves to NIBL-1, which has no set time limit. The stage after NIBL-1 is NIBL-2, which also has no set time limit, and no new interest is charged on it.",needs_review,,,
 F-44,policy,মামলা সংক্রান্ত সাময়িক খরচ ও বিল-ভাউচার কে অনুমোদন করেন?,"মামলা সংক্রান্ত সাময়িক খরচ আঞ্চলিক ব্যবস্থাপক (দাবি/প্রগতি) অনুমোদন করেন, আর বিল‑ভাউচার শাখা/এলাকা ব্যবস্থাপক (দাবি/প্রগতি) স্টাফ লইয়ার‑এর কাউন্টার স্বাক্ষরসহ অনুমোদন করেন; স্টাফ লইয়ার না থাকলে আঞ্চলিক ব্যবস্থাপকই বিল‑ভাউচার অনুমোদন করবেন।
 
 - সাময়িক খরচের জন্য শাখা/এলাকা ব্যবস্থাপক (দাবি/প্রগতি) আঞ্চলিক ব্যবস্থাপক (দাবি/প্রগতি)‑এর কাছে আবেদন করেন।
