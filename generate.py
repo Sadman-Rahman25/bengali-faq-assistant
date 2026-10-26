@@ -69,7 +69,7 @@ from pathlib import Path
 from bn_shared import canon, canon_pattern
 
 # --------------------------------------------------------------- the prompt
-# EIGHT RULES. Each comment names the failure the rule exists to prevent, so
+# NINE RULES. Each comment names the failure the rule exists to prevent, so
 # nobody "simplifies" a rule whose cost is invisible in the prompt itself.
 SYSTEM_PROMPT = """You answer questions about BRAC microfinance operation manuals for field officers.
 
@@ -83,14 +83,19 @@ SYSTEM_PROMPT = """You answer questions about BRAC microfinance operation manual
    do not quote any figure.
 5. If a product's status is not active, lead with the status, then the terms.
    A status of "unknown" is NOT active; do not imply the product is available.
-6. If the question is ambiguous across manuals or programmes, ask which one
-   is meant instead of answering for one.
+6. If the question is ambiguous across manuals or programmes, answer for each
+   of them when there are up to three, and ask which one is meant only when
+   there are more than three. Never answer for just one.
 7. Answer in the language of the question, but keep role names, product names
    and clause citations in BENGALI exactly as the context spells them.
 8. If the context gives different figures for different branch types,
-   products or programmes, give the figure for every one of them and say
-   which is which -- even when the question asks for a maximum, a limit or
-   a single figure. Never give only one of them.
+   products or programmes: when there are up to three cases, give the figure
+   for every one of them and say which is which -- even when the question
+   asks for a maximum, a limit or a single figure. When there are more than
+   three, name them and ask which one is meant. Never give only one of them.
+9. Every figure must name the programme it belongs to, as the "heading:" of
+   the context it came from names it; where that heading names no
+   programme, name the manual. Never give a figure without one.
 
 End your reply with a line:
 CITATIONS: <manual_id> §<clause>; <manual_id> §<clause>
@@ -470,7 +475,9 @@ If you cannot answer, write CITATIONS: none
 # Rule 6 -- prevents: silently picking a programme. Where the manuals
 #   diverge, answering for one is wrong half the time with no signal to the
 #   reader; §3.9.6's bill-voucher approver is শাখা ব্যবস্থাপক in Dabi and
-#   এলাকা ব্যবস্থাপক in Progoti.
+#   এলাকা ব্যবস্থাপক in Progoti. Since 2026-10-26 it answers for each case up
+#   to three and asks only beyond that -- the same limit as rule 8, so the
+#   two rules cannot pull an answer in opposite directions.
 # Rule 7 -- prevents: an unactionable answer. An officer told "the Area
 #   Manager approves" cannot act on it; the form they need on the paperwork
 #   is এএম. Translating a role out of Bengali destroys its usefulness while
@@ -491,6 +498,13 @@ If you cannot answer, write CITATIONS: none
 #   labelled (1 of 1, gpt-oss-120b, 2026-10-26). A rule cannot supply a case
 #   retrieval did not bring: asked what savings a member deposits before a
 #   loan, the context held only Progoti's ৪%/২%, and the answer gave those.
+#   UP TO THREE, THEN ASK: beyond three cases a list stops being an answer
+#   an officer can use at the counter, and rule 6 uses the same limit.
+# Rule 9 -- prevents: the unlabelled figure. That same ৪%/২% answer named no
+#   programme, so it read as the rule for every member; the group-based
+#   figure is ৫%. The heading line is in every context block, and it is the
+#   only place some chunks say which programme they are; where it names none
+#   (§1.2.2's savings tables), the manual is the label.
 
 # --------------------------------------------------------------- the floor
 # SET FROM THE DATA, and the data says a floor cannot do the job asked of it.
@@ -1811,8 +1825,8 @@ def canary_selftest(verbose=True):
        a correct abstention does not. Copying it here would be a second
        implementation of the same rule, which is how the two copies of
        resolve_ref diverged. It is imported and run.
-    2. PROMPT RULES INTACT. Eight numbered rules must be present. A prompt
-       silently truncated to seven still produces fluent answers, and the score
+    2. PROMPT RULES INTACT. Nine numbered rules must be present. A prompt
+       silently truncated to eight still produces fluent answers, and the score
        moves for a reason nobody can see.
     3. SYNTHETIC IS SYNTHETIC. Every fixture literal is checked against
        productmatch: if a fixture ever names a real product, "the first run is
@@ -1844,12 +1858,12 @@ def canary_selftest(verbose=True):
         if verbose:
             print(f"  canary forbidden_overbroad  NOT BUILDABLE: {e}")
 
-    n_rules = sum(1 for i in range(1, 9)
+    n_rules = sum(1 for i in range(1, 10)
                   if f"\n{i}. " in SYSTEM_PROMPT)
-    ok2 = n_rules == 8
+    ok2 = n_rules == 9
     ok &= ok2
     if verbose:
-        print(f"  canary prompt_rules         {n_rules} of 8 numbered rules "
+        print(f"  canary prompt_rules         {n_rules} of 9 numbered rules "
               f"present  [{'PASS' if ok2 else 'FAIL'}]")
 
     real = []

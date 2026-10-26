@@ -16,6 +16,15 @@ Read with `encoding="utf-8"` — no BOM handling needed.
 | rule_updates.csv | 26 | rule_id | manual rules checked by the field team |
 | term_updates.csv | 2 | old_term | job titles and system names that changed |
 | not_available.csv | 10 | item | what the bot must say it does not know |
+| not_products.csv | 1 | name_bn | names the manual uses for something that is not a product |
+
+`not_products.csv` exists because a question naming an unknown product is
+refused only when its name word appears in neither manual. গুড কাস্টমার ঋণ
+is printed in the manual -- as a §9.2.2 report -- so the text alone cannot
+tell it from a real loan type like রিপিট ঋণ. A row here makes "গুড কাস্টমার
+লোন" a refused product name; a question about the report itself is not
+refused. Add a row when officers ask for a "product" whose name the manual
+uses for something else.
 
 ## Values
 

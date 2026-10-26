@@ -21,11 +21,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-os.chdir(ROOT)
 
 import faq  # noqa: E402
 
-REAL = faq.PATH
+REAL = ROOT / faq.PATH
+
+
+def setup_module(_module):
+    # faq reads the manifest and its own data by repo-relative paths. Done
+    # here and in main(), not at import: importing a test must not chdir
+    # (Convention 1).
+    os.chdir(ROOT)
 
 
 def _rows():
@@ -166,6 +172,7 @@ def test_canary_fires():
 
 
 def main():
+    setup_module(None)
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]
     bad = 0

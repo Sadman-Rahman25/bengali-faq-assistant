@@ -230,7 +230,7 @@ def _manual_ids(root):
 
 
 class Registry:
-    """The five tables, with the names already compiled to patterns."""
+    """The six tables, with the names already compiled to patterns."""
 
     def __init__(self, root=Path(".")):
         d = Path(root) / REG
@@ -239,6 +239,9 @@ class Registry:
         self.rule_updates = _rows(d / "rule_updates.csv")
         self.term_updates = _rows(d / "term_updates.csv")
         self.not_available = _rows(d / "not_available.csv")
+        # names the manual uses for something that is not a product; see
+        # _listed_not_product()
+        self.not_products = _rows(d / "not_products.csv")
 
         for p in self.products:
             p["_rx"] = compile_names([p["name_bn"], p["name_en"],
@@ -610,6 +613,11 @@ def _describing(q, head_start):
 # particle কি stands there too in "গ্রাহক কি নীলকমল ঋণ নিতে পারবেন?", and
 # that name must still be refused.
 _WHICH = ("কোন", "কোনো")
+# "কত X ঋণ/সঞ্চয়" ASKS HOW MUCH X; X is a quantity, not a name. "… কত শতাংশ
+# সঞ্চয় জমা করতে হবে?" was refused on শতাংশ, a word the manuals never print
+# (they write %), so no test against the manual text could clear it. Like
+# _WHICH, a word the name walk stops on.
+_HOW_MUCH = ("কত",)
 
 
 def _products_for(words, head):
@@ -736,14 +744,38 @@ def _ordinary(word, root="."):
 
 
 @functools.lru_cache(maxsize=4096)
-def _name_like(word, root="."):
-    """Could this describing word name something the manual does not have?"""
+def _could_name(word, root="."):
+    """The test before 2026-10-26: rare (not ordinary), no digit, not a word
+    about the manual, in no heading. Still the gate for the one exception in
+    _unknown_phrase(); _name_like() adds the manual-text test to it."""
     if _numeral(word) or _ordinary(word, root):
         return False
     if any(_same_word(word, canon(m)) for m in _META_WORDS):
         return False
     rx = _term_rx(word)
     return not any(rx.search(h) for h in _headings(root))
+
+
+@functools.lru_cache(maxsize=4096)
+def _in_manuals(word, root="."):
+    """Is the word, or the word less one case ending, in any built manual?"""
+    rxs = [_term_rx(s) for s in _stems(word)]
+    return any(rx.search(t) for t in _corpus(root) for rx in rxs)
+
+
+@functools.lru_cache(maxsize=4096)
+def _name_like(word, root="."):
+    """Could this describing word name something the manual does not have?
+
+    ONLY A WORD THE MANUALS NEVER USE. Rarity was the test -- in 20 chunks or
+    fewer -- and on 199 real questions it refused five on words the manuals
+    use every day: প্রস্তাবিত লোন, রিপিট ঋণ, সর্বনিম্ন লোন, কাঙ্খিত ঋণ. A word
+    the manual itself uses is vocabulary, not the name of something missing.
+    The cost is that a made-up name built from manual words ("সাধারণ কৃষি
+    লোন") now reaches the model; a name the manual uses for something that
+    is not a product is refused from data instead (_listed_not_product).
+    """
+    return _could_name(word, root) and not _in_manuals(word, root)
 
 
 def _refusable_name(words, root="."):
@@ -788,6 +820,13 @@ def unknown_product_name(question, reg=None):
     "ইন্ডিভিজুয়াল ঋণে ..."). It now refuses 7: গুড কাস্টমার লোন twice,
     নীলকমল ঋণ three times, ছাগলের বিমা -- and one still wrong, "দাবি আর প্রগতি
     ম্যানুয়ালে ঋণের হার ...", where ম্যানুয়ালে is in six chunks and no heading.
+
+    Re-measured 2026-10-26 on the same sources, 199 distinct questions now:
+    7 refused, 5 of them wrongly -- on শতাংশ (twice), প্রস্তাবিত (twice),
+    সর্বনিম্ন and রিপিট. With a describing word refused only if the manuals
+    never use it (_name_like) and "কত X" read as a quantity (_HOW_MUCH): 2,
+    both right -- গুড কাস্টমার লোন (a listed not-product name) and ছাগলের
+    বিমা (the insurance exception in _unknown_phrase).
     """
     found = _unknown_phrase(question, reg or load())
     return found[0] if found else None
@@ -800,6 +839,8 @@ def _unknown_phrase(question, reg):
             or reg.products_ambiguous(question)):
         return None
     which = {canon(w) for w in _WHICH}
+    how_much = {canon(w) for w in _HOW_MUCH}
+    root = str(reg.root)
     for m in _PRODUCT_SHAPED.finditer(q):
         qual = m.group(1)
         if any(canon_pattern(w) == qual for w in _NOT_A_NAME):
@@ -809,11 +850,43 @@ def _unknown_phrase(question, reg):
             continue
         if stopped_on in which:
             continue          # "কোন X ঋণ": asks which X
-        name = _refusable_name(words, str(reg.root))
-        if not any(_name_like(w, str(reg.root)) for w in name):
-            continue          # only ordinary words, numerals, headings
+        if stopped_on in how_much:
+            continue          # "কত X ঋণ": asks how much X
+        listed = _listed_not_product(words, reg)
+        if listed:
+            return qual, listed, m.group(2)
+        name = _refusable_name(words, root)
+        if not any(_name_like(w, root) for w in name):
+            # THE ONE EXCEPTION: an insurance asked about by a word the
+            # manual uses inside an insurance section. ছাগল is in §5.4's
+            # background, and both §5.4 products are for cows, so goats are
+            # not covered: refuse and list them, as before 2026-10-26.
+            # Insurance only, as in _related_insurances(): an insurance
+            # section is one product family, a loan section is a programme.
+            if not (any(_could_name(w, root) for w in name)
+                    and _related_insurances(name, m.group(2), reg)):
+                continue      # words the manual uses: vocabulary, not a name
         return qual, name, m.group(2)
     return None
+
+
+def _listed_not_product(words, reg):
+    """Names the manual uses for something that is not a product, from
+    data/registry/not_products.csv. -> the question's words of the listed
+    name, or [] if none is there.
+
+    A REVIEWED LIST, because no rule over the manual text can find these:
+    গুড কাস্টমার ঋণ is printed in §9.2.2 as a report name, exactly as রিপিট
+    ঋণ is printed as a loan type, and only the second is something an
+    officer can give a member. Reached only when the name stands before
+    ঋণ/লোন/বিমা/সঞ্চয় -- a question about the §9.2.2 REPORT is not refused.
+    """
+    for row in reg.not_products:
+        nws = [w for w in _NAME_SPLIT.split(canon(row.get("name_bn") or ""))
+               if w]
+        if nws and all(any(_same_word(w, n) for w in words) for n in nws):
+            return [w for w in words if any(_same_word(w, n) for n in nws)]
+    return []
 
 
 def _stems(word):
@@ -1348,11 +1421,20 @@ def scenarios(reg=None, verbose=True):
                     and any(k == "loan" and w in ws for _key, k, ws in prods))[0]
     dabi = PROGRAMME_NAMES["dabi"][0]
     must_fire = ["“গুড কাস্টমার লোন” সম্পর্কে বলুন।",
-                 "%s কৃষি লোন কী?" % common,     # judged on কৃষি, which names nothing
+                 # judged on নীলকমল, which names nothing: the common word
+                 # cannot carry it. (It was কৃষি until 2026-10-26; কৃষি is a
+                 # word the manual uses, so it no longer refuses.)
+                 "%s নীলকমল লোন কী?" % common,
                  "%sর গুড কাস্টমার লোন কী?" % dabi,  # a programme name, inflected, is generic
                  # the particle কি before a name is not "কোন X ঋণ"
                  "গ্রাহক কি নীলকমল ঋণ নিতে পারবেন?"]
     must_be_silent = ["নতুন লোন নিতে কী লাগে?", "এই ঋণ কত দিনের?",
+                      # the two false refusals of 2026-10-26: কাঙ্খিত is a
+                      # word the manual uses; "কত শতাংশ" asks a quantity
+                      "ঋণ নিতে সদস্যকে কাঙ্খিত ঋণের কত শতাংশ সঞ্চয় জমা দিতে হয়?",
+                      "ঋণের আবেদনের সময় সদস্যকে ঋণের কত শতাংশ সঞ্চয় জমা দিতে হয়?",
+                      # a made-up name of manual words reaches the model
+                      "%s কৃষি লোন কী?" % common,
                       # ঋণ inside ঋণীদের is not a head noun
                       "৩.৯.১(খ) ধারায় ঋণীদের ক্ষেত্রে মামলার সিদ্ধান্ত কে নেবেন?",
                       # ...and these two only the head-noun boundary clears:

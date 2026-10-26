@@ -3613,22 +3613,36 @@ Highlights:
   That is the intended behaviour: the alternative is a reviewed-looking
   answer quoting a rate the regulator no longer allows.
 
-- **A question asking "কত শতাংশ সঞ্চয়" is refused as an unknown product.**
-  Found 2026-10-26. `registry.unknown_product_name()` takes the word before
-  ঋণ/সঞ্চয় for a product name: "ঋণ নিতে সদস্যকে কাঙ্খিত ঋণের কত শতাংশ সঞ্চয়
-  জমা দিতে হয়?" returned "এই নামে কোনো প্রোডাক্ট ম্যানুয়ালে নেই।" with
-  `unknown_product: কাঙ্খিত`, and two rewordings fired on শতাংশ. কাঙ্খিত ঋণ is
-  the manual's own phrase. A false refusal on an ordinary question; not
-  fixed.
-- **Answering rule 8, added 2026-10-26** (`generate.SYSTEM_PROMPT`): where
-  the context gives different figures for different branch types, products
-  or programmes, give every one, labelled, even when the question asks for a
-  maximum. Answers produced before this date ran on seven rules, so gold
-  runs either side of it are not one-for-one comparable. Tested on three
-  questions: the branch-type case now gives both ceilings; a product case
-  asked which scheme was meant (rule 6) instead of listing them; a programme
-  case gave only Progoti's figure because retrieval missed the group-based
-  one. Whether rule 8 should override rule 6's "ask which one" is open.
+- ~~A question asking "কত শতাংশ সঞ্চয়" is refused as an unknown product.~~
+  **Fixed 2026-10-26.** The unknown-product rule refused any rare word
+  before ঋণ/লোন/সঞ্চয়. A describing word is now a name only if the manuals
+  never use it, and "কত X" asks a quantity. On 199 real questions (FAQ,
+  gold, quiz) refusals went 7 → 2; the five that changed were all wrong
+  (শতাংশ ×2, প্রস্তাবিত ×2, সর্বনিম্ন, রিপিট). The two left are right: গুড
+  কাস্টমার লোন, now refused from a reviewed row in
+  `data/registry/not_products.csv` (the manual prints গুড কাস্টমার ঋণ as a
+  §9.2.2 report, so no text rule can catch it), and ছাগলের বিমা, kept on
+  purpose as the one insurance exception. Cost, accepted: a made-up name
+  built from manual words ("সাধারণ কৃষি লোন") now reaches the model.
+  `tests/test_unknown_product.py`.
+- **Answering rules 6, 8 and 9, 2026-10-26** (`generate.SYSTEM_PROMPT`).
+  Rule 8: different figures for different branch types, products or
+  programmes are all given, labelled, up to three cases, even when the
+  question asks for a maximum; beyond three, name them and ask. Rule 6 now
+  uses the same limit. Rule 9: every figure names its programme from the
+  context's heading, or the manual where the heading names none. Answers
+  produced before this date ran on seven rules, so gold runs either side of
+  it are not one-for-one comparable.
+
+  **Measured, gpt-oss-120b, same three questions, 2 runs each.** The
+  branch-type question gives both ceilings, labelled (2 of 2). The product
+  question gives 2 of the 4 schemes in context -- neither all nor asking --
+  and once ran into the 1,024-token output cap mid-answer. The programme
+  question gives Progoti's ৪%/২% (the group-based ৫% chunk is not
+  retrieved), labelled "dabi_2025 §2.1.2": true, and misleading, because
+  the Dabi manual never prints the ২.১.২ heading that says প্রগতি. Once it
+  degenerated into "দাবি দাবি দাবি …" to the cap; not reproduced on the
+  repeat. Rules move answers; they do not guarantee them.
 - **Three follow-ups from the caption fix (§4q, 2026-10-26).** F-35 now opens
   by saying its table is Dabi/BCUP's and NCDP/SCDP have their own (awaiting
   review). Q-003 (validated) and Q-056 (draft) present the
