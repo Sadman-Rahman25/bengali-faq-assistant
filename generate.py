@@ -58,6 +58,7 @@ USAGE
     python generate.py --allow-corpus "reason" --score
 """
 import argparse
+import functools
 import json
 from datetime import datetime, timezone
 import os
@@ -756,6 +757,12 @@ class MissingKey(ProviderError):
     pass
 
 
+class ReplyTruncated(ProviderError):
+    """The reply hit the output limit before any text was written. A
+    ProviderError, so every caller that handled the old error still does;
+    complete_guarded() catches it and retries with a higher limit."""
+
+
 def load_key(provider):
     """Read the key from the environment AFTER loading .env. Never a literal,
     never a default -- a default key is a key in git."""
@@ -919,10 +926,14 @@ def _gemini_complete(system, user, cache_system, key, state):
                 r = client.models.generate_content(
                     model=model, contents=user, config=cfg)
                 um = getattr(r, "usage_metadata", None)
+                cand = (getattr(r, "candidates", None) or [None])[0]
+                fr = str(getattr(cand, "finish_reason", "") or "")
                 return (r.text or ""), {
                     "model": model, "retries": retries, "tried": tried,
                     "prompt_tokens": getattr(um, "prompt_token_count", None),
                     "output_tokens": getattr(um, "candidates_token_count", None),
+                    "finish_reason": ("length" if "MAX_TOKENS" in fr
+                                      else (fr or None)),
                     # cache_system is accepted and recorded but not yet wired:
                     # implicit caching needs a token floor this prompt is far
                     # under, and explicit caches cost more to create than they
@@ -974,11 +985,13 @@ def _anthropic_complete(system, user, cache_system, key, state):
                     model=model, max_tokens=1024, system=sys_block,
                     messages=[{"role": "user", "content": user}])
                 u = getattr(r, "usage", None)
+                sr = getattr(r, "stop_reason", None)
                 return "".join(b.text for b in r.content
                                if getattr(b, "type", "") == "text"), {
                     "model": model, "retries": retries, "tried": tried,
                     "prompt_tokens": getattr(u, "input_tokens", None),
                     "output_tokens": getattr(u, "output_tokens", None),
+                    "finish_reason": "length" if sr == "max_tokens" else sr,
                     "system_cached": bool(cache_system),
                 }
             except Exception as e:                       # noqa: BLE001
@@ -1042,7 +1055,7 @@ def _groq_complete(system, user, cache_system, key, state,
                 # back EMPTY with finish_reason "stop" -- indistinguishable
                 # from a model that chose to say nothing. Say so instead.
                 if not body.strip() and ct and ct >= max_tokens:
-                    raise ProviderError(
+                    raise ReplyTruncated(
                         f"{model} returned no content: completion_tokens "
                         f"{ct} hit max_tokens {max_tokens}, so the reply was "
                         f"truncated during reasoning. Raise max_tokens or "
@@ -1051,6 +1064,9 @@ def _groq_complete(system, user, cache_system, key, state,
                     "model": model, "retries": retries, "tried": tried,
                     "prompt_tokens": pt, "output_tokens": ct,
                     "max_tokens": max_tokens,
+                    # "length" = stopped at max_tokens: complete_guarded()
+                    # must never let that partial text reach a reader
+                    "finish_reason": r.choices[0].finish_reason,
                     "reasoning_effort": reasoning_effort,
                     "system_cached": False,
                     "paced_seconds": round(paced, 2),
@@ -1327,6 +1343,13 @@ def split_citations(text):
     cites, keep = [], []
     for ln in lines:
         stripped = ln.strip()
+        # ...or at the END of a sentence: "… জানতে চান? CITATIONS: none"
+        # reached the page that way on 2026-10-26. The part before it is
+        # prose and stays; the rest is the citations line.
+        at = stripped.upper().find("CITATIONS:")
+        if at > 0:
+            keep.append(stripped[:at].rstrip())
+            stripped = stripped[at:]
         if stripped.upper().startswith("CITATIONS:"):
             raw = stripped.split(":", 1)[1].strip()
             if raw and raw.lower() != "none":
@@ -1414,6 +1437,204 @@ def load_questions_by_id(gold_path):
     return {q["id"]: q for q in (g.get("questions") or [])}
 
 
+# ------------------------------------------------------------ reply guards
+# TWO REPLIES A READER MUST NEVER SEE, both from the live chatbot. Of the 20
+# answers the demo logged from 2026-09-20 to 2026-10-26, 2 stopped at the
+# 1,024-token output limit -- one mid-list, "- **progoti §1.2.2** – “", with
+# no citations line -- and one of those two was "দাবি দাবি দাবি …" to the
+# limit. Shown as they came, the first is a half-answer that looks whole and
+# the second is noise.
+#
+# A CUT-OFF REPLY IS NEVER SHOWN. finish_reason "length" -- or, from a
+# backend that reports none, output tokens at the limit, or ReplyTruncated --
+# gets one retry at LENGTH_RETRY_TOKENS. Still cut off, the reader is told
+# the answer was too long and to ask something narrower. Partial text is
+# worse than none: the missing half is exactly what rule 8 exists to keep.
+#
+# A DEGENERATE REPLY IS NEVER SHOWN. A unit of 1-4 words repeated
+# REPEAT_TIMES times in a row is a decoding loop, not an answer: one retry,
+# then a plain "try again". Measured before it was set: it fires on the one
+# looping answer of those 20 and on none of the FAQ's 96 reviewed texts.
+LENGTH_RETRY_TOKENS = 2048
+REPEAT_UNIT_MAX = 4
+REPEAT_TIMES = 8
+TOO_LONG_TEXT = ("উত্তরটি অনেক দীর্ঘ হয়ে যাচ্ছিল, তাই দেখানো হলো না। "
+                 "অনুগ্রহ করে আরও নির্দিষ্ট করে প্রশ্ন করুন।")
+NO_ANSWER_TEXT = "উত্তর তৈরি করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।"
+
+
+def degenerate(text):
+    """The repeated unit if `text` loops, else None. Tokens with no letter or
+    digit (table rules, bullets, dashes) are skipped, so a wide table is not
+    a loop."""
+    toks = [w for w in (text or "").split() if any(ch.isalnum() for ch in w)]
+    for n in range(1, REPEAT_UNIT_MAX + 1):
+        for i in range(len(toks) - n + 1):
+            unit, k, j = toks[i:i + n], 1, i + n
+            while toks[j:j + n] == unit:
+                k, j = k + 1, j + n
+            if k >= REPEAT_TIMES:
+                return " ".join(unit)
+    return None
+
+
+def _cut_off(meta):
+    fr = meta.get("finish_reason")
+    if fr:
+        return fr == "length"
+    mt, ot = meta.get("max_tokens"), meta.get("output_tokens")
+    return bool(mt and ot and ot >= mt)
+
+
+def complete_guarded(system, user):
+    """complete(), behind the two guards above. -> (text, meta)
+
+    meta is the last call's, plus `guard` (what fired, in order),
+    `guard_outcome` (retried / too_long / no_answer / None) and `attempts`;
+    token counts are summed over every attempt, so a run's total agrees
+    with the ledger, which complete() writes per call.
+    """
+    import inspect
+    fn = _BACKENDS.get(_STATE.get("provider"))
+    takes_limit = (fn is not None
+                   and "max_tokens" in inspect.signature(fn).parameters)
+    attempts, fired = [], []
+
+    def call(**opts):
+        try:
+            text, meta = complete(system, user, **opts)
+        except ReplyTruncated as e:
+            text, meta = "", {"finish_reason": "length",
+                              "truncated": str(e)[:160]}
+        attempts.append(meta)
+        return text, meta
+
+    def done(text, meta, outcome):
+        base = next((a for a in reversed(attempts) if a.get("model")), {})
+        meta = dict(base, **meta)
+        meta.update(
+            guard=list(fired), guard_outcome=outcome, attempts=len(attempts),
+            prompt_tokens=sum(a.get("prompt_tokens") or 0
+                              for a in attempts) or None,
+            output_tokens=sum(a.get("output_tokens") or 0
+                              for a in attempts) or None)
+        return text, meta
+
+    text, meta = call()
+    if degenerate(text):
+        fired.append("repetition")
+        text, meta = call()
+        if degenerate(text):
+            return done(NO_ANSWER_TEXT, meta, "no_answer")
+    if _cut_off(meta):
+        fired.append("length")
+        opts = {"max_tokens": LENGTH_RETRY_TOKENS} if takes_limit else {}
+        text, meta = call(**opts)
+        if degenerate(text):
+            return done(NO_ANSWER_TEXT, meta, "no_answer")
+        if _cut_off(meta):
+            return done(TOO_LONG_TEXT, meta, "too_long")
+    return done(text, meta, "retried" if fired else None)
+
+
+# ------------------------------------------------------- programme labels
+# RULE 9 IN CODE. Asked to name the programme of every figure, the model did
+# not: "প্রথম ঋণের ক্ষেত্রে … ৪ % … রিপিট ঋণের ক্ষেত্রে ২ %" came back with no
+# programme, and read as the rule for every member -- the group-based figure
+# is ৫%. So when a chunk the answer cites has a heading that names a
+# programme, and the answer names none of them, the label is added here.
+#
+# A twin's heading counts. Byte-identical chunks are one passage in two
+# manuals, and the Progoti manual prints headings the Dabi manual omits.
+# What cannot be labelled is a chunk whose heading, in every copy, names
+# no programme: the Dabi manual never prints ২.১.২'s heading, so its
+# §2.1.2 chunks with no Progoti twin say nothing about whose rule they are.
+# Programme names come from productmatch (Convention 2).
+_BN_FIGURES = str.maketrans("0123456789", "০১২৩৪৫৬৭৮৯")
+
+
+@functools.lru_cache(maxsize=1)
+def _twin_headings():
+    """{dup_group: [heading text, ...]} from the tracked chunk manifest."""
+    p = Path("data/processed/chunk_manifest.json")
+    if not p.exists():
+        return {}
+    out = {}
+    for r in json.loads(p.read_text(encoding="utf-8")).get("chunks") or []:
+        if r.get("dup_group"):
+            out.setdefault(r["dup_group"], []).append(
+                " > ".join(r.get("heading_path") or []))
+    return out
+
+
+def cited_chunks(cites, chunks):
+    """The retrieved chunks the citations name, matched exactly as
+    app.cite_match and the citation metric match them (gold_eval.norm_cite).
+    -> [chunk], in context order"""
+    from gold_eval import norm_cite
+    want = [norm_cite(c) for c in cites or []]
+    out = []
+    for ch in chunks or []:
+        if not ch.get("clause"):
+            continue
+        own = norm_cite(f'{ch["manual_id"]} §{ch["clause"]}')
+        if own and any(own in c or c in own for c in want):
+            out.append(ch)
+    return out
+
+
+def _names_bn(keys):
+    import productmatch as pm
+    names = [pm.PROGRAMME_NAMES[k][0] for k in keys]
+    return names[0] if len(names) == 1 else (
+        ", ".join(names[:-1]) + " ও " + names[-1])
+
+
+def _names_en(keys):
+    import productmatch as pm
+    names = []
+    for k in keys:
+        latin = [a.strip() for a in pm.PROGRAMME_NAMES[k][1].split(";")
+                 if a.strip().isascii()]
+        names.append(latin[0] if latin else pm.PROGRAMME_NAMES[k][0])
+    return names[0] if len(names) == 1 else (
+        ", ".join(names[:-1]) + " and " + names[-1])
+
+
+def programme_label(answer, cites, chunks, question=""):
+    """-> the answer, with a label line added when a cited chunk's heading
+    (or its twin's) names programmes the answer does not mention."""
+    import productmatch as pm
+    named = set(pm.programmes_in(answer or ""))
+    sets = []                            # [(programme keys, clause)], unique
+    for ch in cited_chunks(cites, chunks):
+        heads = [" > ".join(ch.get("heading_path") or [])]
+        heads += _twin_headings().get(ch.get("dup_group"), [])
+        keys = []
+        for h in heads:
+            keys += [k for k in pm.programmes_in(h) if k not in keys]
+        order = list(pm.PROGRAMME_NAMES)     # the registry's order, always
+        keys.sort(key=order.index)
+        if keys and not named & set(keys):
+            if keys not in [s for s, _c in sets]:
+                sets.append((keys, ch.get("clause") or ""))
+    if not sets:
+        return answer
+    bengali = any("ঀ" <= ch <= "৿" for ch in question or answer)
+    if len(sets) == 1:
+        keys = sets[0][0]
+        label = (f"এই তথ্য {_names_bn(keys)} কর্মসূচির।" if bengali else
+                 f"This information is for the {_names_en(keys)} "
+                 f"programme{'s' if len(keys) > 1 else ''}.")
+    elif bengali:
+        label = "; ".join(f"§{c.translate(_BN_FIGURES)}-এর তথ্য "
+                          f"{_names_bn(k)} কর্মসূচির" for k, c in sets) + "।"
+    else:
+        label = "; ".join(f"§{c}: the {_names_en(k)} programme"
+                          f"{'s' if len(k) > 1 else ''}" for k, c in sets) + "."
+    return (answer or "").rstrip() + "\n" + label
+
+
 def answer_one(row, floor, system=SYSTEM_PROMPT, glossary=False,
                registry_rules=True):
     """-> (answer_record, meta_record). Abstains before calling the model when
@@ -1463,7 +1684,7 @@ def answer_one(row, floor, system=SYSTEM_PROMPT, glossary=False,
                     prompt_tokens=None, output_tokens=None)
     else:
         user = build_user_prompt(question, chunks, glossary)
-        text, mmeta = complete(system, user)
+        text, mmeta = complete_guarded(system, user)
         answer, cites = split_citations(text)
         meta = dict(floor_fired=False, **mmeta)
 
@@ -1472,7 +1693,10 @@ def answer_one(row, floor, system=SYSTEM_PROMPT, glossary=False,
         answer, cites, rmeta = _registry.apply_rules(
             question, answer, cites, chunks, reg, abstained=abstained)
         meta.update(rmeta)
-    return ({"id": row["question_id"], "answer": answer, "citations": cites},
+    labelled = programme_label(answer, cites, chunks, question)
+    meta["programme_label"] = labelled != answer
+    return ({"id": row["question_id"], "answer": labelled,
+             "citations": cites},
             dict(base, **meta))
 
 

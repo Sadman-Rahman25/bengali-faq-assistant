@@ -3643,6 +3643,34 @@ Highlights:
   the Dabi manual never prints the ২.১.২ heading that says প্রগতি. Once it
   degenerated into "দাবি দাবি দাবি …" to the cap; not reproduced on the
   repeat. Rules move answers; they do not guarantee them.
+- **Live-answer guards, 2026-10-26** (`generate.complete_guarded`,
+  `programme_label`, `app.display_answer`). Of the 20 answers the demo had
+  logged, 2 stopped at the 1,024-token output limit and 1 of those looped
+  ("দাবি দাবি …"). Now a cut-off reply is retried once at 2,048 tokens and
+  otherwise replaced by "too long, ask something narrower"; a looping reply
+  (a 1-4 word unit 8 times running -- 0 of the FAQ's 96 reviewed texts, 1 of
+  31 logged answers) is retried once and otherwise replaced by "try again".
+  Neither partial text reaches the page. A cited chunk's programme, from its
+  heading or its twin's, is added in code when the answer names none; corpus
+  tags in answers ("dabi_2025 §2.1.2", a bare "**dabi_2025**") are shown as
+  the chips show them; a citations line written mid-sentence is stripped.
+  `tests/test_answer_guards.py`, the model stubbed.
+
+  **Live re-test, same day.** Split figures, twice each: branch type gives
+  both ceilings (2/2); the savings question asks which of four schemes is
+  meant (2/2, as rule 8 now says beyond three), one attempt cut off and
+  retried; the deposit question gives Progoti's ৪%/২% (2/2) and is still
+  **unlabelled** -- see below. The six wrong-figure questions: no wrong
+  figure in any; five right, labelled; F-08 (রেমিটেন্স) answered the term
+  instead of the ceiling. The 11 live tests: ten hold; **T-10 is
+  unstable** -- it refused ("ম্যানুয়ালে … তথ্য নেই") in 2 of 7 runs on the
+  current prompt, and the seven-rule prompt asked "which manual?" in 2 of
+  3. The 2026-10-20 pass was one sample.
+
+  **Open.** (1) The Dabi manual's §2.1.2 chunks name no programme in any
+  heading -- Dabi never prints ২.১.২, and these chunks have no Progoti twin
+  -- so neither rule 9 nor the code can label them; carrying the Progoti
+  manual's ২.১.২ heading into them at extraction would. (2) F-08. (3) T-10.
 - **One follow-up left from the caption fix (§4q, 2026-10-26): single-row
   tables are dropped from the corpus** (Dabi table 36 and its Progoti twin).
   The others are done: F-35 opens by saying its table is Dabi/BCUP's and

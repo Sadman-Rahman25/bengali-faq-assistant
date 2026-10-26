@@ -885,6 +885,38 @@ def cite_display(cite, chunks):
     return cite
 
 
+def display_answer(text, chunks):
+    """The answer with every raw citation -- "dabi_2025 §2.1.2", "【progoti
+    §1.1.2】" -- shown the way the chips show it. -> str
+
+    The chips render the CITATIONS line; the model also writes citations
+    inline, and those reached the page as corpus tags. Each is resolved
+    through cite_display(), the chips' own renderer. One that matches no
+    retrieved chunk still gets the manual's printed title and Bengali
+    numerals (faq.cite_text): an answer must never show a corpus tag. The
+    chip keeps the raw form in that case, because the chip is where the
+    "this citation matched nothing" signal belongs, not the prose.
+    """
+    _rows, manuals = manifest()
+    if not manuals or not text:
+        return text
+    ids = "|".join(re.escape(m) for m in sorted(manuals, key=len,
+                                                reverse=True))
+    cited = re.compile(r"(%s)\s*§\s*([0-9০-৯]+(?:\.[0-9০-৯]+)*"
+                       r"(?:\s*\([^)\s]{1,4}\))?)" % ids)
+    # The model also writes the tag alone -- "**dabi_2025**" as a heading
+    # over its own list (seen 2026-10-26). A tag is never prose; the
+    # manual's title replaces it.
+    bare = re.compile(r"(?<![\w])(%s)(?![\w])" % ids)
+
+    def show(m):
+        raw = f"{m.group(1)} §{m.group(2)}"
+        out = cite_display(raw, chunks)
+        return out if out != raw else faq.cite_text(raw, "bn", manuals)
+    text = cited.sub(show, text)
+    return bare.sub(lambda m: manuals.get(m.group(1), m.group(1)), text)
+
+
 @st.cache_data(show_spinner=False)
 def stat_cards():
     """[(value, label, note)] -- every number READ, none typed.
@@ -1588,7 +1620,8 @@ def render_ask(a, lang):
             + f'<br>{esc(result["error"])}</div>')
     else:
         answer, meta = result["answer"], result["meta"]
-        body.append(f'<div class="bfa-answer">{esc(answer["answer"])}</div>')
+        shown = display_answer(answer["answer"], result.get("chunks") or [])
+        body.append(f'<div class="bfa-answer">{esc(shown)}</div>')
         if answer.get("citations"):
             chips = "".join(
                 f'<span class="bfa-chip">'
