@@ -19,6 +19,10 @@
   insurers   an insurer named in full in the English is named as the
              registry names it now (PLC). The Bengali keeps the manual's
              wording; a short form ("Guardian") is not a full name.
+  terms      the English uses the wording agreed in review for a Bengali
+             term (data/faq/en_terms.csv), and never the wording it
+             replaced -- so a later edit cannot bring "declining balance"
+             back into one answer while the rest say "declining rate".
   roles      a post the Bengali names is named in English from ONE
              glossary, built from roles.py, so the same post never has two
              English names in two answers.
@@ -271,7 +275,27 @@ def insurer_misnamed(text, names):
     return out
 
 
-def canaries(glossary, glosses, insurers):
+def en_terms(path="data/faq/en_terms.csv"):
+    with io.open(path, encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def term_misses(bn, en, terms):
+    """-> [detail] for a replaced wording in the English, or a Bengali term
+    whose agreed English is missing."""
+    out, low = [], (en or "").lower()
+    bn = unicodedata.normalize("NFC", bn or "")
+    for t in terms:
+        old = (t.get("replaces") or "").strip()
+        if old and old.lower() in low:
+            out.append(f"\"{old}\" was replaced by \"{t['en']}\"")
+        if (unicodedata.normalize("NFC", t["bn"]) in bn
+                and t["en"].lower() not in low):
+            out.append(f"\"{t['bn']}\" needs \"{t['en']}\"")
+    return out
+
+
+def canaries(glossary, glosses, insurers, terms):
     """Convention 3: each check must be seen to fail before it is trusted."""
     ok = True
     bad = [
@@ -314,6 +338,13 @@ def canaries(glossary, glosses, insurers):
         ("insurers: the registry's name passes",
          not insurer_misnamed(f"{ins}; {ins.split()[0]} alone", insurers)),
     ]
+    t = next(x for x in terms if x.get("replaces"))
+    bad += [
+        ("terms: the replaced wording is caught",
+         len(term_misses(t["bn"], f"rate ({t['replaces']})", terms)) == 2),
+        ("terms: the agreed wording passes",
+         not term_misses(t["bn"], f"rate ({t['en']})", terms)),
+    ]
     for name, good in bad:
         print("  canary %-48s %s" % (name, "OK" if good else "FAILED"))
         ok = ok and good
@@ -327,8 +358,9 @@ def main():
     reg = registry()
     glosses = glossed(reg)
     insurers = insurer_names()
+    terms = en_terms()
     print("CANARIES")
-    if not canaries(glossary, glosses, insurers):
+    if not canaries(glossary, glosses, insurers, terms):
         print("a check failed its own canary; nothing below is trusted")
         return 2
     print()
@@ -391,6 +423,9 @@ def main():
                                           insurers):
                 report(rid, "insurers", f"\"{found}\" is not the "
                                         "registry's name")
+            for d in term_misses(r["question_bn"] + "\n" + bn,
+                                 r["question_en"] + "\n" + en, terms):
+                report(rid, "terms", d)
             for m in BANNED.finditer(en + " " + r["question_en"]):
                 report(rid, "words", f"\"{m.group(0)}\"")
         for m in LATIN.finditer(r["question_bn"] + " " + bn):
